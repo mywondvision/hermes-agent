@@ -72,14 +72,37 @@ def _text(value: Any, limit: int, *, allow_empty: bool = False) -> bool:
 
 
 def _finite(value: Any) -> bool:
-    """A finite int/float that converts to float; 10**400 and -(10**400) are refused, not raised."""
-    if type(value) is int:
-        try:
-            float(value)
-        except OverflowError:
-            return False
-        return True
-    return type(value) is float and math.isfinite(value)
+    """A real number the adapter can compare and subtract. An int beyond float range (``10**400``)
+    makes ``math.isfinite`` raise OverflowError; it is refused as invalid, never allowed to escape."""
+    if type(value) not in (int, float):
+        return False
+    try:
+        return math.isfinite(value)
+    except OverflowError:
+        return False
+
+
+def _plain(value: Any) -> Any:
+    """Exact ``str`` with the same text for any str subclass. A subclass can carry mutable state and
+    override ``__eq__``/``__hash__``/``__len__``/``encode``, so comparisons, length limits and the
+    digest would depend on code the caller or the port controls, and the object would be shared with
+    them. ``str.__getitem__`` is the base-class slot and ``slice(None)`` is resolved from the C
+    length, so no override runs. Any other value is returned unchanged."""
+    if isinstance(value, str) and type(value) is not str:
+        return str.__getitem__(value, slice(None))
+    return value
+
+
+def _plain_deep(value: Any) -> Any:
+    """``_plain`` applied through exact tuples and lists. Anything else (numbers, None, other
+    objects) is returned as is: the model covers str subclasses, not arbitrary objects."""
+    if isinstance(value, str):
+        return _plain(value)
+    if type(value) is tuple:
+        return tuple(_plain_deep(v) for v in value)
+    if type(value) is list:
+        return [_plain_deep(v) for v in value]
+    return value
 
 
 # --------------------------------------------------------------------------- typed intents
@@ -178,8 +201,20 @@ def _text_issues(payload: Mapping, op: str) -> list:
 
 def parse_intent(payload: Any):
     """Closed-schema parse. Returns ``(intent | None, status, issues)``; nothing is repaired."""
-    if not isinstance(payload, Mapping) or not all(isinstance(k, str) for k in payload):
+    if not isinstance(payload, Mapping):
         return None, "REJECTED", ("INTENT_NOT_OBJECT",)
+    try:  # every entry is read once; validation and the intent then use the same exact-str copy
+        entries = {key: payload[key] for key in payload}
+    except Exception:
+        return None, "REJECTED", ("INTENT_NOT_OBJECT",)
+    if not all(isinstance(k, str) for k in entries):
+        return None, "REJECTED", ("INTENT_NOT_OBJECT",)
+    try:
+        payload = {_plain(k): _plain_deep(v) for k, v in entries.items()}
+        if isinstance(payload.get("raw_constraints"), (list, tuple)):
+            payload["raw_constraints"] = [_plain_deep(c) for c in payload["raw_constraints"]]
+    except Exception:
+        return None, "REJECTED", ("RAW_CONSTRAINTS",)
     op = payload.get("operation")
     if not isinstance(op, str) or op not in OPERATIONS:
         return None, "UNSUPPORTED", ("OPERATION_NOT_ALLOWLISTED",)
@@ -267,6 +302,30 @@ class TrustedPmContextV1:
     required_checks: tuple = ()
 
 
+_RECORD_CLASSES = (TrustedObservation, TrustedCompletion, TrustedClaim)
+
+
+def _copy_record(record: Any) -> Any:
+    """Fresh instance of a trusted evidence record with exact-str text. Any other object is returned
+    as is: it fails validation and is never used as evidence."""
+    cls = type(record)
+    if cls in _RECORD_CLASSES:
+        return cls(**{f.name: _plain_deep(getattr(record, f.name)) for f in fields(cls)})
+    return record
+
+
+def _copy_context(ctx: TrustedPmContextV1) -> TrustedPmContextV1:
+    """Independent copy. Each field is read once, str subclasses become exact ``str`` and the nested
+    evidence records are rebuilt, so a later ``object.__setattr__`` or attribute write on the
+    original, or on a copy handed to the port, cannot reach this one. Numbers are immutable; an
+    object of any other type in a field that is never compared fails the shape checks or is unused."""
+    values = {f.name: _plain_deep(getattr(ctx, f.name)) for f in fields(TrustedPmContextV1)}
+    for name in ("trusted_observations", "trusted_completions", "trusted_claims"):
+        if type(values[name]) is tuple:
+            values[name] = tuple(_copy_record(r) for r in values[name])
+    return TrustedPmContextV1(**values)
+
+
 # --------------------------------------------------------------------------- port + receipts
 
 @dataclass(frozen=True)
@@ -329,49 +388,33 @@ class PmCancelReceipt:
     uncertainty: tuple = ()
 
 
-_EVIDENCE_TYPES = {"trusted_observations": TrustedObservation,
-                   "trusted_completions": TrustedCompletion, "trusted_claims": TrustedClaim}
-_MISSING = object()
+_RECEIPT_CLASSES = (PmSubmissionReceipt, PmStatusReceipt, PmCancelReceipt)
 
 
-def _record_field_ok(name: str, value: Any) -> bool:
-    if name == "scheduler_epoch":
-        return type(value) is int
-    if name == "observed_at":
-        return _finite(value)
-    if name == "terminal":
-        return type(value) is bool
-    if name == "checks":
-        return type(value) is tuple and all(
-            type(c) is tuple and len(c) == 2 and all(type(x) is str for x in c) for c in value)
-    return type(value) is str
+def _copy_receipt_value(value: Any) -> Any:
+    """Copy the ordinary JSON containers used by receipt projections, normalizing strings.
 
-
-def _evidence_copy(records: tuple, cls: type) -> tuple:
-    """Independent copies of well-formed records; anything else is not evidence and is dropped."""
-    return tuple(replace(r) for r in records if type(r) is cls and all(
-        _record_field_ok(f.name, getattr(r, f.name, _MISSING)) for f in fields(cls)))
-
-
-def _trusted_snapshot(ctx: TrustedPmContextV1) -> tuple:
-    """H2: validate the trusted collections and return ``(independent snapshot, ())``.
-
-    Runs before the port call. Verification reads only the snapshot, so a port that mutates the
-    caller's context or its records (even via ``object.__setattr__``) cannot change the decision.
+    Unknown objects stay unchanged and fail the shape check; they are never serialized as a
+    verified result. Dicts with non-string keys are likewise refused rather than repaired.
+    Cycles/deeply recursive values are contained by the post-call verification guard.
     """
-    issues = []
-    if type(ctx.required_checks) is not tuple or not all(
-            type(c) is str and _text(c, ID_MAX) for c in ctx.required_checks):
-        issues.append("AUTHORITY_REQUIRED_CHECKS")
-    if type(ctx.trusted_producers) is not tuple or not all(
-            type(p) is str and _identifier(p) for p in ctx.trusted_producers):
-        issues.append("AUTHORITY_TRUSTED_PRODUCERS")
-    issues.extend("AUTHORITY_EVIDENCE:" + name for name in _EVIDENCE_TYPES
-                  if type(getattr(ctx, name)) is not tuple)
-    if issues:
-        return None, tuple(issues)
-    return replace(ctx, **{name: _evidence_copy(getattr(ctx, name), cls)
-                           for name, cls in _EVIDENCE_TYPES.items()}), ()
+    if type(value) is tuple:
+        return tuple(_copy_receipt_value(v) for v in value)
+    if type(value) is list:
+        return [_copy_receipt_value(v) for v in value]
+    if type(value) is dict and all(isinstance(k, str) for k in value):
+        return {_plain(k): _copy_receipt_value(v) for k, v in value.items()}
+    return _plain(value)
+
+
+def _copy_receipt(receipt: Any) -> Any:
+    """Private copy of a port receipt with exact-str text, taken before any decision is made, so the
+    port keeps no live reference to what the verifier and the result use. A receipt of any other
+    class is returned as is and fails the type check."""
+    cls = type(receipt)
+    if cls in _RECEIPT_CLASSES:
+        return cls(**{f.name: _copy_receipt_value(getattr(receipt, f.name)) for f in fields(cls)})
+    return receipt
 
 
 class SymphonyPmPort(Protocol):
@@ -408,6 +451,46 @@ def _result(intent: Optional[_Intent], outcome: str, hold: bool, issues=(), view
 
 # --------------------------------------------------------------------------- verification
 
+def _str_tuple(value: Any) -> bool:
+    """A real tuple of strings. A bare string would turn ``in`` into a substring search and ``set()``
+    into a set of characters; str, None, numbers, lists and sets are all refused. Elements keep the
+    pre-hardening domain (any string), so values accepted before stay accepted."""
+    return type(value) is tuple and all(type(v) is str for v in value)
+
+
+def _checks_shape(checks: Any) -> bool:
+    return type(checks) is tuple and all(
+        type(c) is tuple and len(c) == 2 and all(isinstance(x, str) for x in c) for c in checks)
+
+
+def _strings(record: Any, names: tuple) -> bool:
+    return all(type(getattr(record, n)) is str for n in names)
+
+
+def _observation_valid(r: TrustedObservation) -> bool:
+    return (_strings(r, ("producer", "evidence_ref", "job_ref", "job_revision", "attempt_ref", "phase"))
+            and type(r.scheduler_epoch) is int and _finite(r.observed_at))
+
+
+def _completion_valid(r: TrustedCompletion) -> bool:
+    return (_strings(r, ("producer", "evidence_ref", "job_ref", "job_revision", "attempt_ref"))
+            and type(r.terminal) is bool and _checks_shape(r.checks))
+
+
+def _claim_valid(r: TrustedClaim) -> bool:
+    return _strings(r, ("producer", "evidence_ref", "job_ref", "job_revision", "claim"))
+
+
+_EVIDENCE = (("trusted_observations", TrustedObservation, _observation_valid),
+             ("trusted_completions", TrustedCompletion, _completion_valid),
+             ("trusted_claims", TrustedClaim, _claim_valid))
+
+
+def _evidence_ok(collection: Any, cls: type, valid: Callable) -> bool:
+    """Whole collection or nothing: a malformed record is never skipped or used as evidence."""
+    return type(collection) is tuple and all(type(r) is cls and valid(r) for r in collection)
+
+
 def _context_shape_issues(ctx: TrustedPmContextV1) -> list:
     issues = []
     if ctx.contract_version != CONTRACT_VERSION or not (
@@ -420,6 +503,12 @@ def _context_shape_issues(ctx: TrustedPmContextV1) -> list:
         issues.append("AUTHORITY_EXPIRED")
     if type(ctx.scheduler_epoch) is not int or ctx.scheduler_epoch < 1:
         issues.append("AUTHORITY_EPOCH")
+    if not _str_tuple(ctx.trusted_producers):
+        issues.append("AUTHORITY_PRODUCERS")
+    if not _str_tuple(ctx.required_checks):
+        issues.append("AUTHORITY_REQUIRED_CHECKS")
+    issues.extend("AUTHORITY_EVIDENCE:" + name for name, cls, valid in _EVIDENCE
+                  if not _evidence_ok(getattr(ctx, name), cls, valid))
     return issues
 
 
@@ -447,32 +536,45 @@ _BINDING_TEXT = ("contract_version", "contract_digest", "request_id", "payload_d
 _RECEIPT_TEXT = {PmSubmissionReceipt: ("outcome", "job_ref", "job_revision"),
                  PmStatusReceipt: ("job_ref", "job_revision", "attempt_ref", "phase"),
                  PmCancelReceipt: ("outcome", "job_ref", "job_revision", "reservation_state")}
-_RECEIPT_TUPLES = {PmSubmissionReceipt: ("uncertainty",),  # evidence_refs: RECEIPT_EVIDENCE_REFS
+_RECEIPT_TUPLES = {PmSubmissionReceipt: ("uncertainty",),
                    PmStatusReceipt: ("retention", "uncertainty"),
                    PmCancelReceipt: ("claims", "retention", "uncertainty")}
 
 
-def _json_scalar(value: Any) -> bool:
-    return value is None or type(value) in (str, bool, int) or (
-        type(value) is float and math.isfinite(value))
+def _json_value(value: Any) -> bool:
+    """Plain JSON values only, including nested retention details accepted by the old projection.
+
+    No new identifier or length limits are imposed. Finite floats and string dictionary keys are
+    required; final canonical encoding also checks Unicode and Python's integer/depth limits.
+    """
+    if value is None or type(value) in (str, bool, int):
+        return True
+    if type(value) is float:
+        return math.isfinite(value)
+    if type(value) in (tuple, list):
+        return all(_json_value(v) for v in value)
+    if type(value) is dict:
+        return all(type(k) is str and _json_value(v) for k, v in value.items())
+    return False
 
 
 def _receipt_shape_issues(receipt: Any, cls: type) -> list:
-    """H1: exact field types before any membership test, hashing, iteration or comparison."""
-    if any(getattr(receipt, f.name, _MISSING) is _MISSING for f in fields(cls)):
-        return ["RECEIPT_SHAPE:MISSING_FIELD"]
+    """Check fields before hashing, membership or projection of a copied receipt.
+
+    String subclasses were normalized by the snapshot. Content/binding, freshness and evidence
+    checks below retain their existing issues. Claimed checks remain unused producer assertions.
+    """
     issues = ["RECEIPT_SHAPE:" + name for name in _BINDING_TEXT + _RECEIPT_TEXT[cls]
               if type(getattr(receipt, name)) is not str]
-    issues += ["RECEIPT_SHAPE:" + name for name in _RECEIPT_TUPLES[cls]
-               if type(getattr(receipt, name)) is not tuple]
+    issues.extend("RECEIPT_SHAPE:" + name for name in _RECEIPT_TUPLES[cls]
+                  if type(getattr(receipt, name)) is not tuple)
     if issues:
         return issues
-    if not all(type(item) is str and _text(item, TEXT_MAX, allow_empty=True)
-               for item in receipt.uncertainty):
+    if not all(type(item) is str for item in receipt.uncertainty):
         issues.append("RECEIPT_SHAPE:uncertainty")
     if "retention" in _RECEIPT_TUPLES[cls] and not all(
             type(pair) is tuple and len(pair) == 2 and type(pair[0]) is str
-            and _json_scalar(pair[1]) for pair in receipt.retention):
+            and _json_value(pair[1]) for pair in receipt.retention):
         issues.append("RECEIPT_SHAPE:retention")
     return issues
 
@@ -510,8 +612,7 @@ def _trusted(record: Any, cls: type, receipt: Any, ctx: TrustedPmContextV1) -> b
 
 
 def _checks_pass(checks: Any, required: set) -> bool:
-    if type(checks) is not tuple or not all(
-            type(c) is tuple and len(c) == 2 and all(isinstance(x, str) for x in c) for c in checks):
+    if not _checks_shape(checks):
         return False
     names = [name for name, _ in checks]
     return (len(names) == len(set(names)) and required <= set(names)
@@ -589,7 +690,7 @@ def _verify_status(receipt: Any, intent: JobQuery, ctx: TrustedPmContextV1) -> P
 
 def _verify_cancel(receipt: Any, intent: CancelIntent, ctx: TrustedPmContextV1) -> PmResult:
     issues = _receipt_issues(receipt, PmCancelReceipt, intent, ctx)
-    if not issues and (receipt.outcome not in _CANCEL_OUTCOMES  # str/tuple guaranteed by shape
+    if not issues and (receipt.outcome not in _CANCEL_OUTCOMES
                        or not all(type(claim) is str for claim in receipt.claims)
                        or not set(receipt.claims) <= CANCEL_CLAIMS):
         issues.append("RECEIPT_OUTCOME")
@@ -616,16 +717,6 @@ _VERIFIERS = {"submit_intent": _verify_submit, "get_status": _verify_status,
               "request_cancel": _verify_cancel}
 
 
-def _verify_guarded(receipt: Any, intent: _Intent, ctx: TrustedPmContextV1) -> PmResult:
-    """H1 backstop after the single port call: never re-invokes the port, never raises."""
-    try:
-        result = _VERIFIERS[intent.operation](receipt, intent, ctx)
-        canonical_bytes(result.to_dict())  # the tool surface must be able to serialise it
-        return result
-    except Exception:  # a malformed receipt that slipped past the explicit shape checks
-        return _result(intent, "UNVERIFIED", True, ("RECEIPT_MALFORMED",))
-
-
 class SymphonyPmAdapter:
     """One explicit call -> at most one port invocation. No ledger, retry, thread or fallback."""
     __slots__ = ("_port", "_trusted_issuers", "_scheduler_id")
@@ -650,20 +741,31 @@ class SymphonyPmAdapter:
             return _result(None, status, True, issues)
         if type(trusted_context) is not TrustedPmContextV1:
             return _result(intent, "WAITING_FOR_AUTHORITY", True, ("TRUSTED_CONTEXT_ABSENT",))
-        issues = self._authority_issues(intent, trusted_context)
+        try:  # one read of every field; the caller's object is not consulted again
+            snapshot = _copy_context(trusted_context)
+        except Exception:
+            return _result(intent, "REJECTED", True, ("AUTHORITY_CONTEXT_UNREADABLE",))
+        try:
+            issues = self._authority_issues(intent, snapshot)
+        except Exception:  # malformed trusted input is a managed refusal, never an exception
+            return _result(intent, "REJECTED", True, ("AUTHORITY_CONTEXT_INVALID",))
         if issues:
             return _result(intent, "REJECTED", True, issues)
-        snapshot, issues = _trusted_snapshot(trusted_context)  # H2: before the single port call
-        if snapshot is None:
-            return _result(intent, "REJECTED", True, issues)
-        port_intent = replace(intent)  # the port never holds the object carrying our identity
+        # The port gets its own copies; verification below uses only the private snapshot and the
+        # intent kept here, so nothing the port does to what it received can change the decision.
+        port_intent, port_context = replace(intent), _copy_context(snapshot)
         try:  # intent.operation is one of the three allowlisted port method names
-            receipt = getattr(self._port, intent.operation)(port_intent, trusted_context)
+            receipt = getattr(self._port, intent.operation)(port_intent, port_context)
         except Exception:  # timeout/transport/unknown: same key, no second invocation
             return _result(intent, "UNKNOWN", True, ("PORT_OUTCOME_UNKNOWN",))
         if receipt is None:
             return _result(intent, "UNKNOWN", True, ("RESPONSE_LOST",))
-        return _verify_guarded(receipt, intent, snapshot)
+        try:
+            result = _VERIFIERS[intent.operation](_copy_receipt(receipt), intent, snapshot)
+            canonical_bytes(result.to_dict())  # never return a success that the tool cannot encode
+            return result
+        except Exception:  # one port call; malformed/unencodable output is unverified, not a crash
+            return _result(intent, "UNVERIFIED", True, ("RECEIPT_UNVERIFIABLE",))
 
 
 # --------------------------------------------------------------------------- inert tool surface
@@ -697,7 +799,7 @@ def make_pm_tool_handler(adapter: Optional[SymphonyPmAdapter] = None,
             result = _result(None, "UNAVAILABLE", True, ("NO_BACKEND",))
         else:
             result = adapter.handle(args, trusted_context=context_source())
-        return json.dumps(result.to_dict(), sort_keys=True, ensure_ascii=False)
+        return json.dumps(result.to_dict(), sort_keys=True, ensure_ascii=False, allow_nan=False)
     return handler
 
 

@@ -767,77 +767,591 @@ def test_case8_unknown_retention_and_unavailable():
     assert set(entry["schema"]["parameters"]["properties"]["operation"]["enum"]) == set(pm.OPERATIONS)
 
 
-# =============================================================================== H1/H2 corrective regression
+def test_registry_wrapper_binds_real_signature_and_wired_dispatch():
+    """Injected fake registry only; the real class is inspected, never populated or discovered."""
+    from tools.registry import registry as real_registry
 
-def _h_claim(**over):
-    values = dict(producer="symphony-readback", evidence_ref="stop-1", job_ref=JOB, job_revision=REV,
+    captured = []
+
+    class FakeRegistry:
+        def register(self, **kwargs):
+            captured.append(kwargs)
+
+    sched = FakeScheduler()
+    p = submit_payload()
+    pm.register_pm_tool(FakeRegistry(), adapter=adapter(sched), context_source=lambda: ctx(p))
+    inspect.signature(type(real_registry).register).bind(real_registry, **captured[0])
+    with guarded():
+        out = json.loads(captured[0]["handler"](p))
+    assert captured[0]["check_fn"]() is True
+    assert out["outcome"] == "SUBMITTED" and len(sched.calls) == 1
+
+
+# =============================================================================== trusted-context hardening
+
+EXPECTED_OUTCOME = {"submit_intent": "SUBMITTED", "get_status": "STATUS", "request_cancel": "CANCEL_REQUESTED"}
+
+
+def all_operations():
+    return (submit_payload(), job_payload(), job_payload("request_cancel"))
+
+
+def loaded(sched, payload, receipt):
+    """Give the fake the receipt its status/cancel call will return."""
+    if payload["operation"] == "get_status":
+        sched.status_receipt = receipt
+    elif payload["operation"] == "request_cancel":
+        sched.cancel_receipt = receipt
+    return sched
+
+
+def scheduler_for(payload, **receipt_over):
+    sched = FakeScheduler()
+    if payload["operation"] == "get_status":
+        return loaded(sched, payload, status_receipt(payload, None, **receipt_over))
+    if payload["operation"] == "request_cancel":
+        return loaded(sched, payload, cancel_receipt(payload, **receipt_over))
+    return sched
+
+
+def trusted_for(payload, **over):
+    """ctx(payload) that is complete for the operation: status needs a matching trusted observation."""
+    if payload["operation"] == "get_status":
+        over.setdefault("trusted_observations", (observation(),))
+    return ctx(payload, **over)
+
+
+def _claim(**over):
+    values = dict(producer="symphony-readback", evidence_ref="proof-1", job_ref=JOB, job_revision=REV,
                   claim="worker_stopped")
     values.update(over)
     return pm.TrustedClaim(**values)
 
 
-class _HScheduler(FakeScheduler):
-    """Fake sole owner that rewrites its own receipt and may act inside the single port call."""
+def forge(obj, **changes):
+    """Tamper with a frozen record the way a hostile or buggy port could."""
+    for name, value in changes.items():
+        object.__setattr__(obj, name, value)
 
-    def __init__(self, changes=None, during=None):
+
+def assert_closed(result, payload, sched, *, outcome="REJECTED", issues, calls=0):
+    """A refusal keeps the caller's own request_id and payload_digest, is JSON-serializable and made
+    exactly ``calls`` port invocations (all of the payload's own operation)."""
+    digest = independent_digest(payload)
+    assert (result.outcome, result.hold, result.issues) == (outcome, True, tuple(issues))
+    assert (result.operation, result.request_id, result.payload_digest) == (
+        payload["operation"], payload["request_id"], digest)
+    wire = json.loads(json.dumps(result.to_dict(), sort_keys=True))
+    assert (wire["outcome"], wire["hold"], wire["issues"]) == (outcome, True, list(issues))
+    assert (wire["request_id"], wire["payload_digest"]) == (payload["request_id"], digest)
+    assert [c[0] for c in sched.calls] == [payload["operation"]] * calls
+
+
+BAD_STRING_TUPLES = (
+    ("string", "symphony-readback"), ("none", None), ("integer", 7), ("float", 1.5),
+    ("bytes", b"symphony-readback"), ("list", ["symphony-readback"]), ("set", {"symphony-readback"}),
+    ("frozenset", frozenset({"symphony-readback"})), ("dict", {"symphony-readback": 1}),
+    ("element_none", ("symphony-readback", None)), ("element_number", ("symphony-readback", 7)),
+    ("element_bytes", (b"symphony-readback",)), ("element_list", (["symphony-readback"],)),
+    ("element_nested_tuple", (("symphony-readback",),)))
+
+
+def test_trusted_producers_and_required_checks_must_be_tuples_of_strings():
+    for payload in all_operations():
+        op = payload["operation"]
+        sched = scheduler_for(payload)
+        control = run(sched, payload, trusted_for(payload))
+        assert control.outcome == EXPECTED_OUTCOME[op] and len(sched.calls) == 1
+        # An empty tuple is a valid (if useless) tuple: it is not refused by shape.
+        sched = scheduler_for(payload)
+        empty = run(sched, payload, trusted_for(payload, trusted_producers=(), required_checks=()))
+        assert empty.outcome != "REJECTED" and len(sched.calls) == 1
+        for field_name, issue in (("trusted_producers", "AUTHORITY_PRODUCERS"),
+                                  ("required_checks", "AUTHORITY_REQUIRED_CHECKS")):
+            for label, bad in BAD_STRING_TUPLES:
+                sched = scheduler_for(payload)
+                result = run(sched, payload, trusted_for(payload, **{field_name: bad}))
+                assert sched.calls == [], (op, field_name, label)
+                assert_closed(result, payload, sched, issues=(issue,), calls=0)
+
+
+def test_string_producers_and_required_checks_cannot_act_as_substring_or_character_set():
+    q = job_payload()
+    # "readback" is a substring of "symphony-readback": with a bare string, `in` trusted this record.
+    sched = scheduler_for(q)
+    result = run(sched, q, trusted_for(q, trusted_producers="symphony-readback",
+                                       trusted_observations=(observation(producer="readback"),)))
+    assert_closed(result, q, sched, issues=("AUTHORITY_PRODUCERS",))
+    # set("unit") == {"u", "n", "i", "t"}: a completion passing exactly those four "checks" met it.
+    context = trusted_for(q, required_checks="unit", trusted_observations=(observation(phase="DONE"),),
+                          trusted_completions=(_completion(checks=tuple((c, "pass") for c in "unit")),))
+    sched = scheduler_for(q, phase="DONE", evidence_refs=("obs-1", "done-1"))
+    result = run(sched, q, context)
+    assert_closed(result, q, sched, issues=("AUTHORITY_REQUIRED_CHECKS",))
+
+
+CONTAINER_FAULTS = (("none", None), ("string", "obs-1"), ("integer", 3), ("list", []), ("dict", {}),
+                    ("set", set()))
+
+RECORD_FAULTS = {
+    "trusted_observations": (
+        ("record_dict", (dataclasses.asdict(observation()),)), ("record_string", ("obs-1",)),
+        ("record_none", (None,)), ("record_other_class", (_completion(),)),
+        ("producer_number", (observation(producer=7),)),
+        ("epoch_bool", (observation(scheduler_epoch=True),)),
+        ("time_nan", (observation(observed_at=float("nan")),)),
+        ("time_inf", (observation(observed_at=float("inf")),)),
+        ("time_overflow_positive", (observation(observed_at=10 ** 400),)),
+        ("time_overflow_negative", (observation(observed_at=-10 ** 400),)),
+        ("time_string", (observation(observed_at="1"),)), ("phase_none", (observation(phase=None),)),
+        ("phase_bytes", (observation(phase=b"RUNNING"),)),
+        ("attempt_ref_none", (observation(attempt_ref=None),)),
+        ("valid_then_malformed", (observation(), observation(job_ref=None)))),
+    "trusted_completions": (
+        ("record_dict", (dataclasses.asdict(_completion()),)), ("record_none", (None,)),
+        ("record_other_class", (observation(),)), ("producer_none", (_completion(producer=None),)),
+        ("terminal_string", (_completion(terminal="yes"),)), ("terminal_integer", (_completion(terminal=1),)),
+        ("checks_list", (_completion(checks=[("unit", "pass")]),)),
+        ("checks_inner_list", (_completion(checks=(["unit", "pass"],)),)),
+        ("checks_short", (_completion(checks=(("unit",),)),)),
+        ("checks_non_string", (_completion(checks=(("unit", 1),)),)),
+        ("checks_none", (_completion(checks=None),)),
+        ("valid_then_malformed", (_completion(), _completion(evidence_ref=None)))),
+    "trusted_claims": (
+        ("record_dict", (dataclasses.asdict(_claim()),)), ("record_none", (None,)),
+        ("record_other_class", (observation(),)),
+        ("claim_none", (_claim(claim=None),)), ("claim_unhashable", (_claim(claim=["worker_stopped"]),)),
+        ("valid_then_malformed", (_claim(), _claim(producer=3)))),
+}
+
+
+def test_each_evidence_collection_is_validated_on_its_own_before_the_port_call():
+    valid = {"trusted_observations": (observation(),), "trusted_completions": (_completion(),),
+             "trusted_claims": (_claim(),)}
+    for payload in all_operations():
+        op = payload["operation"]
+        sched = scheduler_for(payload)
+        control = run(sched, payload, trusted_for(payload, **valid))
+        assert control.outcome == EXPECTED_OUTCOME[op] and len(sched.calls) == 1
+        for name in valid:
+            for label, bad in CONTAINER_FAULTS + RECORD_FAULTS[name]:
+                sched = scheduler_for(payload)
+                result = run(sched, payload, trusted_for(payload, **dict(valid, **{name: bad})))
+                assert sched.calls == [], (op, name, label)
+                # Only the faulty collection is named: the others were checked separately and passed.
+                assert_closed(result, payload, sched, issues=("AUTHORITY_EVIDENCE:" + name,), calls=0)
+
+
+class MutatingScheduler(FakeScheduler):
+    """Synthetic port that tampers with the context it was handed, then answers like the plain fake."""
+
+    def __init__(self, tamper):
         super().__init__()
-        self.changes, self.during = changes or {}, during
-
-    def _hostile(self, receipt, request, context):
-        if self.during is not None:
-            self.during(request, context)
-        return None if receipt is None else dataclasses.replace(receipt, **self.changes)
-
-    def submit_intent(self, request, context):
-        return self._hostile(super().submit_intent(request, context), request, context)
+        self.tamper = tamper
+        self.seen = []
 
     def get_status(self, query, context):
-        return self._hostile(super().get_status(query, context), query, context)
+        self.seen.append(context)
+        self.tamper(context)
+        return super().get_status(query, context)
 
     def request_cancel(self, request, context):
-        return self._hostile(super().request_cancel(request, context), request, context)
+        self.seen.append(context)
+        self.tamper(context)
+        return super().request_cancel(request, context)
 
 
-def _h_setup(op, changes=None, during=None, **context_over):
-    """Valid baseline per operation; ``context_over`` replaces trusted-context fields verbatim."""
-    sched = _HScheduler(changes, during)
-    if op == "submit_intent":
-        payload = submit_payload()
-        return payload, ctx(payload, **context_over), sched
-    payload = job_payload(op)
+def snapshot_scenarios():
+    """(name, payload, make_context, receipt_overrides, [(pick record, forged fields)]).
+
+    ``make_context`` builds fresh records every call: the control run and the tampered run must not
+    share a mutable object. Each scenario starts from a VALID nested record and changes it after the
+    snapshot, in the direction that would flip the decision if the live objects were read."""
+    q, c = job_payload(), job_payload("request_cancel")
+    done = dict(phase="DONE", evidence_refs=("obs-1", "done-1"))
+    stop = dict(claims=("worker_stopped",), evidence_refs=("stop-1",))
+    nth = lambda attr: (lambda context: getattr(context, attr)[0])
+    whole = lambda context: context
+    both_pass = (("unit", "pass"), ("boundary", "pass"))
+    return (
+        ("completion: failing check rewritten to pass", q,
+         lambda: trusted_for(q, trusted_observations=(observation(phase="DONE"),), trusted_completions=(
+             _completion(checks=(("unit", "pass"), ("boundary", "fail"))),)),
+         done, [(nth("trusted_completions"), {"checks": both_pass})]),
+        ("completion: accepted record made non-terminal", q,
+         lambda: trusted_for(q, trusted_observations=(observation(phase="DONE"),),
+                             trusted_completions=(_completion(),)),
+         done, [(nth("trusted_completions"), {"terminal": False})]),
+        ("context: producers and required checks wiped", q,
+         lambda: trusted_for(q, trusted_observations=(observation(phase="DONE"),),
+                             trusted_completions=(_completion(),)),
+         done, [(whole, {"required_checks": (), "trusted_producers": ()})]),
+        ("observation: non-matching record rewritten to match", q,
+         lambda: trusted_for(q, trusted_observations=(observation(attempt_ref="attempt-0"),)),
+         {}, [(nth("trusted_observations"), {"attempt_ref": ATTEMPT})]),
+        ("observation: matching record rewritten to differ", q,
+         lambda: trusted_for(q, trusted_observations=(observation(),)),
+         {}, [(nth("trusted_observations"), {"phase": "ADMITTED"})]),
+        ("claim: wrong-revision record rewritten to verify", c,
+         lambda: trusted_for(c, trusted_claims=(_claim(evidence_ref="stop-1", job_revision="b" * 64),)),
+         stop, [(nth("trusted_claims"), {"job_revision": REV})]),
+        ("claim: verified record rewritten to another claim", c,
+         lambda: trusted_for(c, trusted_claims=(_claim(evidence_ref="stop-1"),)),
+         stop, [(nth("trusted_claims"), {"claim": "billing_settled"})]),
+    )
+
+
+def test_port_tampering_with_nested_evidence_after_snapshot_cannot_change_the_decision():
+    for name, payload, make, receipt_over, changes in snapshot_scenarios():
+        receipt = (status_receipt(payload, None, **receipt_over) if payload["operation"] == "get_status"
+                   else cancel_receipt(payload, **receipt_over))
+        control = run(loaded(FakeScheduler(), payload, receipt), payload, make())
+        original = make()
+
+        def tamper(port_context, original=original, changes=changes):
+            for pick, fields in changes:
+                forge(pick(port_context), **fields)  # the copy the port was handed
+                forge(pick(original), **fields)      # the caller's own object
+
+        sched = loaded(MutatingScheduler(tamper), payload, receipt)
+        result = run(sched, payload, original)
+        assert len(sched.calls) == 1, name
+        for pick, fields in changes:  # the tampering really happened, on both objects
+            assert all(getattr(pick(original), k) == v for k, v in fields.items()), name
+            assert all(getattr(pick(sched.seen[0]), k) == v for k, v in fields.items()), name
+            assert pick(sched.seen[0]) is not pick(original), name  # the port never held the caller's record
+        # The decision rests on the snapshot: byte-for-byte the untampered control ...
+        assert result.to_dict() == control.to_dict(), name
+        # ... and different from what reading the tampered objects would have decided.
+        live = run(loaded(FakeScheduler(), payload, receipt), payload, original)
+        assert live.to_dict() != control.to_dict(), name
+        assert (result.request_id, result.payload_digest) == (payload["request_id"], independent_digest(payload))
+        json.dumps(result.to_dict())
+
+
+def test_port_tampering_with_the_request_cannot_change_the_result_binding():
+    p = submit_payload()
+
+    class Forging(FakeScheduler):
+        def submit_intent(self, request, context):
+            forge(request, request_id="req-evil", goal="forged goal")
+            return super().submit_intent(request, context)
+
+    sched = Forging()
+    result = run(sched, p, ctx(p))
+    assert sched.calls[0][1].request_id == "req-evil"  # the port really tampered with what it was given
+    assert_closed(result, p, sched, outcome="UNVERIFIED", calls=1,
+                  issues=("RECEIPT_BINDING:request_id", "RECEIPT_BINDING:payload_digest"))
+
+
+# =============================================================================== number range, contract domain, str subclasses
+
+import collections.abc  # noqa: E402  (used only by the helpers below)
+
+HUGE = (("positive", 10 ** 400), ("negative", -(10 ** 400)), ("inf", float("inf")),
+        ("minus_inf", float("-inf")))
+
+
+def test_finite_refuses_numbers_it_cannot_compare_instead_of_raising():
+    for label, bad in HUGE + (("nan", float("nan")), ("bool", True), ("string", "1"), ("none", None)):
+        assert pm._finite(bad) is False, label
+    for good in (0, -1, 1000.0, 10 ** 300, -(10 ** 300), 1.5e308):
+        assert pm._finite(good) is True, good
+
+
+def test_context_numbers_beyond_float_range_are_a_managed_hold_before_the_port_call():
+    for payload in all_operations():
+        op = payload["operation"]
+        for label, bad in HUGE:
+            for name in ("now", "expires_at", "max_age_seconds"):
+                sched = scheduler_for(payload)
+                result = run(sched, payload, trusted_for(payload, **{name: bad}))
+                assert sched.calls == [], (op, name, label)
+                assert_closed(result, payload, sched, issues=("AUTHORITY_EXPIRED",))
+            sched = scheduler_for(payload)
+            result = run(sched, payload, trusted_for(
+                payload, trusted_observations=(observation(observed_at=bad),)))
+            assert sched.calls == [], (op, label)
+            assert_closed(result, payload, sched, issues=("AUTHORITY_EVIDENCE:trusted_observations",))
+        # Control: a large number that IS representable is a number like any other.
+        sched = scheduler_for(payload)
+        result = run(sched, payload, trusted_for(payload, max_age_seconds=10 ** 300))
+        assert result.outcome == EXPECTED_OUTCOME[op] and len(sched.calls) == 1
+        json.dumps(result.to_dict())
+
+
+class LateSubmit(FakeScheduler):
+    """Fake whose submission receipt carries a chosen ``observed_at``."""
+
+    def __init__(self, observed_at):
+        super().__init__()
+        self.observed_at = observed_at
+
+    def submit_intent(self, request, context):
+        receipt = super().submit_intent(request, context)
+        return dataclasses.replace(receipt, observed_at=self.observed_at)
+
+
+def test_receipt_timestamp_beyond_float_range_is_unverified_not_an_exception():
+    for payload in all_operations():
+        op = payload["operation"]
+        for label, bad in HUGE + (("large_future", 10 ** 300), ("large_past", -(10 ** 300))):
+            sched = (LateSubmit(bad) if op == "submit_intent"
+                     else scheduler_for(payload, observed_at=bad))
+            result = run(sched, payload, trusted_for(payload))
+            assert_closed(result, payload, sched, outcome="UNVERIFIED", issues=("RECEIPT_STALE",), calls=1)
+
+
+COMPAT_NAMES = ("Symphony Readback/1", "ci/build #2", "unit tests", "p" * 300, "", "café", "../x",
+                "UPPER", "a b")
+
+
+def test_values_accepted_before_the_hardening_are_still_accepted():
+    """Producers, required-check names, phases and attempt refs were never identifier-checked, so
+    spaces, slashes, case, empty strings and long names keep working; only the container is narrowed
+    (a real tuple of strings)."""
+    q, c = job_payload(), job_payload("request_cancel")
+    for name in COMPAT_NAMES:
+        phase = "waiting for worker/" + name
+        sched = scheduler_for(q, phase=phase, attempt_ref=name)
+        result = run(sched, q, trusted_for(q, trusted_producers=(name,), trusted_observations=(
+            observation(producer=name, phase=phase, attempt_ref=name),)))
+        assert (result.outcome, result.hold, result.issues) == ("STATUS", False, ()), name
+        assert (result.view["phase"], result.view["attempt_ref"]) == (phase, name) and len(sched.calls) == 1
+
+        sched = scheduler_for(q, phase="DONE", evidence_refs=("obs-1", "done-1"))
+        result = run(sched, q, trusted_for(
+            q, trusted_producers=(name,), required_checks=(name,),
+            trusted_observations=(observation(producer=name, phase="DONE"),),
+            trusted_completions=(_completion(producer=name, checks=((name, "pass"),)),)))
+        assert (result.outcome, result.hold, result.view["stage_acceptance"]) == ("STATUS", False, "ACCEPTED"), name
+
+        sched = scheduler_for(c, claims=("worker_stopped",), evidence_refs=("stop-1",))
+        result = run(sched, c, trusted_for(c, trusted_producers=(name,), trusted_claims=(
+            _claim(producer=name, evidence_ref="stop-1"),)))
+        assert (result.outcome, result.view["verified_claims"]) == ("CANCEL_REQUESTED", ["worker_stopped"]), name
+
+
+def test_type_correct_but_unmatched_evidence_records_are_still_ignored():
+    q, c = job_payload(), job_payload("request_cancel")
+    sched = scheduler_for(q)
+    result = run(sched, q, trusted_for(q, trusted_observations=(
+        observation(scheduler_epoch=0, evidence_ref="", phase=""), observation())))
+    assert (result.outcome, result.hold, result.issues) == ("STATUS", False, ()) and len(sched.calls) == 1
+    sched = scheduler_for(c, claims=("worker_stopped",), evidence_refs=("stop-1",))
+    result = run(sched, c, trusted_for(c, trusted_claims=(
+        _claim(claim="future_claim", job_revision=""), _claim(evidence_ref="stop-1"))))
+    assert result.view["verified_claims"] == ["worker_stopped"] and len(sched.calls) == 1
+
+
+class Liar(str):
+    """Claims equality with everything, inequality with nothing, and a length of one."""
+
+    def __eq__(self, other):
+        return True
+
+    def __ne__(self, other):
+        return False
+
+    __hash__ = str.__hash__
+
+    def __len__(self):
+        return 1
+
+
+class Tagged(str):
+    """Benign subclass whose instances carry mutable per-object state."""
+
+
+def strings_in(value, found=None):
+    found = [] if found is None else found
+    if isinstance(value, str):
+        found.append(value)
+    elif isinstance(value, (tuple, list)):
+        for item in value:
+            strings_in(item, found)
+    elif isinstance(value, collections.abc.Mapping):
+        for key, item in value.items():
+            strings_in(key, found)
+            strings_in(item, found)
+    elif dataclasses.is_dataclass(value) and not isinstance(value, type):
+        for f in dataclasses.fields(value):
+            strings_in(getattr(value, f.name), found)
+    return found
+
+
+def tagged(value):
+    """The same value with every string replaced by a stateful ``Tagged`` instance."""
+    if isinstance(value, str):
+        item = Tagged(value)
+        item.mark = "caller-state"
+        return item
+    if type(value) is tuple:
+        return tuple(tagged(v) for v in value)
+    if dataclasses.is_dataclass(value) and not isinstance(value, type):
+        return type(value)(**{f.name: tagged(getattr(value, f.name)) for f in dataclasses.fields(value)})
+    return value
+
+
+class Capturing(FakeScheduler):
+    """Fake that keeps every context it receives and may rewrap the receipt it returns."""
+
+    def __init__(self, wrap=None):
+        super().__init__()
+        self.contexts = []
+        self.wrap = wrap or (lambda receipt: receipt)
+
+    def submit_intent(self, request, context):
+        self.contexts.append(context)
+        return self.wrap(super().submit_intent(request, context))
+
+    def get_status(self, query, context):
+        self.contexts.append(context)
+        return self.wrap(super().get_status(query, context))
+
+    def request_cancel(self, request, context):
+        self.contexts.append(context)
+        return self.wrap(super().request_cancel(request, context))
+
+
+def capturing(payload, wrap=None):
+    sched = Capturing(wrap)
+    if payload["operation"] == "get_status":
+        sched.status_receipt = status_receipt(payload, None, uncertainty=("maybe",),
+                                              retention=(("lock", "held"),))
+    elif payload["operation"] == "request_cancel":
+        sched.cancel_receipt = cancel_receipt(payload, uncertainty=("maybe",), retention=(("lock", "held"),))
+    return sched
+
+
+def test_plain_keeps_the_text_and_drops_the_subclass():
+    for text in ("", "abc", "кириллица", "x" * 5000):
+        for cls in (Liar, Tagged):
+            out = pm._plain(cls(text))
+            assert type(out) is str and str.__eq__(out, text) is True
+    marker = object()
+    assert pm._plain(marker) is marker and pm._plain(7) == 7
+
+
+def test_str_subclasses_are_replaced_by_exact_strings_so_no_mutable_reference_is_shared():
+    valid = lambda: dict(trusted_observations=(observation(),), trusted_completions=(_completion(),),
+                         trusted_claims=(_claim(),))
+    for payload in all_operations():
+        op = payload["operation"]
+        control_sched = capturing(payload)
+        control = run(control_sched, payload, trusted_for(payload, **valid()))
+        assert control.outcome == EXPECTED_OUTCOME[op]
+
+        original = tagged(trusted_for(payload, **valid()))
+        assert any(type(s) is not str for s in strings_in(original))  # the input really holds subclasses
+        sched = capturing(payload, wrap=tagged)  # request, context and receipt all carry subclasses
+        with guarded():
+            result = adapter(sched).handle(tagged_payload(payload), trusted_context=original)
+        assert result.to_dict() == control.to_dict(), op
+        assert len(sched.calls) == 1 and len(sched.contexts) == 1
+        received = strings_in(sched.contexts[0]) + strings_in(sched.calls[0][1])
+        assert received and all(type(s) is str for s in received), op
+        assert all(type(s) is str for s in strings_in(result.to_dict())), op
+        assert sched.contexts[0] is not original
+        assert not {id(s) for s in strings_in(original)} & {id(s) for s in received}, op
+
+
+def tagged_payload(payload):
+    """A request mapping whose keys and values (including list items) are stateful str subclasses."""
+    return {tagged(k): ([tagged(i) for i in v] if isinstance(v, list) else tagged(v))
+            for k, v in payload.items()}
+
+
+def test_str_subclass_cannot_fake_equality_in_the_trusted_context():
+    q = job_payload()
+    for name, issue in (("project_ref", "AUTHORITY_SCOPE"), ("request_id", "BINDING_REQUEST_ID"),
+                        ("issuer_ref", "AUTHORITY_FOREIGN"), ("scheduler_id", "AUTHORITY_FOREIGN")):
+        sched = scheduler_for(q)
+        result = run(sched, q, trusted_for(q, **{name: Liar("some-other-value")}))
+        assert_closed(result, q, sched, issues=(issue,))
+    sched = scheduler_for(q)  # a producer that "equals" every record producer must not be trusted
+    result = run(sched, q, trusted_for(q, trusted_producers=(Liar("evil-producer"),)))
+    assert_closed(result, q, sched, outcome="UNVERIFIED", issues=("STATUS_PROVENANCE_UNVERIFIED",), calls=1)
+
+
+def test_str_subclass_cannot_hide_its_length_or_text_from_the_intent_limits():
+    for over, issue in (({"goal": Liar("g" * (pm.TEXT_MAX + 1))}, "GOAL"),
+                        ({"raw_constraints": [Liar("c" * (pm.CONSTRAINT_MAX + 1))]}, "RAW_CONSTRAINTS")):
+        assert pm.parse_intent(submit_payload(**over)) == (None, "REJECTED", (issue,))
+    assert pm.parse_intent(job_payload("request_cancel", reason=Liar("r" * (pm.TEXT_MAX + 1)))) == (
+        None, "REJECTED", ("REASON",))
+
+
+def test_a_sequence_that_changes_between_reads_is_read_once():
+    class Flip(list):
+        """A valid sequence the first time it is iterated, an oversized one afterwards."""
+
+        def __iter__(self):
+            self.n = getattr(self, "n", 0) + 1
+            return iter(["ok"] if self.n == 1 else ["x" * (pm.CONSTRAINT_MAX + 1)])
+
+    intent, status, issues = pm.parse_intent(submit_payload(raw_constraints=Flip(["ok"])))
+    assert (status, issues) == ("OK", ()) and intent.raw_constraints == ("ok",)
+    assert intent.payload_digest == independent_digest(submit_payload(raw_constraints=["ok"]))
+
+
+def test_str_subclass_in_a_receipt_cannot_fake_a_binding_or_a_claim():
+    q, c = job_payload(), job_payload("request_cancel")
+    sched = scheduler_for(q, request_id=Liar("req-evil"))
+    result = run(sched, q, trusted_for(q))
+    assert_closed(result, q, sched, outcome="UNVERIFIED", issues=("RECEIPT_BINDING:request_id",), calls=1)
+    sched = scheduler_for(c, claims=(Liar("billing_settled"),), evidence_refs=("stop-1",))
+    result = run(sched, c, trusted_for(c, trusted_claims=(_claim(evidence_ref="stop-1"),)))
+    assert_closed(result, c, sched, outcome="UNVERIFIED", issues=("UNBACKED_CLAIM:billing_settled",), calls=1)
+
+
+def test_malformed_trusted_input_is_a_managed_refusal_never_an_exception():
+    class Hostile:
+        def __eq__(self, other):
+            raise RuntimeError("comparison refused")
+
+        __hash__ = object.__hash__
+
+    q = job_payload()
+    sched = scheduler_for(q)  # a comparison that raises inside validation
+    result = run(sched, q, trusted_for(q, allowed_operations=(Hostile(), "get_status")))
+    assert_closed(result, q, sched, issues=("AUTHORITY_CONTEXT_INVALID",))
+    broken = trusted_for(q)  # a field that cannot be read at all
+    object.__delattr__(broken, "context_ref")
+    sched = scheduler_for(q)
+    assert_closed(run(sched, q, broken), q, sched, issues=("AUTHORITY_CONTEXT_UNREADABLE",))
+    receipt = status_receipt(q, None)  # a receipt that cannot be read after the single port call
+    object.__delattr__(receipt, "observed_at")
+    sched = FakeScheduler()
+    sched.status_receipt = receipt
+    result = run(sched, q, trusted_for(q))
+    assert_closed(result, q, sched, outcome="UNVERIFIED", issues=("RECEIPT_UNVERIFIABLE",), calls=1)
+
+
+# =============================================================================== unified H1 receipt boundary
+
+class H1Scheduler(FakeScheduler):
+    """One port call with a controlled malformed receipt; no live backend."""
+
+    def __init__(self, changes):
+        super().__init__()
+        self.changes = changes
+
+    def submit_intent(self, request, context):
+        return dataclasses.replace(super().submit_intent(request, context), **self.changes)
+
+
+def h1_setup(op, changes):
+    payload = submit_payload() if op == "submit_intent" else job_payload(op)
+    sched = H1Scheduler(changes)
     if op == "get_status":
-        values = dict(trusted_observations=(observation(phase="DONE"),), trusted_completions=(_completion(),))
-    else:
-        values = dict(trusted_claims=(_h_claim(),))
-    values.update(context_over)
-    context = ctx(payload, **values)
-    if op == "get_status":
-        sched.status_receipt = status_receipt(payload, context, phase="DONE", evidence_refs=("obs-1", "done-1"))
-    else:
-        sched.cancel_receipt = cancel_receipt(payload, claims=("worker_stopped",), evidence_refs=("stop-1",))
-    return payload, context, sched
+        sched.status_receipt = status_receipt(payload, None, **changes)
+    elif op == "request_cancel":
+        sched.cancel_receipt = cancel_receipt(payload, **changes)
+    return payload, trusted_for(payload), sched
 
 
-def _h_expect(result, sched, payload, outcome, port_calls):
-    """Negative path: HOLD, original identity, JSON-safe result, exact number of port calls."""
-    assert (result.outcome, result.hold) == (outcome, True), result.issues
-    assert (result.operation, result.request_id) == (payload["operation"], payload["request_id"])
-    assert result.payload_digest == independent_digest(payload)
-    json.dumps(result.to_dict(), allow_nan=False)
-    assert sched.calls == [(payload["operation"], pm.parse_intent(payload)[0])] * port_calls
-
-
-@pytest.mark.parametrize("op, outcome, hold", [("submit_intent", "SUBMITTED", False),
-                                               ("get_status", "STATUS", False),
-                                               ("request_cancel", "CANCEL_REQUESTED", True)])
-def test_h_baseline_fixture_verifies(op, outcome, hold):
-    payload, context, sched = _h_setup(op)
-    result = run(sched, payload, context)
-    assert (result.outcome, result.hold, result.issues) == (outcome, hold, ())
-    assert sched.calls == [(op, pm.parse_intent(payload)[0])]
-
-
-H1_CASES = [
+H1_RECEIPT_FAULTS = (
     ("submit_intent", {"outcome": ["SUBMITTED"]}, "RECEIPT_SHAPE:outcome"),
     ("submit_intent", {"outcome": {"SUBMITTED": 1}}, "RECEIPT_SHAPE:outcome"),
     ("submit_intent", {"outcome": None}, "RECEIPT_SHAPE:outcome"),
@@ -861,196 +1375,147 @@ H1_CASES = [
     ("request_cancel", {"claims": ({"worker_stopped"},)}, "RECEIPT_OUTCOME"),
     ("request_cancel", {"reservation_state": None}, "RECEIPT_SHAPE:reservation_state"),
     ("request_cancel", {"retention": None}, "RECEIPT_SHAPE:retention"),
-]
+)
 
 
-@pytest.mark.parametrize("op, changes, issue", H1_CASES)
-def test_h1_malformed_receipt_is_unverified_hold_without_second_call(op, changes, issue):
-    payload, context, sched = _h_setup(op, changes)
-    result = run(sched, payload, context)
-    _h_expect(result, sched, payload, "UNVERIFIED", 1)
-    assert issue in result.issues, result.issues
+def test_h1_receipt_matrix_is_a_json_safe_hold_with_exactly_one_call():
+    for op, changes, issue in H1_RECEIPT_FAULTS:
+        for through_handler in (False, True):
+            payload, context, sched = h1_setup(op, changes)
+            if through_handler:
+                with guarded():
+                    text = pm.make_pm_tool_handler(adapter(sched), lambda: context)(payload)
+                wire = json.loads(text, parse_constant=lambda v: (_ for _ in ()).throw(ValueError(v)))
+                assert (wire["outcome"], wire["hold"], wire["issues"]) == ("UNVERIFIED", True, [issue])
+                assert (wire["request_id"], wire["payload_digest"]) == (
+                    payload["request_id"], independent_digest(payload))
+                assert [c[0] for c in sched.calls] == [op]
+                text.encode("utf-8")
+            else:
+                result = run(sched, payload, context)
+                assert_closed(result, payload, sched, outcome="UNVERIFIED", issues=(issue,), calls=1)
+                pm.canonical_bytes(result.to_dict())
 
 
-def test_h1_uninitialised_receipt_and_rewritten_request_keep_original_identity():
-    payload = submit_payload()
-    seen = []
+def test_h1_uncertainty_and_nested_retention_reject_invalid_json_values():
+    for op in pm.OPERATIONS:
+        faults = [("uncertainty", v) for v in ("abc", ["text"], (object(),), (float("nan"),))]
+        if op != "submit_intent":
+            faults.extend(("retention", (("details", value),)) for value in (
+                {"deep": [object()]}, {"deep": float("inf")}, {7: "numeric key"},
+                {"deep": float("nan")}, {"deep": {"set"}}, {"deep": b"bytes"}))
+        for field, value in faults:
+            payload, context, sched = h1_setup(op, {field: value})
+            result = run(sched, payload, context)
+            assert_closed(result, payload, sched, outcome="UNVERIFIED",
+                          issues=("RECEIPT_SHAPE:" + field,), calls=1)
+            pm.canonical_bytes(result.to_dict())
 
-    class Hostile(FakeScheduler):
+
+def test_h1_unencodable_unicode_and_recursive_receipt_are_managed_holds():
+    recursive = []
+    recursive.append(recursive)
+    cases = [(op, {"uncertainty": ("\ud800",)}) for op in pm.OPERATIONS]
+    cases += [("get_status", {"retention": (("details", recursive),)}),
+              ("request_cancel", {"retention": (("details", {"text": "\ud800"}),)})]
+    for op, changes in cases:
+        payload, context, sched = h1_setup(op, changes)
+        result = run(sched, payload, context)
+        assert_closed(result, payload, sched, outcome="UNVERIFIED",
+                      issues=("RECEIPT_UNVERIFIABLE",), calls=1)
+        pm.canonical_bytes(result.to_dict())
+
+
+def test_h1_verifier_exceptions_and_unencodable_results_are_contained():
+    def raises(*args):
+        raise TypeError("synthetic verifier fault")
+
+    def unsafe(receipt, intent, context):
+        return pm._result(intent, "SUBMITTED", False, view={"bad": object()})
+
+    for replacement in (raises, unsafe):
+        payload, context, sched = h1_setup("submit_intent", {})
+        with mock.patch.dict(pm._VERIFIERS, {"submit_intent": replacement}):
+            result = run(sched, payload, context)
+        assert_closed(result, payload, sched, outcome="UNVERIFIED",
+                      issues=("RECEIPT_UNVERIFIABLE",), calls=1)
+        pm.canonical_bytes(result.to_dict())
+
+
+def test_h1_receipt_projection_preserves_valid_strings_and_nested_json():
+    uncertainty = ("", "unit tests / café", "u" * (pm.TEXT_MAX + 1))
+    retention = (("", {"unicode": "café", "values": [None, True, 12, 3.5, ""],
+                       "nested": ("tuple", {"more": ["json"]})}),
+                 ("long", "r" * (pm.TEXT_MAX + 1)))
+    for op in pm.OPERATIONS:
+        changes = {"uncertainty": uncertainty}
+        if op != "submit_intent":
+            changes["retention"] = retention
+        payload, context, sched = h1_setup(op, changes)
+        result = run(sched, payload, context)
+        assert result.outcome == EXPECTED_OUTCOME[op] and result.issues == ()
+        assert result.view["uncertainty"] == list(uncertainty)
+        if op != "submit_intent":
+            assert result.view["retention"] == [list(pair) for pair in retention]
+        assert len(sched.calls) == 1
+        pm.canonical_bytes(result.to_dict())
+
+
+def test_h1_nested_receipt_details_are_normalized_and_not_shared_with_the_port():
+    for op in ("get_status", "request_cancel"):
+        key, text = Tagged("details"), Tagged("kept")
+        original_details = {key: [text, {"flag": True}]}
+        payload, context, sched = h1_setup(op, {"retention": (("workspace", original_details),)})
+        receipt = sched.status_receipt if op == "get_status" else sched.cancel_receipt
+        result = run(sched, payload, context)
+        assert result.outcome == EXPECTED_OUTCOME[op] and result.issues == ()
+        assert all(type(s) is str for s in strings_in(result.to_dict()))
+        before = pm.canonical_bytes(result.to_dict())
+        original_details[key][0] = "changed after receipt"
+        original_details[key][1]["flag"] = False
+        original_details["injected"] = object()
+        forge(receipt, uncertainty=(object(),), retention=())
+        assert pm.canonical_bytes(result.to_dict()) == before
+        assert len(sched.calls) == 1
+
+
+def test_h2_mixed_valid_and_malformed_evidence_rejects_before_every_operation():
+    for payload in all_operations():
+        sched = scheduler_for(payload)
+        context = trusted_for(payload, trusted_observations=(observation(), observation(job_ref=None)))
+        result = run(sched, payload, context)
+        assert_closed(result, payload, sched,
+                      issues=("AUTHORITY_EVIDENCE:trusted_observations",), calls=0)
+
+
+def test_h1_all_receipt_binding_fields_require_strings_before_comparison():
+    binding = ("contract_version", "contract_digest", "request_id", "payload_digest",
+               "project_ref", "issuer_ref", "scheduler_id")
+    for op in pm.OPERATIONS:
+        for name in binding:
+            payload, context, sched = h1_setup(op, {name: object()})
+            result = run(sched, payload, context)
+            assert_closed(result, payload, sched, outcome="UNVERIFIED",
+                          issues=("RECEIPT_SHAPE:" + name,), calls=1)
+            pm.canonical_bytes(result.to_dict())
+
+
+def test_h1_uninitialised_receipt_after_request_mutation_keeps_original_identity():
+    class Broken(FakeScheduler):
         def submit_intent(self, request, context):
             self._enter("submit_intent", request)
-            object.__setattr__(request, "request_id", "req-evil")
-            seen.append(request)
+            forge(request, request_id="rewritten", goal="rewritten")
             return object.__new__(pm.PmSubmissionReceipt)
-    sched = Hostile()
-    result = run(sched, payload, ctx(payload))
-    assert seen[0].request_id == "req-evil" and len(sched.calls) == 1
-    assert (result.outcome, result.hold, result.issues) == (
-        "UNVERIFIED", True, ("RECEIPT_SHAPE:MISSING_FIELD",))
-    assert (result.request_id, result.payload_digest) == ("req-1", independent_digest(payload))
-    json.dumps(result.to_dict(), allow_nan=False)
 
-
-def test_h1_verifier_fault_after_port_call_is_contained(monkeypatch):
-    def broken(receipt, intent, context):
-        raise TypeError("unhashable type: 'list'")
-    monkeypatch.setitem(pm._VERIFIERS, "submit_intent", broken)
-    payload, context, sched = _h_setup("submit_intent")
-    result = run(sched, payload, context)
-    _h_expect(result, sched, payload, "UNVERIFIED", 1)
-    assert result.issues == ("RECEIPT_MALFORMED",)
-
-
-def test_h1_tool_handler_stays_json_for_unserialisable_receipt_value():
-    payload, context, sched = _h_setup("submit_intent", dict(outcome="CONFLICT", job_ref=object()))
-    handler = pm.make_pm_tool_handler(adapter(sched), lambda: context)
+    payload = submit_payload()
+    context = trusted_for(payload)
+    sched = Broken()
     with guarded():
-        out = json.loads(handler(payload))
-    assert (out["outcome"], out["hold"], out["request_id"]) == ("UNVERIFIED", True, "req-1")
-    assert out["payload_digest"] == independent_digest(payload)
-    assert "RECEIPT_SHAPE:job_ref" in out["issues"]
-    assert sched.calls == [("submit_intent", pm.parse_intent(payload)[0])]
-
-
-@pytest.mark.parametrize("field_name", ["now", "expires_at", "max_age_seconds"])
-@pytest.mark.parametrize("value", [10 ** 400, -(10 ** 400)], ids=["plus_1e400", "minus_1e400"])
-def test_h_out_of_range_authority_time_is_rejected_before_port_call(field_name, value):
-    payload, context, sched = _h_setup("get_status", **{field_name: value})
-    result = run(sched, payload, context)
-    _h_expect(result, sched, payload, "REJECTED", 0)
-    assert result.issues == ("AUTHORITY_EXPIRED",)
-
-
-H2_BAD_COLLECTIONS = [
-    *[("required_checks", v, "AUTHORITY_REQUIRED_CHECKS")
-      for v in ("unit", None, 7, ["unit", "boundary"], (1,), ("",), ("unit", None))],
-    *[("trusted_producers", v, "AUTHORITY_TRUSTED_PRODUCERS")
-      for v in ("symphony-readback", None, 7, ["symphony-readback"], (None,), ("symphony readback",),
-                ("symphony-readback", 7))],
-    *[(name, v, "AUTHORITY_EVIDENCE:" + name)
-      for name, record in (("trusted_observations", observation(phase="DONE")),
-                           ("trusted_completions", _completion()), ("trusted_claims", _h_claim()))
-      for v in ("obs-1", None, 7, [record])],
-]
-
-
-@pytest.mark.parametrize("name, value, issue", H2_BAD_COLLECTIONS)
-def test_h2_invalid_trusted_collection_is_rejected_before_port_call(name, value, issue):
-    payload, context, sched = _h_setup("get_status", **{name: value})
-    result = run(sched, payload, context)
-    _h_expect(result, sched, payload, "REJECTED", 0)
-    assert result.issues == (issue,)
-
-
-@pytest.mark.parametrize("op", ["submit_intent", "request_cancel"])
-def test_h2_collection_check_precedes_every_operation(op):
-    for name, value, issue in (("required_checks", "unit", "AUTHORITY_REQUIRED_CHECKS"),
-                               ("trusted_producers", "symphony-readback", "AUTHORITY_TRUSTED_PRODUCERS")):
-        payload, context, sched = _h_setup(op, **{name: value})
-        result = run(sched, payload, context)
-        _h_expect(result, sched, payload, "REJECTED", 0)
-        assert result.issues == (issue,)
-
-
-_H_DENIED = {"trusted_completions": ("get_status", "STATUS", "TRUSTED_COMPLETION_EVIDENCE_REQUIRED"),
-             "trusted_observations": ("get_status", "UNVERIFIED", "STATUS_PROVENANCE_UNVERIFIED"),
-             "trusted_claims": ("request_cancel", "UNVERIFIED", "UNBACKED_CLAIM:worker_stopped")}
-H2_BAD_RECORDS = [
-    *[("trusted_completions", r) for r in (
-        _completion(producer=1), _completion(terminal=1),
-        _completion(checks=[("unit", "pass"), ("boundary", "pass")]),
-        _completion(checks=(("unit", 1), ("boundary", "pass"))), _completion(job_revision=None),
-        _h_claim(evidence_ref="done-1"), object.__new__(pm.TrustedCompletion))],
-    *[("trusted_observations", r) for r in (
-        observation(phase="DONE", scheduler_epoch=float(EPOCH)),
-        observation(phase="DONE", observed_at=float("nan")), observation(phase="DONE", producer=None),
-        _completion(evidence_ref="obs-1"))],
-    *[("trusted_claims", r) for r in (
-        _h_claim(claim=["worker_stopped"]), _h_claim(producer=None), _h_claim(job_ref=None),
-        _completion(evidence_ref="stop-1"))],
-]
-
-
-@pytest.mark.parametrize("name, record", H2_BAD_RECORDS)
-def test_h2_malformed_trusted_record_is_never_evidence(name, record):
-    op, outcome, issue = _H_DENIED[name]
-    payload, context, sched = _h_setup(op, **{name: (record,)})
-    result = run(sched, payload, context)
-    _h_expect(result, sched, payload, outcome, 1)
-    assert result.issues == (issue,)
-
-
-@pytest.mark.parametrize("observations", [(), (observation(phase="DONE", observed_at=10 ** 400),),
-                                          (observation(phase="DONE", observed_at=-(10 ** 400)),)])
-def test_h2_without_valid_observation_status_is_unverified_with_one_call(observations):
-    payload, context, sched = _h_setup("get_status", trusted_observations=observations)
-    result = run(sched, payload, context)
-    _h_expect(result, sched, payload, "UNVERIFIED", 1)
-    assert result.issues == ("STATUS_PROVENANCE_UNVERIFIED",)
-
-
-H2_NESTED = [
-    ("trusted_completions", lambda: _completion(checks=(("unit", "pass"), ("boundary", "fail"))),
-     "checks", (("unit", "pass"), ("boundary", "pass"))),
-    ("trusted_observations", lambda: observation(phase="RUNNING"), "phase", "DONE"),
-    ("trusted_claims", lambda: _h_claim(claim="descendants_stopped"), "claim", "worker_stopped"),
-]
-
-
-@pytest.mark.parametrize("name, make, attr, value", H2_NESTED)
-def test_h2_valid_nested_record_mutated_after_snapshot_does_not_change_decision(name, make, attr, value):
-    op, outcome, issue = _H_DENIED[name]
-    record = make()
-    rewrite = lambda request, trusted: object.__setattr__(record, attr, value)  # noqa: E731
-    payload, context, sched = _h_setup(op, during=rewrite, **{name: (record,)})
-    result = run(sched, payload, context)
-    assert getattr(record, attr) == value  # the port really rewrote the caller's original record
-    _h_expect(result, sched, payload, outcome, 1)
-    assert result.issues == (issue,)
-    payload, context, sched = _h_setup(op, **{name: (dataclasses.replace(make(), **{attr: value}),)})
-    assert run(sched, payload, context).issues == ()  # the rewritten record alone would be accepted
-
-
-H2_TOP_LEVEL = [
-    ("trusted_completions", {"trusted_completions": (_completion(checks=(("unit", "pass"),)),)},
-     "required_checks", ("unit",)),
-    ("trusted_completions", {"trusted_completions": (_completion(producer="worker-self-report"),)},
-     "trusted_producers", ("symphony-readback", "worker-self-report")),
-    ("trusted_completions", {"trusted_completions": ()}, "trusted_completions", (_completion(),)),
-    ("trusted_observations", {"trusted_observations": ()}, "trusted_observations",
-     (observation(phase="DONE"),)),
-    ("trusted_claims", {"trusted_claims": ()}, "trusted_claims", (_h_claim(),)),
-]
-
-
-@pytest.mark.parametrize("name, start, field_name, value", H2_TOP_LEVEL)
-def test_h2_trusted_collection_replaced_during_call_does_not_change_decision(name, start, field_name, value):
-    op, outcome, issue = _H_DENIED[name]
-    rewrite = lambda request, trusted: object.__setattr__(trusted, field_name, value)  # noqa: E731
-    payload, context, sched = _h_setup(op, during=rewrite, **start)
-    result = run(sched, payload, context)
-    assert getattr(context, field_name) == value  # the port really rewrote the caller's context
-    _h_expect(result, sched, payload, outcome, 1)
-    assert result.issues == (issue,)
-    payload, context, sched = _h_setup(op, **dict(start, **{field_name: value}))
-    assert run(sched, payload, context).issues == ()
-
-
-def test_registry_wrapper_binds_real_signature_and_wired_dispatch():
-    """Injected fake registry only; the real class is inspected, never populated or discovered."""
-    from tools.registry import registry as real_registry
-
-    captured = []
-
-    class FakeRegistry:
-        def register(self, **kwargs):
-            captured.append(kwargs)
-
-    sched = FakeScheduler()
-    p = submit_payload()
-    pm.register_pm_tool(FakeRegistry(), adapter=adapter(sched), context_source=lambda: ctx(p))
-    inspect.signature(type(real_registry).register).bind(real_registry, **captured[0])
-    with guarded():
-        out = json.loads(captured[0]["handler"](p))
-    assert captured[0]["check_fn"]() is True
-    assert out["outcome"] == "SUBMITTED" and len(sched.calls) == 1
+        text = pm.make_pm_tool_handler(adapter(sched), lambda: context)(payload)
+    result = json.loads(text)
+    assert (result["outcome"], result["hold"], result["issues"]) == (
+        "UNVERIFIED", True, ["RECEIPT_UNVERIFIABLE"])
+    assert (result["request_id"], result["payload_digest"]) == (
+        payload["request_id"], independent_digest(payload))
+    assert len(sched.calls) == 1 and sched.calls[0][1].request_id == "rewritten"
+    text.encode("utf-8")
