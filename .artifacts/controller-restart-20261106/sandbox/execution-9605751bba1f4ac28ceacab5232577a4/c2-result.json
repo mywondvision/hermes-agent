@@ -1,0 +1,29 @@
+{
+  "controller_pid": 23496,
+  "old_controller_pid": 10836,
+  "epoch": 2,
+  "cancel": {
+    "effect_key": "c317125acb759bc9014bd5a173c4446c67b641b9e9ef2d6b0d742752a63919fe",
+    "cause": "PM_CANCEL",
+    "state": "LOCAL_STOPPED_HOLD",
+    "dispatched": false,
+    "local_stopped": true,
+    "hold": true,
+    "reservation": "POSSIBLY_CONSUMED_HELD"
+  },
+  "new_worker_launches": 0,
+  "receiver": null,
+  "target": {
+    "namespace": "isolated-controller-restart-probe",
+    "project": "synthetic-controller-restart",
+    "job": "job-da2a7f417a67495bb6b910a34be88b4e",
+    "revision": "dfb21feb37ed7fb114aa427479895070481d91a5e8c31b662711f82c3da93cfb",
+    "attempt": "restart-attempt-cec1dd395e674103b6a5042f2a7d4994",
+    "request_digest": "e979ce83eb5913e1645c94b99fe490d0d06fff6d5a6c0a1899706376590a6825",
+    "controller_epoch": 1,
+    "runtime": "python",
+    "session": "no-model-session",
+    "process": "3380",
+    "start": "134384646764466132"
+  }
+}

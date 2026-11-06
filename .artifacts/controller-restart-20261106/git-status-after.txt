@@ -1,0 +1,64 @@
+M .artifacts/frozen-s2/snapshot-manifest.json
+ M .artifacts/live-smoke-20261106/events.jsonl
+ M docs/audits/CR-hermes-symphony-ingress-offline-20261106/live-smoke-20261106/REPORT.md
+ M docs/audits/CR-hermes-symphony-ingress-offline-20261106/live-smoke-20261106/approved-retry-1-summary.json
+ M docs/audits/CR-hermes-symphony-ingress-offline-20261106/live-smoke-20261106/approved-retry-1.md
+ M docs/audits/CR-hermes-symphony-ingress-offline-20261106/live-smoke-20261106/summary.json
+?? .artifacts/assigned-context.json
+?? .artifacts/campaign-attempt.json
+?? .artifacts/campaign-output.txt
+?? .artifacts/cancel-correction-20261106/EXECUTION_DELTA.md
+?? .artifacts/cancel-correction-20261106/baseline-probe/
+?? .artifacts/cancel-correction-20261106/build_baseline_probe.py
+?? .artifacts/cancel-correction-20261106/candidate-commit.json
+?? .artifacts/cancel-correction-20261106/commit-message.txt
+?? .artifacts/cancel-correction-20261106/commit_candidate.py
+?? .artifacts/cancel-correction-20261106/commit_corrective.py
+?? .artifacts/cancel-correction-20261106/context-pack.json
+?? .artifacts/cancel-correction-20261106/corrective-message.txt
+?? .artifacts/cancel-correction-20261106/draft.json
+?? .artifacts/cancel-correction-20261106/execution-pack.json
+?? .artifacts/cancel-correction-20261106/final-candidate-commit.json
+?? .artifacts/cancel-correction-20261106/final-handoff.json
+?? .artifacts/cancel-correction-20261106/prefilter.json
+?? .artifacts/cancel-correction-20261106/prepare_gate.py
+?? .artifacts/cancel-correction-20261106/record_review.py
+?? .artifacts/cancel-correction-20261106/review-corrective.index
+?? .artifacts/cancel-correction-20261106/review-record-message.txt
+?? .artifacts/cancel-correction-20261106/review-record.index
+?? .artifacts/cancel-correction-20261106/review.index
+?? .artifacts/claude-pm-attempt.json
+?? .artifacts/claude-pm-raw.jsonl
+?? .artifacts/claude-pm-stderr.txt
+?? .artifacts/context-hygiene/
+?? .artifacts/continuation-20261106-codex/
+?? .artifacts/controller-restart-20261106/
+?? .artifacts/frozen-s2/docs/
+?? .artifacts/frozen-s2/schemas/
+?? .artifacts/frozen-s2/tests/
+?? .artifacts/frozen-s2/tools/
+?? .artifacts/live-smoke-20261106/live-hermes-home/
+?? .artifacts/live-smoke-20261106/owner.sqlite
+?? .artifacts/post-stop-own-pids.json
+?? .artifacts/preserved-local-20261106/
+?? .artifacts/publish-hermes-smoke-20261106/
+?? .artifacts/run-pm-tests.ps1
+?? .artifacts/s3-preparation-20261106/
+?? .artifacts/s4-global-voice-20261106/
+?? .artifacts/s4-publish-20261106/
+?? .artifacts/s4-voice-20261106/
+?? .artifacts/stdin-wire.jsonl
+?? .artifacts/task-input.txt
+?? .artifacts/test-home/
+?? .artifacts/test-runtime/
+?? .artifacts/test-temp/
+?? .artifacts/unauthorized-bootstrap-owned-processes.json
+?? docs/audits/CR-HERMES-MIGRATION-01/
+?? docs/audits/CR-hermes-symphony-ingress-offline-20261106/continuation.md
+?? docs/audits/CR-hermes-symphony-ingress-offline-20261106/final-state.json
+?? docs/audits/CR-hermes-symphony-ingress-offline-20261106/hygiene-2b81bd93c646.json
+?? docs/audits/CR-hermes-symphony-ingress-offline-20261106/hygiene-correction.md
+?? docs/audits/CR-hermes-symphony-ingress-offline-20261106/implementation-integrity.json
+?? docs/audits/CR-hermes-symphony-ingress-offline-20261106/source-inventory.json
+?? tests/tools/symphony_pm_adapter.py
+?? tests/tools/tools.zip

@@ -1,0 +1,43 @@
+{
+  "query_only": true,
+  "no_cancel_or_kill": true,
+  "processes": [
+    {
+      "pid": 3380,
+      "start_ticks": "134384646764466132",
+      "role": "worker_job_member",
+      "observed_at": 1793991179.9058378,
+      "open_error": 87,
+      "status": "PASS",
+      "observation": "PID absent"
+    },
+    {
+      "pid": 5712,
+      "start_ticks": "134384646765929289",
+      "role": "worker_job_member",
+      "observed_at": 1793991179.905899,
+      "open_error": 87,
+      "status": "PASS",
+      "observation": "PID absent"
+    },
+    {
+      "pid": 18844,
+      "start_ticks": "134384646767939393",
+      "role": "worker_job_member",
+      "observed_at": 1793991179.9059103,
+      "open_error": 87,
+      "status": "PASS",
+      "observation": "PID absent"
+    },
+    {
+      "pid": 10836,
+      "start_ticks": "134384646756849265",
+      "role": "C1",
+      "observed_at": 1793991179.9059196,
+      "open_error": 87,
+      "status": "PASS",
+      "observation": "PID absent"
+    }
+  ],
+  "limitation": "post-exit queries complement C2 positive Job/process proof; no remote or billing assertion"
+}

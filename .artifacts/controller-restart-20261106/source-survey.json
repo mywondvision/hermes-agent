@@ -1,0 +1,39 @@
+{
+  "head": "c419cf7c864ac0ee511dbd9f7091a8bba0b567ee",
+  "branch_target": "fda3bda4bffece8bc3cca7e11be8dd8e72eef91d",
+  "overlay_conflicts": [
+    {
+      "path": ".artifacts/frozen-s2/snapshot-manifest.json",
+      "expected": "3854a0ddb03ad81e2a01bddafdd712f12ad84fbc",
+      "actual": "d3f09001e60672142528b784680be5d7aafdbeb6"
+    },
+    {
+      "path": ".artifacts/live-smoke-20261106/events.jsonl",
+      "expected": "95dfa0af68d9ab6300ed3b9ca7423737ba1abac5",
+      "actual": "a7909c8135939eee23197ac546d26aedb9aa8006"
+    },
+    {
+      "path": "docs/audits/CR-hermes-symphony-ingress-offline-20261106/live-smoke-20261106/REPORT.md",
+      "expected": "97fadc6ff34feca45392c6877de3500b2bfb47cf",
+      "actual": "4ff7502f6ee5567a277df9e4f6293f217990260c"
+    },
+    {
+      "path": "docs/audits/CR-hermes-symphony-ingress-offline-20261106/live-smoke-20261106/approved-retry-1-summary.json",
+      "expected": "ab73322760287e46c62c202695a615d21adc3602",
+      "actual": "1ab5ecfc2ac6f742696744f9eb72f2b49d521808"
+    },
+    {
+      "path": "docs/audits/CR-hermes-symphony-ingress-offline-20261106/live-smoke-20261106/approved-retry-1.md",
+      "expected": "5a7858ba4344d5d90f18d234a8e31904aad15899",
+      "actual": "81d767fe325f62d8627170c3a673b54b5de4c307"
+    },
+    {
+      "path": "docs/audits/CR-hermes-symphony-ingress-offline-20261106/live-smoke-20261106/summary.json",
+      "expected": "b3a07df83adbf6c877f70b0b4f165ad180e9d4f1",
+      "actual": "7ec8fa6de75426e106805ab0ea82800caba64c1d"
+    }
+  ],
+  "reviewed_source_drift": [],
+  "review_verdict": "PASS",
+  "candidate": "b766aecb8524a5c0b78197cda7a144473af4fd07"
+}

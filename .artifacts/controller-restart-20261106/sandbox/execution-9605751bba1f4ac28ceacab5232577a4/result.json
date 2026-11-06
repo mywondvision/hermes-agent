@@ -1,0 +1,8 @@
+{
+  "mechanical_controller_restart": "PASS",
+  "overall": "HOLD",
+  "native_calls": 1,
+  "new_worker_launches_after_restart": 0,
+  "codex_sessions": 0,
+  "billing_and_external_settlement": "UNKNOWN"
+}

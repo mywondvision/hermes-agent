@@ -1,0 +1,7 @@
+{
+  "head": "fda3bda4bffece8bc3cca7e11be8dd8e72eef91d",
+  "branch": "codex/hermes-symphony-cancel-correction-20261106",
+  "protected_files_unchanged": 159,
+  "bytes_changed": [],
+  "method": "read-tree without -u + symbolic-ref; no working file writes"
+}

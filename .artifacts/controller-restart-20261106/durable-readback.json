@@ -1,0 +1,73 @@
+{
+  "read_only": true,
+  "database": ".artifacts\\controller-restart-20261106\\sandbox\\execution-9605751bba1f4ac28ceacab5232577a4\\owner.sqlite",
+  "database_sha256": "2484433ae204b64d6a1907d6c7a242434518868aa88826779323db8b1b4b2b4d",
+  "tables": {
+    "writers": [
+      {
+        "namespace": "isolated-controller-restart-probe",
+        "owner": "C2",
+        "epoch": 2,
+        "expires": 1793991138.0719392
+      }
+    ],
+    "operations": [
+      {
+        "namespace": "isolated-controller-restart-probe",
+        "project": "synthetic-controller-restart",
+        "request_id": "restart-submit",
+        "binding": "7bc90b0ebbbca98f4ce58a143b7fd03c26ab6da5728c193052bb81e6706bfe03",
+        "job": "job-da2a7f417a67495bb6b910a34be88b4e",
+        "revision": "dfb21feb37ed7fb114aa427479895070481d91a5e8c31b662711f82c3da93cfb",
+        "effect_key": null
+      },
+      {
+        "namespace": "isolated-controller-restart-probe",
+        "project": "synthetic-controller-restart",
+        "request_id": "internal-pm_cancel-restart-attempt-cec1dd395e674103b6a5042f2a7d4994",
+        "binding": "c815633043a41bc28f4cca7abaffc6ae36a0886dd03952b7b00edf68cb9e06c9",
+        "job": "job-da2a7f417a67495bb6b910a34be88b4e",
+        "revision": "dfb21feb37ed7fb114aa427479895070481d91a5e8c31b662711f82c3da93cfb",
+        "effect_key": "c317125acb759bc9014bd5a173c4446c67b641b9e9ef2d6b0d742752a63919fe"
+      }
+    ],
+    "jobs": [
+      {
+        "namespace": "isolated-controller-restart-probe",
+        "project": "synthetic-controller-restart",
+        "job": "job-da2a7f417a67495bb6b910a34be88b4e",
+        "revision": "dfb21feb37ed7fb114aa427479895070481d91a5e8c31b662711f82c3da93cfb",
+        "contract": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "target": "{\"namespace\": \"isolated-controller-restart-probe\", \"project\": \"synthetic-controller-restart\", \"job\": \"job-da2a7f417a67495bb6b910a34be88b4e\", \"revision\": \"dfb21feb37ed7fb114aa427479895070481d91a5e8c31b662711f82c3da93cfb\", \"attempt\": \"restart-attempt-cec1dd395e674103b6a5042f2a7d4994\", \"request_digest\": \"e979ce83eb5913e1645c94b99fe490d0d06fff6d5a6c0a1899706376590a6825\", \"controller_epoch\": 1, \"runtime\": \"python\", \"session\": \"no-model-session\", \"process\": \"3380\", \"start\": \"134384646764466132\"}"
+      }
+    ],
+    "effects": [
+      {
+        "effect_key": "c317125acb759bc9014bd5a173c4446c67b641b9e9ef2d6b0d742752a63919fe",
+        "target": "{\"namespace\": \"isolated-controller-restart-probe\", \"project\": \"synthetic-controller-restart\", \"job\": \"job-da2a7f417a67495bb6b910a34be88b4e\", \"revision\": \"dfb21feb37ed7fb114aa427479895070481d91a5e8c31b662711f82c3da93cfb\", \"attempt\": \"restart-attempt-cec1dd395e674103b6a5042f2a7d4994\", \"request_digest\": \"e979ce83eb5913e1645c94b99fe490d0d06fff6d5a6c0a1899706376590a6825\", \"controller_epoch\": 1, \"runtime\": \"python\", \"session\": \"no-model-session\", \"process\": \"3380\", \"start\": \"134384646764466132\"}",
+        "state": "DISPATCH_INTENT",
+        "dispatch_epoch": 1,
+        "cancel_at": 1793991077.2008846,
+        "fence_ref": "local-exact-handle-binding",
+        "proof": null,
+        "proof_epoch": null
+      }
+    ],
+    "cancel_causes": [
+      {
+        "effect_key": "c317125acb759bc9014bd5a173c4446c67b641b9e9ef2d6b0d742752a63919fe",
+        "request_id": "internal-pm_cancel-restart-attempt-cec1dd395e674103b6a5042f2a7d4994",
+        "cause": "PM_CANCEL",
+        "detail": "supervisor:PM_CANCEL",
+        "observed_at": 1793991077.0473766
+      }
+    ],
+    "cancel_readbacks": [
+      {
+        "effect_key": "c317125acb759bc9014bd5a173c4446c67b641b9e9ef2d6b0d742752a63919fe",
+        "observed_at": 1793991078.0859728,
+        "proof": "{\"observed_at\": 1793991078.0857222, \"active\": 0, \"total\": 3, \"terminated\": 0, \"pids\": [], \"members\": [], \"known_processes\": [{\"pid\": 3380, \"start_ticks\": \"134384646764466132\", \"actual_start_ticks\": \"134384646764466132\", \"identity_matches\": true, \"signaled\": true}, {\"pid\": 5712, \"start_ticks\": \"134384646765929289\", \"actual_start_ticks\": \"134384646765929289\", \"identity_matches\": true, \"signaled\": true}, {\"pid\": 18844, \"start_ticks\": \"134384646767939393\", \"actual_start_ticks\": \"134384646767939393\", \"identity_matches\": true, \"signaled\": true}], \"tree_stopped\": true, \"target\": {\"namespace\": \"isolated-controller-restart-probe\", \"project\": \"synthetic-controller-restart\", \"job\": \"job-da2a7f417a67495bb6b910a34be88b4e\", \"revision\": \"dfb21feb37ed7fb114aa427479895070481d91a5e8c31b662711f82c3da93cfb\", \"attempt\": \"restart-attempt-cec1dd395e674103b6a5042f2a7d4994\", \"request_digest\": \"e979ce83eb5913e1645c94b99fe490d0d06fff6d5a6c0a1899706376590a6825\", \"controller_epoch\": 1, \"runtime\": \"python\", \"session\": \"no-model-session\", \"process\": \"3380\", \"start\": \"134384646764466132\"}}"
+      }
+    ]
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "recorded_at_utc": "2026-11-06T18:55:17.922854+00:00",
+  "head": "fda3bda4bffece8bc3cca7e11be8dd8e72eef91d",
+  "branch": "codex/hermes-symphony-cancel-correction-20261106",
+  "staged_paths": [],
+  "protected_files_checked": 159,
+  "changed_protected_files": [],
+  "source_changes": false,
+  "commit_push_merge": false,
+  "model_or_codex_launches": 0,
+  "native_probe_invocations": 1,
+  "native_cancel_entries": 1,
+  "evidence_checks_pass": 22,
+  "evidence_checks_fail": 0,
+  "overall": "HOLD",
+  "git_version": "git version 2.45.1.windows.1",
+  "worktrees": "worktree D:/AI/worktrees/hermes-pm-ingress-20261031\nHEAD fda3bda4bffece8bc3cca7e11be8dd8e72eef91d\nbranch refs/heads/codex/hermes-symphony-cancel-correction-20261106\n\nworktree D:/Codex/codex-home/worktrees/cf6e/hermes-pm-ingress-20261031\nHEAD 369a012cc9b5caece4b1a6e37fdecb1ca04530b3\nbranch refs/heads/codex/symphony-pm-offline-20261106"
+}

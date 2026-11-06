@@ -1,0 +1,17 @@
+{
+  "job_object": "Local\\HermesSmoke-restart-attempt-cec1dd395e674103b6a5042f2a7d4994",
+  "known_processes": [
+    {
+      "pid": 3380,
+      "start_ticks": "134384646764466132"
+    },
+    {
+      "pid": 5712,
+      "start_ticks": "134384646765929289"
+    },
+    {
+      "pid": 18844,
+      "start_ticks": "134384646767939393"
+    }
+  ]
+}

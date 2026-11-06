@@ -1,0 +1,22 @@
+{
+  "argv": [
+    "D:\\AI\\envs\\hermes-pm-ingress-test-20261106\\Scripts\\python.exe",
+    "-B",
+    "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\live-smoke-20261106\\controller_restart_probe.py",
+    "run",
+    "--execute",
+    "--directory",
+    "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\controller-restart-20261106\\sandbox"
+  ],
+  "cwd": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031",
+  "python": "3.14.9 (main, Oct 21 2026, 17:48:58) [MSC v.1944 64 bit (AMD64)]",
+  "executable": "D:\\AI\\envs\\hermes-pm-ingress-test-20261106\\Scripts\\python.exe",
+  "base_executable": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\test-appdata\\uv\\python\\cpython-3.14-windows-x86_64-none\\python.exe",
+  "psutil": "7.2.2",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "probe_sha256": "000e90fa0d198f9494f82ff9f55dd606caca4b213cfd4de35f43129e63ef3057",
+  "git_head": "fda3bda4bffece8bc3cca7e11be8dd8e72eef91d",
+  "command_environment": "existing inherited environment; values not logged",
+  "boundary": "synthetic Python root + child, no model, no Codex, no production",
+  "monotonic_start": 48130.3700825
+}

@@ -1,0 +1,154 @@
+{
+  "execution_id": "execution-9605751bba1f4ac28ceacab5232577a4",
+  "checks": [
+    {
+      "check": "exactly_one_probe_execution",
+      "status": "PASS"
+    },
+    {
+      "check": "probe_exit_and_parent_assertions",
+      "status": "PASS"
+    },
+    {
+      "check": "separate_controllers_and_new_epoch",
+      "status": "PASS"
+    },
+    {
+      "check": "pre_admission_exact_c1_handshake",
+      "status": "PASS"
+    },
+    {
+      "check": "query_only_handles_nonempty_and_cover_all",
+      "status": "PASS"
+    },
+    {
+      "check": "one_native_entry_and_ack_same_effect",
+      "status": "PASS"
+    },
+    {
+      "check": "one_job_one_effect_original_dispatch_epoch",
+      "status": "PASS"
+    },
+    {
+      "check": "spent_intent_remains_unknown_without_terminal_settlement",
+      "status": "PASS"
+    },
+    {
+      "check": "same_target_job_attempt_pid_start_after_restart",
+      "status": "PASS"
+    },
+    {
+      "check": "request_job_revision_effect_links",
+      "status": "PASS"
+    },
+    {
+      "check": "new_writer_epoch_two",
+      "status": "PASS"
+    },
+    {
+      "check": "reconcile_no_sender_or_new_dispatch",
+      "status": "PASS"
+    },
+    {
+      "check": "hold_and_reservation_retained",
+      "status": "PASS"
+    },
+    {
+      "check": "nonempty_exact_root_descendant_os_proof",
+      "status": "PASS"
+    },
+    {
+      "check": "native_effect_and_readback_link",
+      "status": "PASS"
+    },
+    {
+      "check": "independent_monitor_observed_both_controllers_and_workers",
+      "status": "PASS"
+    },
+    {
+      "check": "post_exit_known_worker_and_c1_identities_terminal_or_absent",
+      "status": "PASS"
+    },
+    {
+      "check": "protected_file_bytes_preserved",
+      "status": "PASS"
+    },
+    {
+      "check": "reviewed_sources_preserved",
+      "status": "PASS"
+    },
+    {
+      "check": "expected_branch_and_head_preserved",
+      "status": "PASS"
+    },
+    {
+      "check": "other_worktree_ref_unchanged",
+      "status": "PASS"
+    },
+    {
+      "check": "readback_did_not_change_database_bytes",
+      "status": "PASS"
+    }
+  ],
+  "pass": 22,
+  "fail": 0,
+  "head": "fda3bda4bffece8bc3cca7e11be8dd8e72eef91d",
+  "branch": "codex/hermes-symphony-cancel-correction-20261106",
+  "protected_files_verified": 159,
+  "changed_protected_files": [],
+  "review_source_drift": [],
+  "post_exit_os_queries": [
+    {
+      "pid": 3380,
+      "start_ticks": "134384646764466132",
+      "role": "worker_job_member",
+      "observed_at": 1793991179.9058378,
+      "open_error": 87,
+      "status": "PASS",
+      "observation": "PID absent"
+    },
+    {
+      "pid": 5712,
+      "start_ticks": "134384646765929289",
+      "role": "worker_job_member",
+      "observed_at": 1793991179.905899,
+      "open_error": 87,
+      "status": "PASS",
+      "observation": "PID absent"
+    },
+    {
+      "pid": 18844,
+      "start_ticks": "134384646767939393",
+      "role": "worker_job_member",
+      "observed_at": 1793991179.9059103,
+      "open_error": 87,
+      "status": "PASS",
+      "observation": "PID absent"
+    },
+    {
+      "pid": 10836,
+      "start_ticks": "134384646756849265",
+      "role": "C1",
+      "observed_at": 1793991179.9059196,
+      "open_error": 87,
+      "status": "PASS",
+      "observation": "PID absent"
+    }
+  ],
+  "overall": "HOLD",
+  "unknown": [
+    "actual Codex worker stop under controller restart",
+    "remote inference and billing settlement",
+    "observer/whole-machine restart",
+    "power-loss and create-process/storage atomicity",
+    "timeout/crash before effect native-host variants",
+    "serving-process owner/observer admission/fencing integration"
+  ],
+  "limits": [
+    "one post-effect/pre-ack cut only",
+    "parent query-only observer survives C1->C2",
+    "C2 opens fresh handles; receiver=None",
+    "no model or new Codex sessions",
+    "no attribution separating acknowledged TerminateJobObject from later kernel kill-on-close"
+  ]
+}
