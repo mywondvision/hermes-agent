@@ -1,0 +1,33 @@
+{
+  "parent": "ebcc60d2644df20bf2d8ca70735b29d8da3ee78e",
+  "scope": "local review candidate; no new live worker",
+  "source_sha256": {
+    ".artifacts/live-smoke-20261106/cancel_control.py": "10443e6ce228e7c42bdff7437d73e6ccdac4712178ecb9e2be4542e188113cda",
+    ".artifacts/live-smoke-20261106/smoke.py": "e9a65fea02a16d1b84497cb9c40a889f43d13ac434dea3760e6df57117215302",
+    ".artifacts/live-smoke-20261106/winjob.py": "0c01398d2cf94dde74b479d92f9bc16819ffe9abe15a4f96cfc6d1e79d98f637",
+    ".artifacts/live-smoke-20261106/verify_evidence.py": "d87579de75dc350dd1cb396bf0bc09f4e1611690c89d611aff5b08d04906b075",
+    ".artifacts/live-smoke-20261106/evidence_checks.py": "dedf523df63aec869f7bf6cbe9d65ef4245812df391ee911c85980497a2c1221",
+    ".artifacts/live-smoke-20261106/controller_restart_probe.py": "8265c095ab807ba9240ad59b8f6ca03c006b5c14a4ed2baa3dcfc92eab838a4d",
+    ".artifacts/live-smoke-20261106/REVIEW.md": "fff062c2833704cd509296cdcf142d5f18200860514d55af565432597f971240",
+    "tests/plugins/test_symphony_smoke_cancel.py": "8b12456729576aac66a0566ee246b8885ec8715704630be583b7d4b19b667816",
+    "tests/plugins/test_symphony_smoke_evidence.py": "3068df08f2584f3985a76df94d71868a8df36903407517c3b43fbff6b7542b17",
+    "docs/change-requests/CR-hermes-symphony-ingress-offline-20261106-cancel-correction.md": "b284d192266cb3969d0370239efc656f9137c2dcad98b4096dedc42d9985784b",
+    "docs/audits/CR-hermes-symphony-ingress-offline-20261106/cancel-correction-hygiene.json": "1ab733fbc9253f5df574a83ed7fa01828ca793d90b91e66e2eb153eb19157cd2",
+    "docs/audits/CR-hermes-symphony-ingress-offline-20261106/cancel-recovery-correction.md": "bb8858e464b98a156235387675e2e2d113d6d7c878b140d59d00a54f6fca2936",
+    ".artifacts/cancel-correction-20261106/REPORT.md": "b4b4ff50ff2945ebdacfbc3cf8c6b71c3940134dd0400989202e90ed8f3b123b",
+    ".artifacts/cancel-correction-20261106/run-targeted.ps1": "07e29312beded0dc53efb9f3ab2252bd848e139dfecf0c10488fe67baca3e6f5",
+    ".artifacts/cancel-correction-20261106/baseline-red.txt": "dfd4efb6b2b5cebea871094c9de0a15e397b0c5a4074b0bad6e83251dedd10e5",
+    ".artifacts/cancel-correction-20261106/targeted.txt": "3ef6c61606e84bd1cf980c48a3f480c63d9a027f65734aa8803e1c0991c0ea7f",
+    ".artifacts/cancel-correction-20261106/evidence-fix.txt": "3ecbe1860526ae0f50e45e4f251864e4ac89e6932595e10cfe6593abda63768d",
+    ".artifacts/cancel-correction-20261106/runtime-fix.txt": "eceadb2fe5d9166c62e99ee4f87bbf71834aa5bf8540f1dfaa57962e4be1b154",
+    ".artifacts/cancel-correction-20261106/restart-sandbox/plan.json": "deccc36d9d5b4b5372b4decd7ddf435dedf8c973d1041f172adf51a12285c0d2"
+  },
+  "tests": {
+    "cancel_cases": 21,
+    "evidence_cases": 26,
+    "baseline_expected_failure": 1,
+    "basis": "targeted.txt + evidence-fix.txt + runtime-fix.txt"
+  },
+  "controller_restart": "PREPARED_NOT_RUN",
+  "cancel_acceptance": "HOLD"
+}

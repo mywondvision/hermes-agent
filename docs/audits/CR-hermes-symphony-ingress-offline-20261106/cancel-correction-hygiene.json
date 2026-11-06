@@ -1,0 +1,123 @@
+{
+  "schemaVersion": 1,
+  "crId": "CR-hermes-symphony-ingress-offline-20261106",
+  "reviewedRevision": {
+    "exact": "sha256:97d0f1cbd4a5906ff305fe0a8f2664ff0aea4124884f4e34cff2c2e89d5911cd",
+    "normalized": "sha256:3e493a121d322087162978b3eeb167727808e437aabb07ae322257f43596a466"
+  },
+  "verdict": "PASS",
+  "reviewer": {
+    "mode": "isolated-subagent",
+    "contextId": "cancel-correction-review-20261106",
+    "role": "context-hygiene-reviewer",
+    "runtime": "Codex Windows read-only"
+  },
+  "preparer": {
+    "contextId": "root-cancel-correction-20261106"
+  },
+  "inputs": [
+    "context-pack",
+    "candidate-cr",
+    "owner-directives",
+    "accepted-decisions",
+    "verified-evidence",
+    "prefilter"
+  ],
+  "protectedFacts": [
+    {
+      "id": "owner-4",
+      "textHash": "sha256:0f26ab91f9bad817466cb0bf97f5a3f49671a3b6f5f869e5ff0ac9e5d17ef871",
+      "outcome": "preserved"
+    },
+    {
+      "id": "owner-5",
+      "textHash": "sha256:d5e73de59374582287e52a21d5b2dc762a5affff8ddcb4bc3290ee6dcf44d10d",
+      "outcome": "preserved"
+    },
+    {
+      "id": "owner-6",
+      "textHash": "sha256:aaa736e29e8c68763859234a65c7354fd5f7bd421b246aa30d9c2ea10b6fb57f",
+      "outcome": "preserved"
+    },
+    {
+      "id": "owner-7",
+      "textHash": "sha256:422317c6d3838404545ed9eb0f9609dae9546db35316a6547207bee2f36ed16e",
+      "outcome": "preserved"
+    },
+    {
+      "id": "owner-8",
+      "textHash": "sha256:abb51c146e32efd6968d1c26953ef1c3b3d8ffadf6b2b8e261fd9cf525409d87",
+      "outcome": "preserved"
+    },
+    {
+      "id": "owner-9",
+      "textHash": "sha256:5f6811b4731eeec4587101811b00155699633671975c47796f561311310a25c7",
+      "outcome": "preserved"
+    },
+    {
+      "id": "owner-10",
+      "textHash": "sha256:411616650b11b9f70dc08ef9afca7ea75953c8b0d852b8fdee59fd3a67ab50df",
+      "outcome": "preserved"
+    },
+    {
+      "id": "owner-12",
+      "textHash": "sha256:d32996e50d6e55487bd10ea36bec9a13a452320d30398a26aa7b5796e69ee6cf",
+      "outcome": "preserved"
+    },
+    {
+      "id": "owner-13",
+      "textHash": "sha256:cd1aa848dddc32e6a74ff578823b8a1c119f742070fc82bf3b3a4d684d1cf108",
+      "outcome": "preserved"
+    },
+    {
+      "id": "owner-14",
+      "textHash": "sha256:174d282248c301c63a9aaa7db026b26b1b240ae2b765d00205d09bc672292fd7",
+      "outcome": "preserved"
+    },
+    {
+      "id": "runtime-unknown",
+      "textHash": "sha256:d2e3b4b1140a6b81d852eb3c91a539a4652f8d46678b9537d14a80d53df5e17b",
+      "outcome": "preserved"
+    }
+  ],
+  "activeRequirements": [
+    "owner-4",
+    "owner-5",
+    "owner-6",
+    "owner-7",
+    "owner-8",
+    "owner-9",
+    "owner-10",
+    "owner-12",
+    "owner-13",
+    "owner-14"
+  ],
+  "removed": [],
+  "staleClaims": [],
+  "unsupportedClaims": [],
+  "conflicts": [],
+  "superseded": [],
+  "unknowns": [
+    "runtime-unknown"
+  ],
+  "missingEvidence": [],
+  "cleanedCr": {
+    "locator": "docs/change-requests/CR-hermes-symphony-ingress-offline-20261106-cancel-correction.md",
+    "revision": "sha256:97d0f1cbd4a5906ff305fe0a8f2664ff0aea4124884f4e34cff2c2e89d5911cd"
+  },
+  "telemetry": {
+    "hygieneRequired": true,
+    "charsBefore": 5692,
+    "charsAfter": 5692,
+    "protectedFactsChanged": false,
+    "staleCount": 0,
+    "conflictCount": 0,
+    "sourcesConsulted": [
+      ".artifacts/cancel-correction-20261106/context-pack.json",
+      "docs/change-requests/CR-hermes-symphony-ingress-offline-20261106-cancel-correction.md",
+      ".artifacts/live-smoke-20261106/smoke.py",
+      ".artifacts/live-smoke-20261106/winjob.py",
+      ".artifacts/live-smoke-20261106/verify_evidence.py"
+    ]
+  }
+}

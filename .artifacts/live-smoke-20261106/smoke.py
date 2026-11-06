@@ -35,8 +35,9 @@ REQUEST_PREFIX = "smoke-request"
 sys.path.insert(0, str(ROOT))
 
 from tools import symphony_pm_adapter as pm
-from tests.fixtures.symphony_pm_ingress.owner import Owner, Target, Fence, digest, Refusal
-from winjob import WindowsJob
+from tests.fixtures.symphony_pm_ingress.owner import Owner, Target, digest, Refusal
+from cancel_control import CancellationCoordinator
+from winjob import WindowsJob, observe
 
 
 def save(path, value):
@@ -180,6 +181,7 @@ class NativeRunner:
                 a.target = worker_owner.bind(a.token, a.request, a.job, a.revision, a.attempt, identity)
             finally:
                 worker_owner.close()
+            a.bind_cancel_route()
             save(a.folder / "binding.json", {**identity, **dataclasses.asdict(a.target)})
             a.control.resume(stdin_text)
             a.started.set()
@@ -188,14 +190,37 @@ class NativeRunner:
                 rc = a.control.process.wait(timeout=timeout)
             except subprocess.TimeoutExpired:
                 a.timed_out = True
-                # Explicit cleanup once, not an inference that timeout means stopped.
-                a.control.cancel_once()
-                rc = a.control.process.wait(timeout=15)
+                try:
+                    a.cancel("TIMEOUT")
+                finally:
+                    # Storage/observer failure must not remove the bounded drain wait.
+                    rc = a.control.process.wait(timeout=15)
             a.returncode = rc
         return CommandResult(tuple(argv), rc, timed_out=a.timed_out)
 
 
 class Attempt:
+    def bind_cancel_route(self):
+        def readback(target):
+            proof = observe(self.control.observer_target())
+            proof["target"] = dataclasses.asdict(target)
+            save(self.folder / "cancel-readback.json", proof)
+            return proof
+
+        def checkpoint(point):
+            if point == "after_intent":
+                log("NATIVE_CANCEL_DISPATCH", attempt=self.target.attempt, effect_key=self.target.effect_key,
+                    pid=self.target.process, start=self.target.start, session=self.target.session)
+
+        self.canceller = CancellationCoordinator(LiveOwner, self.token, self.control, readback, context,
+                                                hook=checkpoint)
+        self.control.set_cancel_route(lambda cause: self.cancel(cause))
+
+    def cancel(self, cause, *, request=None, trusted_context=None):
+        result = self.canceller.cancel(self.target, cause, request=request, context=trusted_context)
+        log("CANCEL_STATE", attempt=self.target.attempt, **dataclasses.asdict(result))
+        return result
+
     def __init__(self, owner, token, request, job, revision, driver, number, *, prepared_attempt=None):
         self.token, self.request, self.job, self.revision = token, request, job, revision
         self.attempt = prepared_attempt or owner.ticket(token, job)
@@ -236,7 +261,10 @@ class LivePort:
         self.owner, self.token, self.driver = owner, token, driver
         self.attempts = {}
         self.lose_reply = False
-        self.cancel_calls = 0
+
+    @property
+    def cancel_calls(self):
+        return sum(a.control._cancel_gate.dispatch_count for a in self.attempts.values())
 
     def common(self, request, context):
         self.owner._authorize(self.token, time.time())
@@ -271,19 +299,12 @@ class LivePort:
         target = self.owner.target(request, context, self.token, time.time())
         a = self.attempts[target.job]
         assert a.target == target and a.control.process.pid == int(target.process)
-        fence = Fence(target, self.token.epoch, "local-controller-exact-binding", time.time())
-        dispatch = self.owner.prepare_cancel(request, context, self.token, target, fence, time.time())
-        if dispatch:
-            self.owner._authorize(self.token, time.time())
-            self.cancel_calls += 1
-            log("NATIVE_CANCEL_DISPATCH", attempt=target.attempt, effect_key=target.effect_key,
-                pid=target.process, start=target.start, session=target.session)
-            a.control.cancel_once()
-            self.owner.finish_dispatch(self.token, target, time.time(), "CANCEL_REQUESTED")
+        result = a.cancel("PM_CANCEL", request=request, trusted_context=context)
         if self.lose_reply:
             return None
         return pm.PmCancelReceipt(**common, job_ref=target.job, job_revision=target.revision,
-                                 outcome="CANCEL_REQUESTED" if dispatch else "ALREADY_REQUESTED",
+                                 outcome="UNKNOWN" if result.state == "UNKNOWN" else
+                                         "CANCEL_REQUESTED" if result.dispatched else "ALREADY_REQUESTED",
                                  reservation_state="POSSIBLY_CONSUMED", uncertainty=("BILLING_AND_EXTERNAL_EFFECTS_UNKNOWN",))
 
     def get_status(self, request, context):
@@ -485,13 +506,13 @@ def campaign(continue_unstarted=False):
              "native_cancel_calls": port.cancel_calls, "native_launches_total": count,
              "independent_tree_stopped": terminal["tree_stopped"], "retained_handles_signaled": handles,
              "external_effects_settled": "UNKNOWN", "billing_settled": "UNKNOWN",
-             "recovery": "SQLite connection and port reopened; controller/process handles remained live"})
+            "recovery": "SQLite connection reopened with the SAME live LivePort and OS handles; no controller restart"})
         log("CANCEL_VERIFIED_HOLD", attempt=b.attempt, native_cancel_calls=port.cancel_calls,
             native_launches=count, tree_stopped=terminal["tree_stopped"])
     finally:
         module.unwire()
         for a in port.attempts.values():
-            # Kill-on-close is a separate emergency cleanup barrier, never a claimed cancel receipt.
+            # close() routes explicit cleanup through the same spent-ticket coordinator.
             snap = a.control.capture()
             log("FINAL_JOB_READBACK", attempt=a.attempt, snapshot=snap)
             a.control.close()
@@ -501,15 +522,39 @@ def campaign(continue_unstarted=False):
 
 def process_check():
     """Real OS supervision probe; no Codex/native model attempt."""
+    if (HERE / "process-check.json").exists():
+        raise RuntimeError("Historical probe already recorded; no implicit repeat")
     control = WindowsJob("Local\\HermesSmoke-process-probe-" + uuid.uuid4().hex)
     with (HERE / "process-check.out").open("wb") as out:
         code = "import subprocess,sys,time; subprocess.Popen([sys.executable,'-c','import time; time.sleep(90)']); print('READY',flush=True); time.sleep(90)"
-        control.start_suspended([sys.executable, "-B", "-c", code], str(HERE), os.environ.copy(), out, out)
+        identity = control.start_suspended([sys.executable, "-B", "-c", code], str(HERE), os.environ.copy(), out, out)
+        journal = HERE / "process-probe-cancel.sqlite"
+        factory = lambda: Owner(journal, namespace="bounded-os-probe")
+        owner = factory()
+        token = owner.claim("probe-controller", time.time(), ttl=120)
+        payload = submit(1)
+        request, _, _ = pm.parse_intent(payload)
+        trusted = context(payload, token)
+        job, revision, _ = owner.submit(request, trusted, token, time.time())
+        target = Target("bounded-os-probe", PROJECT, job, revision, "probe-" + uuid.uuid4().hex,
+                        request.request_digest, token.epoch, "python", "no-model-session",
+                        str(identity["pid"]), identity["start_ticks"])
+        with owner.transaction():
+            owner._authorize(token, time.time())
+            owner.db.execute("UPDATE jobs SET target=? WHERE job=?",
+                             (json.dumps(dataclasses.asdict(target)), job))
+        owner.close()
+
+        def probe_readback(bound):
+            return dict(observe(control.observer_target()), target=dataclasses.asdict(bound))
+
+        canceller = CancellationCoordinator(factory, token, control, probe_readback, context)
+        control.set_cancel_route(lambda cause: canceller.cancel(target, cause))
         control.resume("")
         try:
             assert wait_for(lambda: control.capture()["active"] >= 2, 10)
             save(HERE / "process-probe-target.json", control.observer_target())
-            control.cancel_once()
+            canceller.cancel(target, "EMERGENCY_CLEANUP")
             assert wait_for(lambda: control.capture()["active"] == 0, 10)
             r = subprocess.run([sys.executable, "-B", str(HERE / "winjob.py"), str(HERE / "process-probe-target.json")],
                                capture_output=True, text=True, timeout=15, check=False)

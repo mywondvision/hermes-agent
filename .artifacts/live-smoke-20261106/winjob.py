@@ -11,6 +11,7 @@ import subprocess
 import time
 
 import psutil
+from cancel_control import CancelRejected, DispatchPermit, NativeCancelGate
 
 K = C.WinDLL("kernel32", use_last_error=True)
 HANDLE, DWORD, BOOL = W.HANDLE, W.DWORD, W.BOOL
@@ -94,6 +95,8 @@ def observe(target):
     No receipt flags and no terminate rights are used. Exact creation FILETIME protects
     against PID reuse. An absent PID is recorded separately from a signaled live handle.
     """
+    if not isinstance(target.get("known_processes"), list) or not target["known_processes"]:
+        raise CancelRejected("EMPTY_PROCESS_EVIDENCE")
     job = checked(open_job(4, False, target["job_object"]))
     try:
         result = snapshot(job)
@@ -132,6 +135,8 @@ class WindowsJob:
         self.process = None
         self.known = {}
         self.process_handles = {}
+        self._cancel_gate = NativeCancelGate()
+        self._cancel_route = None
 
     def start_suspended(self, argv, cwd, env, stdout, stderr):
         self.process = subprocess.Popen(argv, cwd=cwd, env=env, stdin=subprocess.PIPE,
@@ -174,14 +179,34 @@ class WindowsJob:
     def terminal_handles(self):
         return {str(pid): wait_handle(h, 0) == 0 for pid, h in self.process_handles.items()}
 
-    def cancel_once(self):
-        checked(terminate_job(self.handle, 123))
+    def check_binding(self, target):
+        if (self.process is None or str(self.process.pid) != target.process or
+                creation_ticks(int(self.process._handle)) != target.start):
+            raise CancelRejected("NATIVE_HANDLE_BINDING")
+
+    def set_cancel_route(self, route):
+        if self._cancel_route is not None:
+            raise CancelRejected("CANCEL_ROUTE_ALREADY_BOUND")
+        self._cancel_route = route
+
+    def cancel_once(self, permit=None):
+        if not isinstance(permit, DispatchPermit):
+            raise CancelRejected("DURABLE_PERMIT_REQUIRED")
+        self.check_binding(permit.target)
+        return self._cancel_gate.dispatch(permit, lambda: checked(terminate_job(self.handle, 123)))
 
     def observer_target(self):
         self.capture()
         return {"job_object": self.name, "known_processes": list(self.known.values())}
 
     def close(self):
+        if self.process is not None:
+            if self._cancel_route is not None:
+                # Includes UNKNOWN: route records the cause and reads state, never resends.
+                # Closing an active kill-on-close Job is an unacknowledged kernel fail-safe.
+                self._cancel_route("EMERGENCY_CLEANUP")
+            elif snapshot(self.handle)["active"]:
+                raise CancelRejected("ACTIVE_CLOSE_REQUIRES_DURABLE_CANCEL_ROUTE")
         checked(close_handle(self.handle))
         for h in self.process_handles.values():
             checked(close_handle(h))

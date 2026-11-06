@@ -1,0 +1,29 @@
+{
+  "status": "NOT_RUN",
+  "kind": "real-controller-process-restart-with-synthetic-python-worker",
+  "controllers": [
+    "C1",
+    "C2"
+  ],
+  "native_codex_sessions": 0,
+  "worker": "current Python, bounded 90-second sleep + child; no project data",
+  "cut": "C1 os._exit after OS effect and before durable acknowledgement",
+  "recovery": "C2 new process, new owner epoch, same SQLite, receiver=None; observer only",
+  "assertions": [
+    "C1 exact identity signaled",
+    "C2 PID differs",
+    "one native API entry",
+    "spent ticket retained",
+    "same attempt/process creation identity",
+    "zero new launches",
+    "independent root/descendant stop",
+    "settlement remains UNKNOWN/HOLD"
+  ],
+  "deadlines_seconds": {
+    "parent_handshake": 20,
+    "C1_exit": 30,
+    "C2_exit": 20
+  },
+  "authorization": "prepare only; explicit owner direction required before run --execute",
+  "live_codex_variant": "NOT_PREPARED_FOR_EXECUTION; new model/environment approval required"
+}

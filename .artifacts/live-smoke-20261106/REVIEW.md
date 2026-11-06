@@ -1,5 +1,7 @@
 # Пакет независимой проверки Hermes → Symphony / Codex
 
+Корректирующая дельта после review: `docs/audits/CR-hermes-symphony-ingress-offline-20261106/cancel-recovery-correction.md`. Старая recovery проверяла reopen БД при том же живом LivePort и OS handles; controller restart не доказан. Исправленный verifier по умолчанию читает immutable ebcc60d2 Git objects; `--root` принимает только исходный опубликованный export с pinned hashes, а не изменённый candidate worktree. Старые manifests и live artifacts сохранены.
+
 База реализации — `369a012cc9b5caece4b1a6e37fdecb1ca04530b3`, существующая ветка `codex/symphony-pm-offline-20261106`. Публикация добавляет task-local harness и доказательства; исходные adapter/plugin/offline-owner остаются прежними.
 
 Начать с `approved-retry-1/REPORT.md` и `approved-retry-1/summary.json`. Точные request/job/attempt/process/thread identities, команды и OS snapshots находятся в `approved-retry-1/attempt-1/`, `attempt-2/`, `events.jsonl`, `ledger-readback.json`.
