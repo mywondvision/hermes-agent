@@ -1,0 +1,102 @@
+{
+  "candidate_commit": "b766aecb8524a5c0b78197cda7a144473af4fd07",
+  "reviewed_predecessor": "6da26005e26c3255c3baf6a3f2c553c973b97aff",
+  "accepted_evidence_base": "ebcc60d2644df20bf2d8ca70735b29d8da3ee78e",
+  "verdict": "PASS",
+  "verdict_scope": "Bounded independent code review and recorded offline verification; no runtime acceptance.",
+  "operational_cancel_acceptance": "HOLD",
+  "findings": [],
+  "resolved_findings": [
+    {
+      "severity": "BLOCKING",
+      "status": "RESOLVED",
+      "original_commit": "6da26005e26c3255c3baf6a3f2c553c973b97aff",
+      "path": ".artifacts/live-smoke-20261106/winjob.py",
+      "line": 203,
+      "impact": "Coordinator failure could skip Job handle release. Campaign capture/log/close failure could also skip remaining attempts and owner cleanup.",
+      "resolution": "WindowsJob.close releases every tracked handle in finally; campaign cleanup continues across diagnostic and resource errors, then reports UNKNOWN/HOLD. Mocked failure tests cover these paths."
+    },
+    {
+      "severity": "BLOCKING",
+      "status": "RESOLVED",
+      "original_commit": "6da26005e26c3255c3baf6a3f2c553c973b97aff",
+      "path": ".artifacts/live-smoke-20261106/controller_restart_probe.py",
+      "line": 203,
+      "impact": "Probe failure could leave its Popen C1 controller running with worker handles.",
+      "resolution": "Parent cleanup independently kills and waits for its retained C1 process, including when evidence reads fail; wait is attempted even if kill raises. C1 identity is verified before worker admission. C2 subprocess.run timeout handling remains intact."
+    }
+  ],
+  "reviewed_git_blob_sha256": {
+    ".artifacts/live-smoke-20261106/cancel_control.py": "10443e6ce228e7c42bdff7437d73e6ccdac4712178ecb9e2be4542e188113cda",
+    ".artifacts/live-smoke-20261106/smoke.py": "114ac92afb9e8491eda9cf057fab4c68482ee46b54fcd824a696d325ed8259ee",
+    ".artifacts/live-smoke-20261106/winjob.py": "3d6270a4aae5c4da0f31a1c3118eed9f2d7e492b9ee7444a6da7eb0d79d4e93f",
+    ".artifacts/live-smoke-20261106/verify_evidence.py": "d87579de75dc350dd1cb396bf0bc09f4e1611690c89d611aff5b08d04906b075",
+    ".artifacts/live-smoke-20261106/evidence_checks.py": "dedf523df63aec869f7bf6cbe9d65ef4245812df391ee911c85980497a2c1221",
+    ".artifacts/live-smoke-20261106/controller_restart_probe.py": "000e90fa0d198f9494f82ff9f55dd606caca4b213cfd4de35f43129e63ef3057",
+    "tests/plugins/test_symphony_smoke_cancel.py": "d2967f40a1124a6c6f94b2d85d06dac6a91df76ad7cb659192272476c123e7d5",
+    "tests/plugins/test_symphony_smoke_evidence.py": "3068df08f2584f3985a76df94d71868a8df36903407517c3b43fbff6b7542b17",
+    ".artifacts/cancel-correction-20261106/REPORT.md": "141d69306c613da76d276bee740d7cba64d66a07105947a3278a2b6a01c2cea5",
+    ".artifacts/cancel-correction-20261106/cleanup-fix.txt": "7fa76d95c5d26ecc512c124a30e756a88a22cbfb6b3f1b6c111527eed510658d",
+    ".artifacts/cancel-correction-20261106/restart-sandbox/plan.json": "b289c7c192c9c3e489fd52539f50ba14369b01ccdcc0672728a3fca1c21f290c",
+    ".artifacts/cancel-correction-20261106/run-targeted.ps1": "787cca824acbd41d156df40d1146a19594fe5f183b5f1d4964c8ffc0c2718df0",
+    "docs/change-requests/CR-hermes-symphony-ingress-offline-20261106-cancel-correction.md": "b284d192266cb3969d0370239efc656f9137c2dcad98b4096dedc42d9985784b",
+    "docs/audits/CR-hermes-symphony-ingress-offline-20261106/cancel-recovery-correction.md": "bb8858e464b98a156235387675e2e2d113d6d7c878b140d59d00a54f6fca2936"
+  },
+  "checks_inspected": [
+    {
+      "check": "Commit integrity",
+      "result": "Final parent is 6da26005; every source_sha256 entry in candidate-manifest matches final Git blob bytes. Zero mismatches."
+    },
+    {
+      "check": "Whitespace validation",
+      "result": "Reviewer ran git diff --check from accepted evidence base to final candidate; exit code 0."
+    },
+    {
+      "check": "Unified cancellation",
+      "result": "PM, timeout and registered-worker explicit cleanup use the existing SQLite owner effects table. Intent precedes dispatch; request ID, reason and owner epoch do not mint another attempt ticket. Causes remain separately recorded."
+    },
+    {
+      "check": "UNKNOWN and receiver behavior",
+      "result": "Spent intent remains non-dispatchable after lost response, exception and reopen. Recovery can use receiver=None. Receiver spends its slot before native entry and rejects unticketed calls. Local stop does not release reservation or establish settlement."
+    },
+    {
+      "check": "Deadlines and creation rollback",
+      "result": "Runtime timeout retains 180-second wait and 15-second drain, including coordinator failure. Existing suspended-process creation rollback retains kill plus 10-second wait before native binding/watchdog admission; it is distinct from registered runtime cancellation."
+    },
+    {
+      "check": "Evidence verifier",
+      "result": "Inspected immutable publication pins, nonempty proof sets, request/job/attempt/process/start/session bindings, ledger links, causal ordering and HOLD retention. Resealed negative fixtures exercise semantic checks beyond hash mismatch rejection."
+    },
+    {
+      "check": "Recorded targeted tests",
+      "result": "Inspected baseline expected failure, targeted campaign, evidence-fix, runtime-fix and cleanup-fix logs and corresponding tests. Final cancel module records 29 PASS; unchanged evidence module has 25+1 PASS. Coverage totals 55 current cases across those runs, with file retries 0."
+    },
+    {
+      "check": "Prepared restart",
+      "result": "C1 and C2 are separate controller processes. C1 identity is checked before worker admission; C2 verifies predecessor death, reopens the same journal under a new epoch and uses observer-only recovery. Plan remains NOT_RUN."
+    },
+    {
+      "check": "Reviewer execution boundary",
+      "result": "No tests, model sessions, workers, process probes, writes or publication were executed by this reviewer. Ruff/complexity PASS is recorded in REPORT.md and was not independently rerun."
+    }
+  ],
+  "remaining_unknown": [
+    "Actual revised native timeout/cancel behavior on Windows.",
+    "True C1-to-C2 restart probe and real OS failure-cleanup behavior: NOT_RUN.",
+    "Kernel kill-on-close consequences under UNKNOWN; successful handle release is not a terminal receipt.",
+    "Storage/power-loss and process-creation atomicity qualification.",
+    "Production receiver fencing, admission, observer and serving-process lifecycle integration.",
+    "Billing and external-effect settlement; reservation remains POSSIBLY_CONSUMED_HELD.",
+    "Full repository aggregate is not established by this bounded review."
+  ],
+  "independence": {
+    "mode": "isolated-subagent",
+    "context_id": "cancel-correction-review-20261106",
+    "preparer_context_id": "root-cancel-correction-20261106",
+    "pass": "SECOND_FINAL",
+    "preparer_transcript_received": false,
+    "read_only": true,
+    "additional_agents_spawned": false,
+    "consolidated_corrective_passes": 1
+  }
+}
