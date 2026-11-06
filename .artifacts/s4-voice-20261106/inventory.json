@@ -1,0 +1,57 @@
+{
+  "utc": "2026-11-06T16:56:09Z",
+  "root": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031",
+  "head": "c419cf7c864ac0ee511dbd9f7091a8bba0b567ee",
+  "branch": "",
+  "status": "?? .artifacts/\n?? docs/\n?? plugins/symphony_pm/\n?? tests/fixtures/symphony_pm_ingress/\n?? tests/plugins/test_symphony_pm_ingress_offline.py\n?? tests/plugins/test_symphony_pm_plugin.py\n?? tests/tools/symphony_pm_adapter.py\n?? tests/tools/test_symphony_pm_adapter.py\n?? tests/tools/test_symphony_pm_adapter_cancel_s2.py\n?? tests/tools/tools.zip\n?? tools/symphony_pm_adapter.py\n",
+  "executable": "D:\\AI\\envs\\hermes-pm-ingress-test-20261106\\Scripts\\python.exe",
+  "python": "3.14.9 (main, Oct 21 2026, 17:48:58) [MSC v.1944 64 bit (AMD64)]",
+  "packages": {
+    "hermes-agent": "0.0.0",
+    "sounddevice": null,
+    "numpy": null,
+    "faster-whisper": null,
+    "ctranslate2": null,
+    "openai": "2.54.0",
+    "PyYAML": null,
+    "pytest": "9.1.1"
+  },
+  "devices_enumeration_only": [
+    {
+      "index": 0,
+      "result": 0,
+      "name": "Набор микрофонов (Realtek(R) Au",
+      "channels": 2
+    }
+  ],
+  "cache_roots_bounded": {
+    "C:\\Users\\Екатерина\\.cache\\huggingface\\hub": null,
+    "C:\\Users\\Екатерина\\.cache\\whisper": null,
+    "C:\\codex-cache\\huggingface\\hub": null,
+    "C:\\Users\\Екатерина\\.cache\\openwhispr": [
+      "embedding-models",
+      "models",
+      "qdrant-data",
+      "whisper-models"
+    ],
+    "C:\\Users\\Екатерина\\AppData\\Roaming\\open-whispr\\models": null
+  },
+  "hashes_before": {
+    "hermes_cli/voice.py": "54275dbdd02126407e1dec79296a831c664cb78ca17009677d871abe122f339f",
+    "hermes_cli/cli_voice_mixin.py": "d36724d6b47a1c5c2249ede8e7204493fa21ace59e5e2484e3b05463ccbb5fa9",
+    "tools/voice_mode.py": "d72c92f07bfc42877636a470f0113c25b215a9a6349247a19eecee22b24d53eb",
+    "tools/transcription_tools.py": "bd0402c231fa38da0679d3b58c0502de8b878b0c5e6410cbd6b17d6a227c0291",
+    "tools/transcription_cloud.py": "af7bdcee0eddb136ba4351acc049db67affc6afb2aa3a6afc7263cd3cdaaed77",
+    "tools/transcription_command.py": "6faa5d57635731ffd734735eba3c1c81bbca947d2f294d58e48a742401b13531",
+    "ui-tui/src/app/createGatewayEventHandler.ts": "9d6a9360904dd993202a742846bbca7687c9301c839110bd86b91c1da9184373",
+    "tools/symphony_pm_adapter.py": "053dc95bb6f6cf0e3fe694870fabe174ba2ca287a6f6e117f51d0f12e646be05",
+    "plugins/symphony_pm/__init__.py": "9860b91764d07e84f2b973a0092d0a4c18876bb18613fb4f8185d4d9042c3dd0",
+    "tests/tools/test_symphony_pm_adapter.py": "505e043e0ff956a0ca00bab246abce4977f52901a0db79939a395e6a7dc5eb74",
+    "tests/tools/test_symphony_pm_adapter_cancel_s2.py": "31ec92b225d20853328c5876aa96db867d733a48ef11da7e8f3f9e3ec411dd79",
+    "tests/plugins/test_symphony_pm_plugin.py": "8fc75df0f5bc1306c0eb80b98a3e2017d306b2ad6edafca18c0635a5259e9373",
+    "docs/change-requests/CR-hermes-symphony-ingress-offline-20261106.md": "8554c2c96295db6f0384481fcd3c60bb748eb2ba43e8b7dc9f7ffec52c962907"
+  },
+  "microphone_opened": false,
+  "audio_transmitted": false,
+  "elapsed_seconds": 0.414
+}

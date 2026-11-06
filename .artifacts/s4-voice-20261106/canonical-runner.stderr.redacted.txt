@@ -1,0 +1,2 @@
+      0 [main] bash (25468) C:\Program Files\Git\bin\..\usr\bin\bash.exe: *** fatal error - CreateFileMapping [redacted-user-sid], Win32 error 5.  Terminating.
+Stack dump omitted; original retained locally. Canonical runner stopped before tests.

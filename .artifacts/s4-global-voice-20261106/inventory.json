@@ -1,0 +1,84 @@
+{
+  "utc": "2026-11-06T17:26:24Z",
+  "head": "c419cf7c864ac0ee511dbd9f7091a8bba0b567ee",
+  "source_hashes": {
+    "pyproject.toml": {
+      "bytes": 46601,
+      "sha256": "8c9de0a63a81281a24c721f45051fe9fcf8e09ac6ea4ed4ac95e3b96f049b5e3"
+    },
+    "uv.lock": {
+      "bytes": 1244769,
+      "sha256": "e6d08c634c3f9a252a896135a9c30324776fa343ce68432e88d22f2968f257e2"
+    },
+    "pm/lock.json": {
+      "bytes": 33533,
+      "sha256": "40b06778980ff8c50dcd97c0d9b39ba3eb4a7a242ea62eaeaaa9a90d68ea1a85"
+    },
+    "package.json": {
+      "bytes": 2812,
+      "sha256": "1b2e18d82ec312b7411518dbdad8962f7c4968e24205dfe284a3ff52f2b8b97c"
+    },
+    "package-lock.json": {
+      "bytes": 706584,
+      "sha256": "ba681cd436db12d02a82f80c19de02d94e9cd7ca7c1672c4589b37e0ece522c7"
+    },
+    "apps/desktop/package.json": {
+      "bytes": 9228,
+      "sha256": "1c99ed81706758d017ab79e7a58cd03a797697a47398940a547a1332f9c508ce"
+    },
+    "apps/desktop/electron/quick-entry.ts": {
+      "bytes": 14291,
+      "sha256": "4a244ec20f422354ff7e1e9e2c9cf49ce3d8ff7c756a67b0486a5a10d9cb3c06"
+    },
+    "apps/desktop/src/app/chat/composer/hooks/use-voice-recorder.ts": {
+      "bytes": 8694,
+      "sha256": "00eba22c001284ec5ea76376868faf70b8ab9e930d2a7afd8479d0dc60c660ac"
+    },
+    "apps/desktop/src/app/chat/composer/hooks/use-composer-voice.ts": {
+      "bytes": 16755,
+      "sha256": "b45727db67819a91f2a92cec55edf1a06166fc807a36a78e1104b6e2938980e8"
+    },
+    "apps/desktop/src/app/contrib/hooks/use-quick-entry-bridge.ts": {
+      "bytes": 7982,
+      "sha256": "d8cb5d80865715a60a04f05946bab46ffa89a36347d3ba06cba5e967b68a93fd"
+    },
+    ".artifacts/live-smoke-20261106/smoke.py": {
+      "bytes": 37851,
+      "sha256": "1d6078f92b3de1c6a14700a8e3e52423707252cc98c7d3d643d95da7e7a12886"
+    },
+    "tools/symphony_pm_adapter.py": {
+      "bytes": 36171,
+      "sha256": "053dc95bb6f6cf0e3fe694870fabe174ba2ca287a6f6e117f51d0f12e646be05"
+    },
+    "plugins/symphony_pm/__init__.py": {
+      "bytes": 5042,
+      "sha256": "9860b91764d07e84f2b973a0092d0a4c18876bb18613fb4f8185d4d9042c3dd0"
+    },
+    "tests/fixtures/symphony_pm_ingress/owner.py": {
+      "bytes": 19371,
+      "sha256": "36a7f1f8dc704cf8884d504f8fe0856c58dba7994ea58a46a51322929f8a044a"
+    },
+    "C:\\Users\\Екатерина\\Downloads\\CR-HERMES-MIGRATION-01-r0.2-consolidated.md": {
+      "bytes": 272770,
+      "sha256": "c8c5a2aee4ca1f2606ab0e104d205bf5adfe41ba695135ed7a55da85da7a067e"
+    },
+    "C:\\Users\\Екатерина\\Downloads\\CR-HERMES-MIGRATION-01-r0.3-candidate-delta.md": {
+      "bytes": 13137,
+      "sha256": "4be28257aae36555e9ae146838d3c15713235223b0b666a201e1a6da89c755fd"
+    }
+  },
+  "versions": {
+    "electron": "44.9.3",
+    "typescript": "6.0.3",
+    "vite": "8.3.4",
+    "vitest": "4.1.12",
+    "node_command": "v20.15.0",
+    "python": "3.14.9"
+  },
+  "created_files_scope": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\s4-global-voice-20261106",
+  "runtime_found": false,
+  "runtime_observation_scope": "PATH, named processes, StartApps, Appx packages, installed-app registry; portable path unconfirmed",
+  "openwhispr_registered_version": "1.10.1",
+  "coordination": "message rejected active writer; no retry or foreign-session change",
+  "live_attempts_remaining_from_old_permit": 0
+}

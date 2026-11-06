@@ -1,0 +1,19 @@
+{
+  "argv": [
+    "C:/Program Files/Git/bin/bash.exe",
+    "scripts/run_tests.sh",
+    "tests/hermes_cli/test_voice_wrapper.py",
+    "tests/tools/test_voice_cli_integration.py",
+    "tests/tools/test_voice_stop_phrase.py",
+    "-j",
+    "1",
+    "--file-retries",
+    "0"
+  ],
+  "cwd": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031",
+  "exit_code": 256,
+  "elapsed_seconds": 0.06,
+  "microphone_opened": false,
+  "audio_transmitted": false,
+  "installations_requested": false
+}

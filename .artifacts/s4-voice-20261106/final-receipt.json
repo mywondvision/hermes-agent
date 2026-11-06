@@ -1,0 +1,11 @@
+{
+  "report_utf8_strict": true,
+  "report_bom": false,
+  "report_replacement_chars": 0,
+  "report_double_question_marks": 0,
+  "report_sha256": "b0abfc3b2187a3767a7a2c0d3c11527db97d51c067d02e551c86f592b4300856",
+  "sampled_file_count": 13,
+  "sampled_files_unchanged": true,
+  "tracked_diff": "",
+  "created_scope": ".artifacts/s4-voice-20261106 only"
+}

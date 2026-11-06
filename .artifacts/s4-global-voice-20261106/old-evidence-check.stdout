@@ -1,0 +1,13 @@
+{
+  "recorded_evidence_consistent": true,
+  "hashed_files": 46,
+  "offline_recorded_pass": 144,
+  "new_native_starts": 2,
+  "overall_native_attempts": 3,
+  "native_cancel_calls": 1,
+  "local_tree_stop_and_dedupe": "PASS",
+  "cancel_acceptance": "HOLD",
+  "billing_settled": "UNKNOWN",
+  "external_effects_settled": "UNKNOWN",
+  "scope": "checks recorded artifacts; does not rerun or independently reproduce live events"
+}

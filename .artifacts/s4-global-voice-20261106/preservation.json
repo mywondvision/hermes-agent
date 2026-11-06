@@ -1,0 +1,32 @@
+{
+  "all_16_sampled_sources_unchanged": true,
+  "source_checks": {
+    "pyproject.toml": true,
+    "uv.lock": true,
+    "pm/lock.json": true,
+    "package.json": true,
+    "package-lock.json": true,
+    "apps/desktop/package.json": true,
+    "apps/desktop/electron/quick-entry.ts": true,
+    "apps/desktop/src/app/chat/composer/hooks/use-voice-recorder.ts": true,
+    "apps/desktop/src/app/chat/composer/hooks/use-composer-voice.ts": true,
+    "apps/desktop/src/app/contrib/hooks/use-quick-entry-bridge.ts": true,
+    ".artifacts/live-smoke-20261106/smoke.py": true,
+    "tools/symphony_pm_adapter.py": true,
+    "plugins/symphony_pm/__init__.py": true,
+    "tests/fixtures/symphony_pm_ingress/owner.py": true,
+    "C:\\Users\\Екатерина\\Downloads\\CR-HERMES-MIGRATION-01-r0.2-consolidated.md": true,
+    "C:\\Users\\Екатерина\\Downloads\\CR-HERMES-MIGRATION-01-r0.3-candidate-delta.md": true
+  },
+  "manifest_utf8_strict": true,
+  "manifest_bom": false,
+  "manifest_sha256": "af41b46d5247abcb995d84b5e923f9f3f3211483d8c2f39da48c3274956eaed4",
+  "tracked_diff": "",
+  "native_starts_this_turn": 0,
+  "microphone_opened": false,
+  "runtime_payload_download_bytes": 0,
+  "scope": [
+    ".artifacts/s4-global-voice-20261106",
+    "docs/audits/CR-HERMES-MIGRATION-01/S3-S4-global-voice-manifest-20261106.md"
+  ]
+}

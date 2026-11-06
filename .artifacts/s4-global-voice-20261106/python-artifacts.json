@@ -1,0 +1,658 @@
+{
+  "scope": "static target wheel closure estimate; not PM resolver or installation proof",
+  "target_environment": {
+    "implementation_name": "cpython",
+    "implementation_version": "3.14.9",
+    "os_name": "nt",
+    "platform_machine": "AMD64",
+    "platform_release": "11",
+    "platform_system": "Windows",
+    "platform_version": "10.0.26200",
+    "python_full_version": "3.14.9",
+    "platform_python_implementation": "CPython",
+    "python_version": "3.14",
+    "sys_platform": "win32",
+    "extra": ""
+  },
+  "extras": [
+    "audio-io",
+    "stt-whisper",
+    "web"
+  ],
+  "lock_sha256": "e6d08c634c3f9a252a896135a9c30324776fa343ce68432e88d22f2968f257e2",
+  "wheel_count": 90,
+  "selected_wheel_download_bytes": 143370837,
+  "unknown": [],
+  "wheels": {
+    "annotated-doc": {
+      "version": "0.0.5",
+      "url": "https://files.pythonhosted.org/packages/3e/30/e900b21425a860e195f32e37657aa1f7c7f2b1bfb26f03ca209b90933c06/annotated_doc-0.0.5-py3-none-any.whl",
+      "hash": "sha256:117bac03a25ede5df5440e855b32d556049ca169ead221505badf432fed4b101",
+      "size": 5302,
+      "upload-time": "2026-07-28T13:50:57.239Z"
+    },
+    "annotated-types": {
+      "version": "0.8.0",
+      "url": "https://files.pythonhosted.org/packages/99/91/8acff4f5e50511b911bbccb72b8628a49c68ce14148cd9f6431094859a90/annotated_types-0.8.0-py3-none-any.whl",
+      "hash": "sha256:f072f4d804ea359e4eaf198b1af7a8b0943881a87f31bb764f8bf219bb9419e0",
+      "size": 13427,
+      "upload-time": "2026-07-23T20:16:12.938Z"
+    },
+    "anyio": {
+      "version": "4.15.1",
+      "url": "https://files.pythonhosted.org/packages/12/b8/4bd346e22b28902df4d651910f5242c28d84e4a5c2435ca5c3f797ed7e2e/anyio-4.15.1-py3-none-any.whl",
+      "hash": "sha256:6152fdbbf9a77fdec97731721bebf7c4c44f7c29b424b0065826173efc7ed101",
+      "size": 132079,
+      "upload-time": "2026-09-05T10:42:37.923Z"
+    },
+    "av": {
+      "version": "18.1.0",
+      "url": "https://files.pythonhosted.org/packages/33/b4/76ba21e46704f632004276b85289a1582e95f5eff760436d6149875a1881/av-18.1.0-cp311-abi3-win_amd64.whl",
+      "hash": "sha256:ea1480b7a8d5405cb5f382b344731bf125fd2c1c6fae3964f6c48595628387ff",
+      "size": 27595679,
+      "upload-time": "2026-08-12T22:27:35.177Z"
+    },
+    "browser-harness": {
+      "version": "0.1.13",
+      "url": "https://files.pythonhosted.org/packages/4a/bd/f166cf9a465eff436048d25851ab28b0d798af02b56998127a4165227fc4/browser_harness-0.1.13-py3-none-any.whl",
+      "hash": "sha256:2491459e4bfc0ee8aea22dc6c4680fc0f791b7ba553446323c50d2883449d769",
+      "size": 121123,
+      "upload-time": "2026-09-04T02:53:21.841Z"
+    },
+    "cdp-use": {
+      "version": "1.4.5",
+      "url": "https://files.pythonhosted.org/packages/56/12/386d8c6bf0448c43674e24d6194c3b57d62e5361e90bca3d58108819ad32/cdp_use-1.4.5-py3-none-any.whl",
+      "hash": "sha256:8f8e2435e3a20e4009d2974144192cf3c132f6c2971338e156198814d9b91ecb",
+      "size": 350504,
+      "upload-time": "2026-02-22T04:32:49.22Z"
+    },
+    "certifi": {
+      "version": "2026.10.19",
+      "url": "https://files.pythonhosted.org/packages/c4/51/29046e48f693c54e5b7412216d447a1d8362c9653148d98c02cdf65fa733/certifi-2026.10.19-py3-none-any.whl",
+      "hash": "sha256:42d35340cc5b9ba78e818ddbff0c5b1c2b779de448a340fd1b989f5fa8670e1b",
+      "size": 136464,
+      "upload-time": "2026-10-20T02:24:15.072Z"
+    },
+    "cffi": {
+      "version": "2.1.1",
+      "url": "https://files.pythonhosted.org/packages/a7/06/1c3e01e3ba14c39f6d10bfbac52753b7e22259e38088e5cfe1d704918690/cffi-2.1.1-cp314-cp314-win_amd64.whl",
+      "hash": "sha256:3222ba5d678f80a030e6afbcc33dc1ae5cb45facabb61cee2c7016b8432fde48",
+      "size": 187949,
+      "upload-time": "2026-08-03T21:20:45.623Z"
+    },
+    "charset-normalizer": {
+      "version": "3.5.2",
+      "url": "https://files.pythonhosted.org/packages/d1/78/5ed86f743d4bc350db307e7636419a0a5ee1d91806d30c7f667bd5c80dae/charset_normalizer-3.5.2-cp314-cp314-win_amd64.whl",
+      "hash": "sha256:e4e81e09c1578b8df602e3db08b0b3ea0a6947ad612f52bf8dc5ea8d47691f0c",
+      "size": 210965,
+      "upload-time": "2026-09-30T04:36:58.205Z"
+    },
+    "click": {
+      "version": "8.5.0",
+      "url": "https://files.pythonhosted.org/packages/58/50/6c0d534c5f134586a8e1ba4e330569e32f057e33372ae556463212fb4cd3/click-8.5.0-py3-none-any.whl",
+      "hash": "sha256:255bc9599cf7748b4b1a446ccc735421bd08a2ae529a8b88597d3de5664ee360",
+      "size": 125251,
+      "upload-time": "2026-08-26T13:33:12.928Z"
+    },
+    "colorama": {
+      "version": "0.4.6",
+      "url": "https://files.pythonhosted.org/packages/d1/d6/3965ed04c63042e047cb6a3e6ed1a63a35087b6a609aa3a15ed8ac56c221/colorama-0.4.6-py2.py3-none-any.whl",
+      "hash": "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6",
+      "size": 25335,
+      "upload-time": "2022-10-25T02:36:20.889Z"
+    },
+    "concurrent-log-handler": {
+      "version": "0.9.30",
+      "url": "https://files.pythonhosted.org/packages/88/84/40a531122bf8f97ae608dcdedfc2c770e790aea93f649c72453e409800b4/concurrent_log_handler-0.9.30-py3-none-any.whl",
+      "hash": "sha256:50c4c377d57d0f03743c923dfaed53fbd8c85617cbb7f40ed92b7144f49ea895",
+      "size": 35532,
+      "upload-time": "2026-10-08T20:33:38.152Z"
+    },
+    "croniter": {
+      "version": "6.2.4",
+      "url": "https://files.pythonhosted.org/packages/cd/ba/d678e5bd329646ca51d3c92addbc77804e86d21f4b6b6a027218e6abb010/croniter-6.2.4-py3-none-any.whl",
+      "hash": "sha256:8ef3d544107a5c05a150a2d78f8bf5a8eb9c5c4d93405a736b824109574e3f4d",
+      "size": 46677,
+      "upload-time": "2026-07-10T09:52:58.425Z"
+    },
+    "cryptography": {
+      "version": "50.0.2",
+      "url": "https://files.pythonhosted.org/packages/9a/4f/adfc442765721292fff86d314ce385d3249d22db42295c0dd057727b60f3/cryptography-50.0.2-cp311-abi3-win_amd64.whl",
+      "hash": "sha256:7afa5a6602a9f29af1f3a2965f831bae7c9d5d597b7cbb716d41ab3b7d89879c",
+      "size": 3824692,
+      "upload-time": "2026-09-30T14:44:11.671Z"
+    },
+    "ctranslate2": {
+      "version": "4.8.3",
+      "url": "https://files.pythonhosted.org/packages/15/99/7c3e8d0b8527acc4ed18ddc97f96d70928a672faba37d60cea1fe7bc831e/ctranslate2-4.8.3-cp314-cp314-win_amd64.whl",
+      "hash": "sha256:03b0ad8c6325f142341a7a7431b5ab693b51f43918be1c116b80ebb6e3c1f85e",
+      "size": 19485275,
+      "upload-time": "2026-10-13T05:57:40.63Z"
+    },
+    "distro": {
+      "version": "1.9.0",
+      "url": "https://files.pythonhosted.org/packages/12/b3/231ffd4ab1fc9d679809f356cebee130ac7daa00d6d6f3206dd4fd137e9e/distro-1.9.0-py3-none-any.whl",
+      "hash": "sha256:7bffd925d65168f85027d8da9af6bddab658135b840670a223589bc0c8ef02b2",
+      "size": 20277,
+      "upload-time": "2023-12-24T09:54:30.421Z"
+    },
+    "fastapi": {
+      "version": "0.133.1",
+      "url": "https://files.pythonhosted.org/packages/d2/c9/a175a7779f3599dfa4adfc97a6ce0e157237b3d7941538604aadaf97bfb6/fastapi-0.133.1-py3-none-any.whl",
+      "hash": "sha256:658f34ba334605b1617a65adf2ea6461901bdb9af3a3080d63ff791ecf7dc2e2",
+      "size": 109029,
+      "upload-time": "2026-02-25T18:18:18.578Z"
+    },
+    "faster-whisper": {
+      "version": "1.2.1",
+      "url": "https://files.pythonhosted.org/packages/05/99/49ee85903dee060d9f08297b4a342e5e0bcfca2f027a07b4ee0a38ab13f9/faster_whisper-1.2.1-py3-none-any.whl",
+      "hash": "sha256:79a66ad50688c0b794dd501dc340a736992a6342f7f95e5811be60b5224a26a7",
+      "size": 1118909,
+      "upload-time": "2025-10-31T11:35:47.794Z"
+    },
+    "fetch-use": {
+      "version": "0.4.0",
+      "url": "https://files.pythonhosted.org/packages/57/97/d4104692aa5c99a30fea22b5adffd2ce35b1ad86ae5236766cfc1ae468f1/fetch_use-0.4.0-py3-none-any.whl",
+      "hash": "sha256:b7885f2907e7920373fa75dcdb00afd6e603a25a9ee2151aa2881f5465e1a2c0",
+      "size": 9468,
+      "upload-time": "2026-04-09T04:02:43.458Z"
+    },
+    "filelock": {
+      "version": "3.32.7",
+      "url": "https://files.pythonhosted.org/packages/15/df/31098c5aeb4d966b553641472bd55fcf5fdfac953549894b8a765ba44e91/filelock-3.32.7-py3-none-any.whl",
+      "hash": "sha256:65ff0d0190ea42038b32bda4b77834fb05be2cad4c5b9b01aa4dfb3614536e52",
+      "size": 100157,
+      "upload-time": "2026-09-16T00:24:19.543Z"
+    },
+    "fire": {
+      "version": "0.7.1",
+      "url": "https://files.pythonhosted.org/packages/e5/4c/93d0f85318da65923e4b91c1c2ff03d8a458cbefebe3bc612a6693c7906d/fire-0.7.1-py3-none-any.whl",
+      "hash": "sha256:e43fd8a5033a9001e7e2973bab96070694b9f12f2e0ecf96d4683971b5ab1882",
+      "size": 115945,
+      "upload-time": "2025-08-16T20:20:22.87Z"
+    },
+    "firecrawl-anydoc": {
+      "version": "0.2.4",
+      "url": "https://files.pythonhosted.org/packages/65/34/6d54fed906055e5507dd94efd63f4a05021f103dc684ea62a3b0876b7595/firecrawl_anydoc-0.2.4-cp310-abi3-win_amd64.whl",
+      "hash": "sha256:7c9ffc81946e6954c124560ed1d395e0103a1a08fdc0f6be382e2f35daf6dbc9",
+      "size": 3583555,
+      "upload-time": "2026-08-27T19:13:56.698Z"
+    },
+    "flatbuffers": {
+      "version": "25.12.19",
+      "url": "https://files.pythonhosted.org/packages/e8/2d/d2a548598be01649e2d46231d151a6c56d10b964d94043a335ae56ea2d92/flatbuffers-25.12.19-py2.py3-none-any.whl",
+      "hash": "sha256:7634f50c427838bb021c2d66a3d1168e9d199b0607e6329399f04846d42e20b4",
+      "size": 26661,
+      "upload-time": "2025-12-19T23:16:13.622Z"
+    },
+    "fsspec": {
+      "version": "2026.9.0",
+      "url": "https://files.pythonhosted.org/packages/6c/c0/a98505f18594f1bce828bb159cec0fcf9860562f1a2c85913409fc8f3d9e/fsspec-2026.9.0-py3-none-any.whl",
+      "hash": "sha256:8dd6e646e99ea382bd85f97a45e6b526a442d79423a7dc673f1e2756d05fcb5f",
+      "size": 221738,
+      "upload-time": "2026-09-18T17:50:41.341Z"
+    },
+    "h11": {
+      "version": "0.16.0",
+      "url": "https://files.pythonhosted.org/packages/04/4b/29cac41a4d98d144bf5f6d33995617b185d14b22401f75ca86f384e87ff1/h11-0.16.0-py3-none-any.whl",
+      "hash": "sha256:63cf8bbe7522de3bf65932fda1d9c2772064ffb3dae62d55932da54b31cb6c86",
+      "size": 37515,
+      "upload-time": "2025-04-24T03:35:24.344Z"
+    },
+    "hf-xet": {
+      "version": "1.7.0",
+      "url": "https://files.pythonhosted.org/packages/4d/59/b35106dfa71b6eef605dc88bd038fe99c7f86fb132a15b60d0bf2f235b2c/hf_xet-1.7.0-cp38-abi3-win_amd64.whl",
+      "hash": "sha256:2b7bb5727889b0f2436dbaaad8fc4c3e66b8240d992716989e0c086b4278b1bc",
+      "size": 3822644,
+      "upload-time": "2026-10-06T20:18:40.052Z"
+    },
+    "httpcore": {
+      "version": "1.0.9",
+      "url": "https://files.pythonhosted.org/packages/7e/f5/f66802a942d491edb555dd61e3a9961140fd64c90bce1eafd741609d334d/httpcore-1.0.9-py3-none-any.whl",
+      "hash": "sha256:2d400746a40668fc9dec9810239072b40b4484b640a8c38fd654a024c7a1bf55",
+      "size": 78784,
+      "upload-time": "2025-04-24T22:06:20.566Z"
+    },
+    "httptools": {
+      "version": "0.8.0",
+      "url": "https://files.pythonhosted.org/packages/60/bd/07b13c93ffd9bec9546e0d43f8e19378dd696dbd278511406bc07371ef1f/httptools-0.8.0-cp314-cp314-win_amd64.whl",
+      "hash": "sha256:19d1ee275bb59ba2643ba9a3a1e51cc0c788caf2b8df506368e03f56fdd08527",
+      "size": 92705,
+      "upload-time": "2026-05-25T22:17:31.133Z"
+    },
+    "httpx": {
+      "version": "0.28.1",
+      "url": "https://files.pythonhosted.org/packages/2a/39/e50c7c3a983047577ee07d2a9e53faf5a69493943ec3f6a384bdc792deb2/httpx-0.28.1-py3-none-any.whl",
+      "hash": "sha256:d909fcccc110f8c7faf814ca82a9a4d816bc5a6dbfea25d6591d6985b8ba59ad",
+      "size": 73517,
+      "upload-time": "2024-12-06T15:37:21.509Z"
+    },
+    "huggingface-hub": {
+      "version": "1.33.0",
+      "url": "https://files.pythonhosted.org/packages/fc/16/963096d224b80909432dc16561a615fd33d2d13beef3ce4c63fa25e40867/huggingface_hub-1.33.0-py3-none-any.whl",
+      "hash": "sha256:04e434b06e100eddbce9a6e817d72693a7884b10a79bd67ab48080d5c07eb899",
+      "size": 846435,
+      "upload-time": "2026-09-24T09:49:28.059Z"
+    },
+    "idna": {
+      "version": "3.20",
+      "url": "https://files.pythonhosted.org/packages/58/a2/bb081bab032533a855d44de1d56f8e8426114ff1ba5d1f07a438a0a654f8/idna-3.20-py3-none-any.whl",
+      "hash": "sha256:ab7ae7122974553370f0bdb919e1a960b2cd1bc1ef0276416d896db81c14582c",
+      "size": 69583,
+      "upload-time": "2026-09-17T14:11:03.168Z"
+    },
+    "jinja2": {
+      "version": "3.1.6",
+      "url": "https://files.pythonhosted.org/packages/62/a1/3d680cbfd5f4b8f15abc1d571870c5fc3e594bb582bc3b64ea099db13e56/jinja2-3.1.6-py3-none-any.whl",
+      "hash": "sha256:85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67",
+      "size": 134899,
+      "upload-time": "2025-03-05T20:05:00.369Z"
+    },
+    "jiter": {
+      "version": "0.17.0",
+      "url": "https://files.pythonhosted.org/packages/7a/4a/1aa520eb6c359b262c14ff995ca7283837208ddfb1202082ce9d73cf214d/jiter-0.17.0-cp314-cp314-win_amd64.whl",
+      "hash": "sha256:ac3c6ee3264d6f5c44c617f90bc7e8b9e1587e7d6708c9d8f811cb65582ee312",
+      "size": 227163,
+      "upload-time": "2026-09-12T15:12:55.931Z"
+    },
+    "markdown": {
+      "version": "3.11.2",
+      "url": "https://files.pythonhosted.org/packages/fe/66/bcab3b677b71ad286b4e607e3427499537c76e13ad2e22584ba7a7d9882c/markdown-3.11.2-py3-none-any.whl",
+      "hash": "sha256:f80390747a2a0ff2ba54da074ce4f862f72a6685f608cd2637b646a6d83993f5",
+      "size": 114266,
+      "upload-time": "2026-10-19T19:41:41.244Z"
+    },
+    "markdown-it-py": {
+      "version": "4.2.0",
+      "url": "https://files.pythonhosted.org/packages/b3/81/4da04ced5a082363ecfa159c010d200ecbd959ae410c10c0264a38cac0f5/markdown_it_py-4.2.0-py3-none-any.whl",
+      "hash": "sha256:9f7ebbcd14fe59494226453aed97c1070d83f8d24b6fc3a3bcf9a38092641c4a",
+      "size": 91687,
+      "upload-time": "2026-05-07T12:08:27.182Z"
+    },
+    "markupsafe": {
+      "version": "3.0.4",
+      "url": "https://files.pythonhosted.org/packages/80/f0/5792ff768a410f93ee3f84fc19345295ffc352d2c936b424cb37e514714c/markupsafe-3.0.4-cp314-cp314-win_amd64.whl",
+      "hash": "sha256:c1bc67752d5f21013cfe430df4062441714eab79f65a6a05e01505957e9c35fe",
+      "size": 14501,
+      "upload-time": "2026-10-02T23:05:50.788Z"
+    },
+    "mdurl": {
+      "version": "0.1.2",
+      "url": "https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl",
+      "hash": "sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8",
+      "size": 9979,
+      "upload-time": "2022-08-14T12:40:09.779Z"
+    },
+    "nemo-relay": {
+      "version": "0.10.3",
+      "url": "https://files.pythonhosted.org/packages/84/ad/70875bb77cef39d71536db25529e7da85ce9d4d5031b63ada6fc17a70f9b/nemo_relay-0.10.3-cp311-abi3-win_amd64.whl",
+      "hash": "sha256:9f88e4ba5e06eefc3be9be641d7ae57b59ba5e4126ad262b4f50ecd01fc4b4cd",
+      "size": 10507966,
+      "upload-time": "2026-10-19T20:32:35.036Z"
+    },
+    "numpy": {
+      "version": "2.5.4",
+      "url": "https://files.pythonhosted.org/packages/52/9a/e1e512ebc948d5b9dd33b08736760f0ebbed2848fd4eda1f553088a6dcee/numpy-2.5.4-cp314-cp314-win_amd64.whl",
+      "hash": "sha256:2ca144f15135b6212a5c47b1e2aeca6e412f102f95a2d5d88d8aec77eb255de3",
+      "size": 12703552,
+      "upload-time": "2026-10-10T20:04:00.28Z"
+    },
+    "onnxruntime": {
+      "version": "1.31.0",
+      "url": "https://files.pythonhosted.org/packages/6a/66/0bf4fdb9f58efa69cf4eddde24c72aebcc628d6ff1d67c9546145c6b9922/onnxruntime-1.31.0-cp314-cp314-win_amd64.whl",
+      "hash": "sha256:83e3dbcf6abc6189c4bdf7d329c07ba1133c88172134c266d84b4409aa3b9dbf",
+      "size": 15268709,
+      "upload-time": "2026-10-09T04:19:04.2Z"
+    },
+    "openai": {
+      "version": "2.54.0",
+      "url": "https://files.pythonhosted.org/packages/64/a8/bb76c7356de8ad57f59d5ff993d434df0607f07f08bcc9c9a5c275e399c0/openai-2.54.0-py3-none-any.whl",
+      "hash": "sha256:89089789197ccdb87f173a03145ed1598d00795220c93e96cf712b1cbf5e5f2b",
+      "size": 1660351,
+      "upload-time": "2026-08-11T18:46:56.684Z"
+    },
+    "packaging": {
+      "version": "26.3",
+      "url": "https://files.pythonhosted.org/packages/63/34/ba1c580383c9eada3711951fef0795c80b829a078d72188184bcab9dd527/packaging-26.3-py3-none-any.whl",
+      "hash": "sha256:d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c",
+      "size": 129956,
+      "upload-time": "2026-08-04T18:15:27.159Z"
+    },
+    "pathspec": {
+      "version": "1.1.1",
+      "url": "https://files.pythonhosted.org/packages/f1/d9/7fb5aa316bc299258e68c73ba3bddbc499654a07f151cba08f6153988714/pathspec-1.1.1-py3-none-any.whl",
+      "hash": "sha256:a00ce642f577bf7f473932318056212bc4f8bfdf53128c78bbd5af0b9b20b189",
+      "size": 57328,
+      "upload-time": "2026-04-27T01:46:07.06Z"
+    },
+    "pillow": {
+      "version": "13.0.0",
+      "url": "https://files.pythonhosted.org/packages/50/e2/7ad17747517e4c813dca78257d6bb593466f8231baf1384bc98d92745edb/pillow-13.0.0-cp314-cp314-win_amd64.whl",
+      "hash": "sha256:f7cbb7a64e7ec664775195e4f81923bc8a93d9451b963f844e59118f63147a7a",
+      "size": 7281830,
+      "upload-time": "2026-10-16T22:16:47.725Z"
+    },
+    "pillow-heif": {
+      "version": "1.8.1",
+      "url": "https://files.pythonhosted.org/packages/89/06/be02e0307ebb6772d94f6347729f979457669c6b868a83caaa8b736c5425/pillow_heif-1.8.1-cp314-cp314-win_amd64.whl",
+      "hash": "sha256:c583f2c08aa08848e7b97f4b416f5dce9f485182fd55efd39edba10f092ee651",
+      "size": 6781849,
+      "upload-time": "2026-10-11T11:17:20.352Z"
+    },
+    "portalocker": {
+      "version": "3.2.0",
+      "url": "https://files.pythonhosted.org/packages/4b/a6/38c8e2f318bf67d338f4d629e93b0b4b9af331f455f0390ea8ce4a099b26/portalocker-3.2.0-py3-none-any.whl",
+      "hash": "sha256:3cdc5f565312224bc570c49337bd21428bba0ef363bbcf58b9ef4a9f11779968",
+      "size": 22424,
+      "upload-time": "2025-06-14T13:20:38.083Z"
+    },
+    "prompt-toolkit": {
+      "version": "3.0.53",
+      "url": "https://files.pythonhosted.org/packages/54/6f/84908cad2d6aa5144abcf7b42709fe4fdb459bc640ec7ac5786e7693dabc/prompt_toolkit-3.0.53-py3-none-any.whl",
+      "hash": "sha256:01c0891d7f9237d5e339f7d3e42cdae80b7534abb1c7c0e3352efba6231492f2",
+      "size": 392288,
+      "upload-time": "2026-07-26T20:56:12.512Z"
+    },
+    "protobuf": {
+      "version": "6.33.6",
+      "url": "https://files.pythonhosted.org/packages/76/5d/683efcd4798e0030c1bab27374fd13a89f7c2515fb1f3123efdfaa5eab57/protobuf-6.33.6-cp310-abi3-win_amd64.whl",
+      "hash": "sha256:0cd27b587afca21b7cfa59a74dcbd48a50f0a6400cfb59391340ad729d91d326",
+      "size": 437089,
+      "upload-time": "2026-03-18T19:04:50.381Z"
+    },
+    "psutil": {
+      "version": "7.2.2",
+      "url": "https://files.pythonhosted.org/packages/b4/90/e2159492b5426be0c1fef7acba807a03511f97c5f86b3caeda6ad92351a7/psutil-7.2.2-cp37-abi3-win_amd64.whl",
+      "hash": "sha256:eb7e81434c8d223ec4a219b5fc1c47d0417b12be7ea866e24fb5ad6e84b3d988",
+      "size": 137737,
+      "upload-time": "2026-01-28T18:15:33.849Z"
+    },
+    "pycparser": {
+      "version": "3.11",
+      "url": "https://files.pythonhosted.org/packages/90/11/0e6f11117525ff0eec40ebac3d313376f102df93ca44ad9e893ee85e4f89/pycparser-3.11-py3-none-any.whl",
+      "hash": "sha256:51d5a8ba2be0bbe440b99d2112604c95bbbc3c2748a64260186c541e1729cd80",
+      "size": 51178,
+      "upload-time": "2026-10-09T12:56:58.131Z"
+    },
+    "pydantic": {
+      "version": "2.14.1",
+      "url": "https://files.pythonhosted.org/packages/35/ea/a56b9fe5066f3537b7882f77e9c5dfb26d8c2eefdaed9b5fc73d57b4dc22/pydantic-2.14.1-py3-none-any.whl",
+      "hash": "sha256:9195d967ec791692a04438115466764fb8b9a27b31f14a760437694f40d6b454",
+      "size": 488106,
+      "upload-time": "2026-10-11T18:37:53.437Z"
+    },
+    "pydantic-core": {
+      "version": "2.50.1",
+      "url": "https://files.pythonhosted.org/packages/14/4c/350a2415209c43d670eb71d3c040f332c04a30583d39e311b05c7ac15762/pydantic_core-2.50.1-cp314-cp314-win_amd64.whl",
+      "hash": "sha256:d32f3acc081cc3923386d88f422cde8892335e95f034e0104bb4cf9310d9915f",
+      "size": 2171586,
+      "upload-time": "2026-10-11T18:33:32.139Z"
+    },
+    "pygments": {
+      "version": "2.21.0",
+      "url": "https://files.pythonhosted.org/packages/71/46/17f022dd3e953bf20a04a028a21ec746d942f8d2af30fa0f124fa0e6a684/pygments-2.21.0-py3-none-any.whl",
+      "hash": "sha256:2363c69b61c4a97c838da3b130dcd6468f4848992b21a82f2a63ec34377137d9",
+      "size": 1250147,
+      "upload-time": "2026-08-17T08:02:44.912Z"
+    },
+    "pyjwt": {
+      "version": "2.15.1",
+      "url": "https://files.pythonhosted.org/packages/50/ca/44de4e75f8aadc457f0634be3b542815078ded46dca30efb960edeecad6e/pyjwt-2.15.1-py3-none-any.whl",
+      "hash": "sha256:42d59d631f7768a1028a64c7ff581a9bf7519804daf91fc5b6c56e30eec5e193",
+      "size": 33860,
+      "upload-time": "2026-09-28T18:40:41.429Z"
+    },
+    "python-dateutil": {
+      "version": "2.9.0.post0",
+      "url": "https://files.pythonhosted.org/packages/ec/57/56b9bcc3c9c6a792fcbaf139543cee77261f3651ca9da0c93f5c1221264b/python_dateutil-2.9.0.post0-py2.py3-none-any.whl",
+      "hash": "sha256:a8b2bc7bffae282281c8140a97d3aa9c14da0b136dfe83f850eea9a5f7470427",
+      "size": 229892,
+      "upload-time": "2024-03-01T18:36:18.57Z"
+    },
+    "python-dotenv": {
+      "version": "1.2.4",
+      "url": "https://files.pythonhosted.org/packages/60/d1/38f3a3405989a89ac18390803e70c6ad7c7760da4f9b83cbeca0c44a0c72/python_dotenv-1.2.4-py3-none-any.whl",
+      "hash": "sha256:42269a8a5b3fd54ffa6f3d84b18abed50064717576b4ecf03dc4a55d8aa04fdc",
+      "size": 23266,
+      "upload-time": "2026-10-01T05:36:08.633Z"
+    },
+    "python-multipart": {
+      "version": "0.0.32",
+      "url": "https://files.pythonhosted.org/packages/e1/04/e8135ebd1ad02c56ec633277529b2602ff99ff634be76cdba5744cf554fd/python_multipart-0.0.32-py3-none-any.whl",
+      "hash": "sha256:ff6d3f776f16878c894e52e107296ffc890e913c611b1a4ec6c44e2821fe2e23",
+      "size": 30042,
+      "upload-time": "2026-06-04T16:18:57.319Z"
+    },
+    "pywin32": {
+      "version": "311",
+      "url": "https://files.pythonhosted.org/packages/90/4b/07c77d8ba0e01349358082713400435347df8426208171ce297da32c313d/pywin32-311-cp314-cp314-win_amd64.whl",
+      "hash": "sha256:3aca44c046bd2ed8c90de9cb8427f581c479e594e99b5c0bb19b29c10fd6cb87",
+      "size": 9656800,
+      "upload-time": "2025-07-14T20:13:34.312Z"
+    },
+    "pywinpty": {
+      "version": "3.1.0",
+      "url": "https://files.pythonhosted.org/packages/87/6a/0c049de9e2d7d6b637aa36ee3825e643d5dba0a4890881652a6685bbaead/pywinpty-3.1.0-cp314-cp314-win_amd64.whl",
+      "hash": "sha256:d01178e9391366bc3325b4c49068cfce95d10d416f6ade62140b274741bc11e0",
+      "size": 2104626,
+      "upload-time": "2026-10-15T17:33:11.188Z"
+    },
+    "pyyaml": {
+      "version": "6.0.3",
+      "url": "https://files.pythonhosted.org/packages/23/20/bb6982b26a40bb43951265ba29d4c246ef0ff59c9fdcdf0ed04e0687de4d/pyyaml-6.0.3-cp314-cp314-win_amd64.whl",
+      "hash": "sha256:4a2e8cebe2ff6ab7d1050ecd59c25d4c8bd7e6f400f5f82b96557ac0abafd0ac",
+      "size": 156429,
+      "upload-time": "2025-09-25T21:32:57.844Z"
+    },
+    "requests": {
+      "version": "2.34.2",
+      "url": "https://files.pythonhosted.org/packages/a0/f4/c67b0b3f1b9245e8d266f0f112c500d50e5b4e83cb6f3b71b6528104182a/requests-2.34.2-py3-none-any.whl",
+      "hash": "sha256:2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0",
+      "size": 73075,
+      "upload-time": "2026-05-14T19:25:26.443Z"
+    },
+    "resvg-py": {
+      "version": "0.5.0",
+      "url": "https://files.pythonhosted.org/packages/fe/53/aa8f92ce6eb2f97095d8b6359a1613c5a5ee0aa9b1a33434df9294362979/resvg_py-0.5.0-cp310-abi3-win_amd64.whl",
+      "hash": "sha256:1f6b8956c4143dbfe107bcd35799d0dfd778a40a8cd537893c0bf489898a6c3c",
+      "size": 1242277,
+      "upload-time": "2026-08-24T19:42:31.42Z"
+    },
+    "rich": {
+      "version": "14.3.4",
+      "url": "https://files.pythonhosted.org/packages/b3/76/6d163cfac87b632216f71879e6b2cf17163f773ff59c00b5ff4900a80fa3/rich-14.3.4-py3-none-any.whl",
+      "hash": "sha256:07e7adb4690f68864777b1450859253bed81a99a31ac321ac1817b2313558952",
+      "size": 310480,
+      "upload-time": "2026-04-11T02:57:47.484Z"
+    },
+    "ruamel-yaml": {
+      "version": "0.18.16",
+      "url": "https://files.pythonhosted.org/packages/0f/73/bb1bc2529f852e7bf64a2dec885e89ff9f5cc7bbf6c9340eed30ff2c69c5/ruamel.yaml-0.18.16-py3-none-any.whl",
+      "hash": "sha256:048f26d64245bae57a4f9ef6feb5b552a386830ef7a826f235ffb804c59efbba",
+      "size": 119858,
+      "upload-time": "2025-10-22T17:53:59.012Z"
+    },
+    "ruamel-yaml-clib": {
+      "version": "0.2.15",
+      "url": "https://files.pythonhosted.org/packages/d2/67/be582a7370fdc9e6846c5be4888a530dcadd055eef5b932e0e85c33c7d73/ruamel_yaml_clib-0.2.15-cp314-cp314-win_amd64.whl",
+      "hash": "sha256:ac9b8d5fa4bb7fd2917ab5027f60d4234345fd366fe39aa711d5dca090aa1467",
+      "size": 122847,
+      "upload-time": "2025-11-16T16:13:51.807Z"
+    },
+    "six": {
+      "version": "1.17.0",
+      "url": "https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl",
+      "hash": "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274",
+      "size": 11050,
+      "upload-time": "2024-12-04T17:35:26.475Z"
+    },
+    "sniffio": {
+      "version": "1.3.1",
+      "url": "https://files.pythonhosted.org/packages/e9/44/75a9c9421471a6c4805dbf2356f7c181a29c1879239abab1ea2cc8f38b40/sniffio-1.3.1-py3-none-any.whl",
+      "hash": "sha256:2f6da418d1f1e0fddd844478f41680e794e6051915791a034ff65e5f100525a2",
+      "size": 10235,
+      "upload-time": "2024-02-25T23:20:01.196Z"
+    },
+    "snowballstemmer": {
+      "version": "3.1.1",
+      "url": "https://files.pythonhosted.org/packages/4c/07/2ebca9b11fb9be7340a818d8d6f63feaebb146be2c4afbd6061701d6df6e/snowballstemmer-3.1.1-py3-none-any.whl",
+      "hash": "sha256:7e207fa178741da09cdee59d3ecec3827ad5f92b1fc5c9ff3755b639f71f5752",
+      "size": 104164,
+      "upload-time": "2026-06-03T00:56:38.614Z"
+    },
+    "socksio": {
+      "version": "1.0.0",
+      "url": "https://files.pythonhosted.org/packages/37/c3/6eeb6034408dac0fa653d126c9204ade96b819c936e136c5e8a6897eee9c/socksio-1.0.0-py3-none-any.whl",
+      "hash": "sha256:95dc1f15f9b34e8d7b16f06d74b8ccf48f609af32ab33c608d08761c5dcbb1f3",
+      "size": 12763,
+      "upload-time": "2020-04-17T15:50:31.878Z"
+    },
+    "sounddevice": {
+      "version": "0.5.6",
+      "url": "https://files.pythonhosted.org/packages/8d/3e/cbc593c31a5f0d817b3fe97e64aa8461bd0f55cb07b67ce1b776296ae336/sounddevice-0.5.6-py3-none-win_amd64.whl",
+      "hash": "sha256:7f4162f514f007b0bf25a3ccfed3f1705bc2ec311888a90232729eec4f57a4f4",
+      "size": 1009630,
+      "upload-time": "2026-08-17T07:55:02.088Z"
+    },
+    "starlette": {
+      "version": "1.9.0",
+      "url": "https://files.pythonhosted.org/packages/f3/93/181df62699d9b5aca1d87e5cfda131dac87e3cdaebf668662f7206ca3470/starlette-1.9.0-py3-none-any.whl",
+      "hash": "sha256:fd3f159936e882d06c1108f84688f7cda2cf85fc6a592a50edbd175e882c2ddc",
+      "size": 80335,
+      "upload-time": "2026-10-18T15:50:31.526Z"
+    },
+    "tenacity": {
+      "version": "9.2.1",
+      "url": "https://files.pythonhosted.org/packages/d6/26/1ff2b0721ac66a3ec5b1402b333110b352ab0a8724052ac279a7b82d40c4/tenacity-9.2.1-py3-none-any.whl",
+      "hash": "sha256:9e56f17539296baab7beabb08b92f6ee3d7be92d8be72d763360677c2ad6580e",
+      "size": 32310,
+      "upload-time": "2026-10-07T12:13:00.102Z"
+    },
+    "termcolor": {
+      "version": "3.3.0",
+      "url": "https://files.pythonhosted.org/packages/33/d1/8bb87d21e9aeb323cc03034f5eaf2c8f69841e40e4853c2627edf8111ed3/termcolor-3.3.0-py3-none-any.whl",
+      "hash": "sha256:cf642efadaf0a8ebbbf4bc7a31cec2f9b5f21a9f726f4ccbb08192c9c26f43a5",
+      "size": 7734,
+      "upload-time": "2025-12-29T12:55:20.718Z"
+    },
+    "tokenizers": {
+      "version": "0.23.3",
+      "url": "https://files.pythonhosted.org/packages/d1/6c/24f074c9a0efb98e61b20aafe6b2641922d5db24e447d5d6daffd9e17555/tokenizers-0.23.3-cp310-abi3-win_amd64.whl",
+      "hash": "sha256:1f0823bb00c5fdc98e487354d54dd55a03848d61a1a0bf29a68c77f24f3b26c3",
+      "size": 2872101,
+      "upload-time": "2026-10-09T10:16:37.533Z"
+    },
+    "tomli-w": {
+      "version": "1.2.0",
+      "url": "https://files.pythonhosted.org/packages/c7/18/c86eb8e0202e32dd3df50d43d7ff9854f8e0603945ff398974c1d91ac1ef/tomli_w-1.2.0-py3-none-any.whl",
+      "hash": "sha256:188306098d013b691fcadc011abd66727d3c414c571bb01b1a174ba8c983cf90",
+      "size": 6675,
+      "upload-time": "2025-01-15T12:07:22.074Z"
+    },
+    "tqdm": {
+      "version": "4.70.1",
+      "url": "https://files.pythonhosted.org/packages/a7/03/921a3d3c75785aca9ebfbfcabfbc3a1be12e2ab5265deb026d55a5a3f83e/tqdm-4.70.1-py3-none-any.whl",
+      "hash": "sha256:c293e525e6fef9c20e8728fd4612df02a0aa31bb5fe91ecd93e123b1b7bffa73",
+      "size": 80199,
+      "upload-time": "2026-09-11T07:25:14.599Z"
+    },
+    "truststore": {
+      "version": "0.10.5",
+      "url": "https://files.pythonhosted.org/packages/51/e9/3a7820be2bb0fe53b6bc9c3be26d3d1158004e4c3ab953aa6840b955b1e9/truststore-0.10.5-py3-none-any.whl",
+      "hash": "sha256:9aaaedaefaf06d8b206278cf8b5012bc897f485a874503501e12d776df78951c",
+      "size": 19017,
+      "upload-time": "2026-10-12T22:27:30.377Z"
+    },
+    "typing-extensions": {
+      "version": "4.16.0",
+      "url": "https://files.pythonhosted.org/packages/49/d3/b8441a820a491ddfc024b0b0cf0393375b75ea13866d9c66727e54c2fc80/typing_extensions-4.16.0-py3-none-any.whl",
+      "hash": "sha256:481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8",
+      "size": 45571,
+      "upload-time": "2026-07-02T08:40:04.659Z"
+    },
+    "typing-inspection": {
+      "version": "0.4.4",
+      "url": "https://files.pythonhosted.org/packages/67/81/4add07e5172b7ac40d8ed5ff580409a7801a4fe26d529bdd915401dabfbe/typing_inspection-0.4.4-py3-none-any.whl",
+      "hash": "sha256:65b8397ba37ccbce054456aaccddfc91e6e3083c92824df348d96ca832f3f147",
+      "size": 14750,
+      "upload-time": "2026-08-12T12:37:24.648Z"
+    },
+    "tzdata": {
+      "version": "2025.3",
+      "url": "https://files.pythonhosted.org/packages/c7/b0/003792df09decd6849a5e39c28b513c06e84436a54440380862b5aeff25d/tzdata-2025.3-py2.py3-none-any.whl",
+      "hash": "sha256:06a47e5700f3081aab02b2e513160914ff0694bce9947d6b76ebd6bf57cfc5d1",
+      "size": 348521,
+      "upload-time": "2025-12-13T17:45:33.889Z"
+    },
+    "urllib3": {
+      "version": "2.8.0",
+      "url": "https://files.pythonhosted.org/packages/92/9d/c4e665119135114480843e7ab388fa94d8480650450e6f8e26b70d323a4c/urllib3-2.8.0-py3-none-any.whl",
+      "hash": "sha256:0cf3cae568d36aa9576b28dfb35f11328f1cb974ca7647d9475ebb86c75ac6e3",
+      "size": 135717,
+      "upload-time": "2026-09-15T19:29:34.577Z"
+    },
+    "uvicorn": {
+      "version": "0.54.0",
+      "url": "https://files.pythonhosted.org/packages/38/0c/b54a4fdd7f90a3af8b02ebc9ce6712c2c208b7926a2f7bad95c33ebbe943/uvicorn-0.54.0-py3-none-any.whl",
+      "hash": "sha256:505bdb0f318731d45f1f712071fc781a8981f6847a31c902c9f5e652d4f67faf",
+      "size": 87427,
+      "upload-time": "2026-09-25T06:52:35.829Z"
+    },
+    "watchfiles": {
+      "version": "1.3.0",
+      "url": "https://files.pythonhosted.org/packages/48/a1/1c4a1b3c8030cd03206232612be8a6e8799093490c220b0fcb935d02b75a/watchfiles-1.3.0-cp310-abi3-win_amd64.whl",
+      "hash": "sha256:1acabde19b67e673274e89a04d613b7fb1f122e2c4b8ec9a581e59c149264b61",
+      "size": 290643,
+      "upload-time": "2026-09-21T09:08:30.45Z"
+    },
+    "wcwidth": {
+      "version": "0.9.2",
+      "url": "https://files.pythonhosted.org/packages/5a/d6/b0690f55ea0483530a18bac917fbadbf54f35122510446fc370f5f1c2453/wcwidth-0.9.2-cp310-abi3-win_amd64.whl",
+      "hash": "sha256:2a9746de704242bd4fdaabb31dd46b82f694a56a8d21081ad89b679a89da9fec",
+      "size": 597827,
+      "upload-time": "2026-10-05T00:23:57.489Z"
+    },
+    "websockets": {
+      "version": "15.0.1",
+      "url": "https://files.pythonhosted.org/packages/fa/a8/5b41e0da817d64113292ab1f8247140aac61cbf6cfd085d6a0fa77f4984f/websockets-15.0.1-py3-none-any.whl",
+      "hash": "sha256:f7a866fbc1e97b5c617ee4116daaa09b722101d4a3c170c787450ba409f9736f",
+      "size": 169743,
+      "upload-time": "2025-03-05T20:03:39.41Z"
+    },
+    "winrt-runtime": {
+      "version": "3.2.1",
+      "url": "https://files.pythonhosted.org/packages/87/85/e5c2a10d287edd9d3ee8dc24bf7d7f335636b92bf47119768b7dd2fd1669/winrt_runtime-3.2.1-cp314-cp314-win_amd64.whl",
+      "hash": "sha256:e36e587ab5fd681ee472cd9a5995743f75107a1a84d749c64f7e490bc86bc814",
+      "size": 241873,
+      "upload-time": "2025-09-20T07:06:42.059Z"
+    },
+    "winrt-windows-applicationmodel": {
+      "version": "3.2.1",
+      "url": "https://files.pythonhosted.org/packages/ff/71/930e2d1e1f889c37c24d3b07e11266f40c27efc58b3727c4e928317f40a2/winrt_windows_applicationmodel-3.2.1-cp314-cp314-win_amd64.whl",
+      "hash": "sha256:bad67a448ad84c33a3cd1ce0bd102c98c407631da0a6f8038096f9b5d33259d5",
+      "size": 167767,
+      "upload-time": "2025-09-20T07:07:03.366Z"
+    },
+    "winrt-windows-foundation": {
+      "version": "3.2.1",
+      "url": "https://files.pythonhosted.org/packages/a1/56/4d2b545bea0f34f68df6d4d4ca22950ff8a935497811dccdc0ca58737a05/winrt_windows_foundation-3.2.1-cp314-cp314-win_amd64.whl",
+      "hash": "sha256:a22a7ebcec0d262e60119cff728f32962a02df60471ded8b2735a655eccc0ef5",
+      "size": 122148,
+      "upload-time": "2025-09-20T07:11:50.826Z"
+    },
+    "winrt-windows-foundation-collections": {
+      "version": "3.2.1",
+      "url": "https://files.pythonhosted.org/packages/20/59/5f2c940ff606297129e93ebd6030c813e6a43a786de7fc33ccb268e0b06b/winrt_windows_foundation_collections-3.2.1-cp314-cp314-win_amd64.whl",
+      "hash": "sha256:d4cfece7e9c0ead2941e55a1da82f20d2b9c8003bb7a8853bb7f999b539f80a4",
+      "size": 70399,
+      "upload-time": "2025-09-20T07:11:53.254Z"
+    },
+    "winrt-windows-services-store": {
+      "version": "3.2.1",
+      "url": "https://files.pythonhosted.org/packages/ef/08/c2865af5e2ac9b48e30c202fd9d84e1bed4e335f1e885e286985e9bb3b75/winrt_windows_services_store-3.2.1-cp314-cp314-win_amd64.whl",
+      "hash": "sha256:e236c92506ffd5555d4a4e016310a75d4772b1f567b290bcb72a867555cc4a02",
+      "size": 171019,
+      "upload-time": "2025-09-20T07:16:48.297Z"
+    }
+  }
+}

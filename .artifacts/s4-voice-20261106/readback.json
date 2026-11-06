@@ -1,0 +1,30 @@
+{
+  "source_and_foreign_files_unchanged": {
+    "hermes_cli/voice.py": true,
+    "hermes_cli/cli_voice_mixin.py": true,
+    "tools/voice_mode.py": true,
+    "tools/transcription_tools.py": true,
+    "tools/transcription_cloud.py": true,
+    "tools/transcription_command.py": true,
+    "ui-tui/src/app/createGatewayEventHandler.ts": true,
+    "tools/symphony_pm_adapter.py": true,
+    "plugins/symphony_pm/__init__.py": true,
+    "tests/tools/test_symphony_pm_adapter.py": true,
+    "tests/tools/test_symphony_pm_adapter_cancel_s2.py": true,
+    "tests/plugins/test_symphony_pm_plugin.py": true,
+    "docs/change-requests/CR-hermes-symphony-ingress-offline-20261106.md": true
+  },
+  "all_sampled_unchanged": true,
+  "host_architecture": "AMD64",
+  "r02_available": "owner-supplied Downloads original; expected bytes and SHA256 matched; section 6/S3/S4 and included voice matrix/security/fixtures read",
+  "source_evidence": {
+    "source-excerpts.md": "af0719b805da8416be5a11768be08783b9210d0c8903c06afe11002f95cb5b8b",
+    "source-reading-evidence.json": "1ce0c98bf3148c229d379917acae74da8d72840d39f2d38161c00b41b96e417e",
+    "CR-HERMES-MIGRATION-01-r0.3-candidate-delta.md": "187f220e8f1bc156cc9d45eb0b392da6bd195dd671341cdecbe5e6946c36213e"
+  },
+  "build_outputs_present": {
+    "ui-tui/dist": false,
+    "node_modules": false
+  },
+  "owner_sources_receipt": "owner-sources.json"
+}
