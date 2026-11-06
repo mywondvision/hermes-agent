@@ -31,7 +31,7 @@ TEXT_MAX = 4096
 CONSTRAINT_MAX = 2048
 CONSTRAINTS_MAX = 32
 
-_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,%d}" % (ID_MAX - 1))  # no path/space/shell
+_ID_RE = re.compile(rf"[A-Za-z0-9][A-Za-z0-9_.:-]{{0,{ID_MAX - 1}}}")  # no path/space/shell
 _HEX64_RE = re.compile(r"[0-9a-f]{64}")
 _COMMON = ("contract_version", "operation", "request_id", "project_ref")
 _JOB = ("job_ref", "expected_job_revision")
@@ -205,7 +205,7 @@ def parse_intent(payload: Any):
         return None, "REJECTED", ("INTENT_NOT_OBJECT",)
     try:  # every entry is read once; validation and the intent then use the same exact-str copy
         entries = {key: payload[key] for key in payload}
-    except Exception:
+    except Exception:  # health: allow BLE001 -- hostile Mapping (any raise) is a closed-schema refusal
         return None, "REJECTED", ("INTENT_NOT_OBJECT",)
     if not all(isinstance(k, str) for k in entries):
         return None, "REJECTED", ("INTENT_NOT_OBJECT",)
@@ -213,7 +213,7 @@ def parse_intent(payload: Any):
         payload = {_plain(k): _plain_deep(v) for k, v in entries.items()}
         if isinstance(payload.get("raw_constraints"), (list, tuple)):
             payload["raw_constraints"] = [_plain_deep(c) for c in payload["raw_constraints"]]
-    except Exception:
+    except Exception:  # health: allow BLE001 -- hostile str/collection subclass is a refusal, never an escape
         return None, "REJECTED", ("RAW_CONSTRAINTS",)
     op = payload.get("operation")
     if not isinstance(op, str) or op not in OPERATIONS:
@@ -719,7 +719,7 @@ _VERIFIERS = {"submit_intent": _verify_submit, "get_status": _verify_status,
 
 class SymphonyPmAdapter:
     """One explicit call -> at most one port invocation. No ledger, retry, thread or fallback."""
-    __slots__ = ("_port", "_trusted_issuers", "_scheduler_id")
+    __slots__ = ("_port", "_scheduler_id", "_trusted_issuers")
 
     def __init__(self, port: Optional[SymphonyPmPort] = None, *, trusted_issuers: tuple = (),
                  scheduler_id: str = ""):
@@ -743,11 +743,11 @@ class SymphonyPmAdapter:
             return _result(intent, "WAITING_FOR_AUTHORITY", True, ("TRUSTED_CONTEXT_ABSENT",))
         try:  # one read of every field; the caller's object is not consulted again
             snapshot = _copy_context(trusted_context)
-        except Exception:
+        except Exception:  # health: allow BLE001 -- unreadable trusted context fails closed before the port
             return _result(intent, "REJECTED", True, ("AUTHORITY_CONTEXT_UNREADABLE",))
         try:
             issues = self._authority_issues(intent, snapshot)
-        except Exception:  # malformed trusted input is a managed refusal, never an exception
+        except Exception:  # health: allow BLE001 -- malformed trusted input is a managed refusal, never an exception
             return _result(intent, "REJECTED", True, ("AUTHORITY_CONTEXT_INVALID",))
         if issues:
             return _result(intent, "REJECTED", True, issues)
@@ -756,7 +756,7 @@ class SymphonyPmAdapter:
         port_intent, port_context = replace(intent), _copy_context(snapshot)
         try:  # intent.operation is one of the three allowlisted port method names
             receipt = getattr(self._port, intent.operation)(port_intent, port_context)
-        except Exception:  # timeout/transport/unknown: same key, no second invocation
+        except Exception:  # health: allow BLE001 -- timeout/transport/unknown: same key, no second invocation
             return _result(intent, "UNKNOWN", True, ("PORT_OUTCOME_UNKNOWN",))
         if receipt is None:
             return _result(intent, "UNKNOWN", True, ("RESPONSE_LOST",))
@@ -764,7 +764,7 @@ class SymphonyPmAdapter:
             result = _VERIFIERS[intent.operation](_copy_receipt(receipt), intent, snapshot)
             canonical_bytes(result.to_dict())  # never return a success that the tool cannot encode
             return result
-        except Exception:  # one port call; malformed/unencodable output is unverified, not a crash
+        except Exception:  # health: allow BLE001 -- one port call; malformed/unencodable output is unverified, not a crash
             return _result(intent, "UNVERIFIED", True, ("RECEIPT_UNVERIFIABLE",))
 
 

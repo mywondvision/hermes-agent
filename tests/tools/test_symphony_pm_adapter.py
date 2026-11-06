@@ -175,7 +175,7 @@ class FakeScheduler:
             return pm.PmSubmissionReceipt(**self.common(request, context, outcome="REJECTED"))
         known = self.jobs.get(request.request_id)
         if known is None:
-            job_ref = "job-%d" % (len(self.jobs) + 1)
+            job_ref = f"job-{len(self.jobs) + 1}"
             known = (digest, job_ref, hashlib.sha256((job_ref + digest).encode()).hexdigest(), request)
             self.jobs[request.request_id] = known
             outcome = "SUBMITTED"
@@ -279,7 +279,7 @@ def load_frozen_s2():
         stray = [k for k in set(sys.modules) - before if not _owned(k)
                  and FROZEN in Path(getattr(sys.modules[k], "__file__", None) or REPO).resolve().parents]
         if stray or any(k == "orchestration" or k.startswith("orchestration.") for k in sys.modules):
-            raise S2Hold("source package collision: %s" % sorted(stray))
+            raise S2Hold(f"source package collision: {sorted(stray)}")
     finally:
         for name in [k for k in sys.modules if _owned(k)]:
             del sys.modules[name]
@@ -365,7 +365,7 @@ def test_case2_authority_and_allowlist():
         (dict(p, trusted_context=dataclasses.asdict(good)), "REJECTED"),
         (dict(p, grant="grant-ref-1"), "REJECTED"),
         (dict(p, permit={"reservation": "rsv-1"}), "REJECTED"),
-        (dict(p, **{"goal": oversized["goal"]}), "REJECTED"),
+        (dict(p, goal=oversized["goal"]), "REJECTED"),
         (dict(p, raw_constraints=oversized["raw_constraints"]), "REJECTED"),
         (dict(p, raw_constraints=["x"] * (pm.CONSTRAINTS_MAX + 1)), "REJECTED"),
         (dict(p, raw_constraints="do not push"), "REJECTED"),
@@ -1046,7 +1046,7 @@ def test_port_tampering_with_the_request_cannot_change_the_result_binding():
 
 # =============================================================================== number range, contract domain, str subclasses
 
-import collections.abc  # noqa: E402  (used only by the helpers below)
+import collections.abc  # E402 is not enabled; kept beside the helpers that use it
 
 HUGE = (("positive", 10 ** 400), ("negative", -(10 ** 400)), ("inf", float("inf")),
         ("minus_inf", float("-inf")))
