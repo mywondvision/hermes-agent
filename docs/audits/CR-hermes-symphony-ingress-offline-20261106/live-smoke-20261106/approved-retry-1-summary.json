@@ -1,0 +1,39 @@
+{
+  "offline_contract": "PASS_144_OF_144_UNCHANGED_SOURCE",
+  "live_success": "PASS",
+  "local_native_cancel_and_dedupe": "PASS",
+  "cancel_acceptance": "HOLD",
+  "external_effects_settled": "UNKNOWN",
+  "billing_settled": "UNKNOWN",
+  "native_attempts_this_approval": 2,
+  "native_attempts_overall": 3,
+  "prior_failed_config_attempts": 1,
+  "native_cancel_calls": 1,
+  "automatic_retries": 0,
+  "worker_stopped_independently": true,
+  "descendants_stopped_independently": true,
+  "before_cancel_active_processes": 7,
+  "after_cancel_active_processes": 0,
+  "retained_handles_signaled": 9,
+  "recovery": "SQLite connection and port reopen; controller handles stayed alive",
+  "result": {
+    "marker": "synthetic-95fc1f9965664af6866ef6bc3346dc68",
+    "value": 17,
+    "sum": 10
+  },
+  "usage_first_attempt": {
+    "input_tokens": 39949,
+    "cached_input_tokens": 19712,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 149,
+    "reasoning_output_tokens": 0
+  },
+  "source_preservation": {
+    "source_files_unchanged": true,
+    "driver_files_unchanged": true,
+    "hermes_head_unchanged": true,
+    "tracked_status_unchanged": true,
+    "frozen_manifest_unchanged": true
+  },
+  "frozen_files_verified": 21
+}

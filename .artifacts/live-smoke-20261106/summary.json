@@ -1,0 +1,12 @@
+{
+  "offline_contract": "PASS_144_OF_144",
+  "live_success": "FAIL_CONFIG_BEFORE_MODEL_SESSION",
+  "live_cancel": "NOT_RUN_HOLD",
+  "native_attempts": 1,
+  "native_cancel_calls": 0,
+  "automatic_native_retries": 0,
+  "mechanical_process_probe": "PASS_WITHOUT_MODEL",
+  "frozen_files_verified": 21,
+  "reservation": "POSSIBLY_CONSUMED_HELD",
+  "billing_settled": "UNKNOWN"
+}

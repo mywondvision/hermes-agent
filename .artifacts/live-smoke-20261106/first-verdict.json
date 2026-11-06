@@ -1,0 +1,9 @@
+{
+  "status": "FAIL_CONFIG_BEFORE_MODEL_SESSION",
+  "request": "smoke-request-1",
+  "job": "job-2cde181b96a343298a2d939ce2f45fe9",
+  "attempt": "attempt-c1907d8444114e87b22a1aa2b5d56f2f",
+  "result_json_received": false,
+  "native_attempts": 1,
+  "hold": true
+}

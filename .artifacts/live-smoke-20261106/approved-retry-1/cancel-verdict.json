@@ -1,0 +1,92 @@
+{
+  "status": "HOLD",
+  "mechanical_checks": "PASS",
+  "job": "job-c874f68244cc4a4d9d40669cd054c880",
+  "attempt": "attempt-426b7b910de94ec3b1856368c9322b40",
+  "target": {
+    "namespace": "live-smoke-20261106",
+    "project": "synthetic-smoke-only",
+    "job": "job-c874f68244cc4a4d9d40669cd054c880",
+    "revision": "a8e1fe3ac37ad2681136917fc6b4c6e35f10673df4d6510b1d206697e7437653",
+    "attempt": "attempt-426b7b910de94ec3b1856368c9322b40",
+    "request_digest": "b8e2dc6b01d627aa0e1b4a3191fc7f2976b64537145a6fd2c0d2030477ae70f5",
+    "controller_epoch": 2,
+    "runtime": "codex",
+    "session": "01a1b1c4-c4ed-7ba2-800f-efa6d3c78949",
+    "process": "26072",
+    "start": "134384574242021339"
+  },
+  "lost_reply": {
+    "contract_version": "hermes-pm-ingress/v1",
+    "hold": true,
+    "issues": [
+      "RESPONSE_LOST"
+    ],
+    "operation": "request_cancel",
+    "outcome": "UNKNOWN",
+    "payload_digest": "3c369b407d4e5c32a7cfb80fea2515c564629b5f02ba03364add646467c8b538",
+    "request_id": "cancel-lost-response",
+    "view": {}
+  },
+  "replay": {
+    "contract_version": "hermes-pm-ingress/v1",
+    "hold": true,
+    "issues": [],
+    "operation": "request_cancel",
+    "outcome": "CANCEL_REQUESTED",
+    "payload_digest": "3c369b407d4e5c32a7cfb80fea2515c564629b5f02ba03364add646467c8b538",
+    "request_id": "cancel-lost-response",
+    "view": {
+      "cancel_state": "CANCEL_REQUESTED",
+      "observed_at": 1793983836.456623,
+      "reservation": "POSSIBLY_CONSUMED_HELD",
+      "retention": [],
+      "scheduler_outcome": "ALREADY_REQUESTED",
+      "scheduler_reservation_state": "POSSIBLY_CONSUMED",
+      "uncertainty": [
+        "BILLING_AND_EXTERNAL_EFFECTS_UNKNOWN"
+      ],
+      "verified_claims": [],
+      "worker_stopped": false
+    }
+  },
+  "new_id_replay": {
+    "contract_version": "hermes-pm-ingress/v1",
+    "hold": true,
+    "issues": [],
+    "operation": "request_cancel",
+    "outcome": "CANCEL_REQUESTED",
+    "payload_digest": "3c369b407d4e5c32a7cfb80fea2515c564629b5f02ba03364add646467c8b538",
+    "request_id": "cancel-redelivery-new-id",
+    "view": {
+      "cancel_state": "CANCEL_REQUESTED",
+      "observed_at": 1793983836.4616046,
+      "reservation": "POSSIBLY_CONSUMED_HELD",
+      "retention": [],
+      "scheduler_outcome": "ALREADY_REQUESTED",
+      "scheduler_reservation_state": "POSSIBLY_CONSUMED",
+      "uncertainty": [
+        "BILLING_AND_EXTERNAL_EFFECTS_UNKNOWN"
+      ],
+      "verified_claims": [],
+      "worker_stopped": false
+    }
+  },
+  "native_cancel_calls": 1,
+  "native_launches_total": 3,
+  "independent_tree_stopped": true,
+  "retained_handles_signaled": {
+    "26072": true,
+    "30112": true,
+    "20636": true,
+    "32828": true,
+    "27484": true,
+    "29004": true,
+    "33152": true,
+    "22208": true,
+    "22824": true
+  },
+  "external_effects_settled": "UNKNOWN",
+  "billing_settled": "UNKNOWN",
+  "recovery": "SQLite connection and port reopened; controller/process handles remained live"
+}

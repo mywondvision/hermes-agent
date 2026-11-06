@@ -1,0 +1,10 @@
+{
+  "status": "NOT_RUN_HOLD",
+  "native_attempts": 0,
+  "native_cancel_calls": 0,
+  "reason": "First read-only JSON result missing; no automatic retry",
+  "worker_stopped": "UNKNOWN",
+  "descendants_stopped": "UNKNOWN",
+  "external_effects_settled": "UNKNOWN",
+  "billing_settled": "UNKNOWN"
+}

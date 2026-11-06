@@ -1,0 +1,133 @@
+{
+  "command": [
+    "D:\\AI\\envs\\hermes-pm-ingress-test-20261106\\Scripts\\python.exe",
+    "-B",
+    "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\live-smoke-20261106\\winjob.py",
+    "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\live-smoke-20261106\\approved-retry-1\\attempt-2\\observer-target.json"
+  ],
+  "proof": {
+    "observed_at": 1793983835.7221532,
+    "active": 7,
+    "total": 21,
+    "terminated": 0,
+    "pids": [
+      26072,
+      30112,
+      32828,
+      27484,
+      22208,
+      22824,
+      15888
+    ],
+    "members": [
+      {
+        "pid": 26072,
+        "start": 1793983824.202134,
+        "name": "codex.exe",
+        "ppid": 26164
+      },
+      {
+        "pid": 30112,
+        "start": 1793983824.415166,
+        "name": "conhost.exe",
+        "ppid": 26072
+      },
+      {
+        "pid": 32828,
+        "start": 1793983831.0077705,
+        "name": "codex-code-mode-host.exe",
+        "ppid": 26072
+      },
+      {
+        "pid": 27484,
+        "start": 1793983831.0311391,
+        "name": "conhost.exe",
+        "ppid": 32828
+      },
+      {
+        "pid": 22208,
+        "start": 1793983834.5868232,
+        "name": "powershell.exe",
+        "ppid": 26072
+      },
+      {
+        "pid": 22824,
+        "start": 1793983834.6528032,
+        "name": "conhost.exe",
+        "ppid": 22208
+      },
+      {
+        "pid": 15888,
+        "start": 1793983835.2419796,
+        "name": "powershell.exe",
+        "ppid": 22208
+      }
+    ],
+    "known_processes": [
+      {
+        "pid": 26072,
+        "start_ticks": "134384574242021339",
+        "actual_start_ticks": "134384574242021339",
+        "identity_matches": true,
+        "signaled": false
+      },
+      {
+        "pid": 30112,
+        "start_ticks": "134384574244151660",
+        "actual_start_ticks": "134384574244151660",
+        "identity_matches": true,
+        "signaled": false
+      },
+      {
+        "pid": 20636,
+        "start_ticks": "134384574262691215",
+        "actual_start_ticks": "134384574262691215",
+        "identity_matches": true,
+        "signaled": true
+      },
+      {
+        "pid": 32828,
+        "start_ticks": "134384574310077706",
+        "actual_start_ticks": "134384574310077706",
+        "identity_matches": true,
+        "signaled": false
+      },
+      {
+        "pid": 27484,
+        "start_ticks": "134384574310311391",
+        "actual_start_ticks": "134384574310311391",
+        "identity_matches": true,
+        "signaled": false
+      },
+      {
+        "pid": 29004,
+        "start_ticks": "134384574312152506",
+        "actual_start_ticks": "134384574312152506",
+        "identity_matches": true,
+        "signaled": true
+      },
+      {
+        "pid": 33152,
+        "start_ticks": "134384574312652772",
+        "actual_start_ticks": "134384574312652772",
+        "identity_matches": true,
+        "signaled": true
+      },
+      {
+        "pid": 22208,
+        "start_ticks": "134384574345868232",
+        "actual_start_ticks": "134384574345868232",
+        "identity_matches": true,
+        "signaled": false
+      },
+      {
+        "pid": 22824,
+        "start_ticks": "134384574346528033",
+        "actual_start_ticks": "134384574346528033",
+        "identity_matches": true,
+        "signaled": false
+      }
+    ],
+    "tree_stopped": false
+  }
+}

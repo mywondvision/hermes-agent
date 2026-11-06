@@ -1,0 +1,25 @@
+{
+  "job_object": "Local\\HermesSmoke-process-probe-858bdca5b47f45338c11f3481df5b39f",
+  "known_processes": [
+    {
+      "pid": 32348,
+      "start_ticks": "134384566041998267"
+    },
+    {
+      "pid": 20200,
+      "start_ticks": "134384566042843023"
+    },
+    {
+      "pid": 24584,
+      "start_ticks": "134384566044533657"
+    },
+    {
+      "pid": 33108,
+      "start_ticks": "134384566043124141"
+    },
+    {
+      "pid": 25668,
+      "start_ticks": "134384566044700651"
+    }
+  ]
+}

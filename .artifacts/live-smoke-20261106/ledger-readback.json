@@ -1,0 +1,41 @@
+{
+  "writers": [
+    {
+      "namespace": "live-smoke-20261106",
+      "owner": "single-local-controller",
+      "epoch": 1,
+      "expires": 1793983973.4337347
+    }
+  ],
+  "operations": [
+    {
+      "namespace": "live-smoke-20261106",
+      "project": "synthetic-smoke-only",
+      "request_id": "smoke-request-1",
+      "binding": "d7fa88c82a632696469cb5602c57a11c1f35fa247504245f50afd6f7ba6b640c",
+      "job": "job-2cde181b96a343298a2d939ce2f45fe9",
+      "revision": "a659a205e03e87d86f3e397cec383f079ab7f75b5a93035a72cd5ec346c21568",
+      "effect_key": null
+    }
+  ],
+  "jobs": [
+    {
+      "namespace": "live-smoke-20261106",
+      "project": "synthetic-smoke-only",
+      "job": "job-2cde181b96a343298a2d939ce2f45fe9",
+      "revision": "a659a205e03e87d86f3e397cec383f079ab7f75b5a93035a72cd5ec346c21568",
+      "contract": "93ce6a3d0ede16535563fdd4c2463fe903e152ddb9dd95aae68b5d935e07db9a",
+      "target": "{\"namespace\": \"live-smoke-20261106\", \"project\": \"synthetic-smoke-only\", \"job\": \"job-2cde181b96a343298a2d939ce2f45fe9\", \"revision\": \"a659a205e03e87d86f3e397cec383f079ab7f75b5a93035a72cd5ec346c21568\", \"attempt\": \"attempt-c1907d8444114e87b22a1aa2b5d56f2f\", \"request_digest\": \"37f91de0088b63df00c3f3ed44cb32a20755ef849c1e7c5b9ccaf7b32993a5d3\", \"controller_epoch\": 1, \"runtime\": \"codex\", \"session\": \"attempt-c1907d8444114e87b22a1aa2b5d56f2f\", \"process\": \"33568\", \"start\": \"134384567844359066\"}"
+    }
+  ],
+  "launches": [
+    {
+      "job": "job-2cde181b96a343298a2d939ce2f45fe9",
+      "attempt": "attempt-c1907d8444114e87b22a1aa2b5d56f2f",
+      "state": "FAILED_CONFIG_HOLD",
+      "binding": "{\"pid\": 33568, \"start_ticks\": \"134384567844359066\", \"job_object\": \"Local\\\\HermesSmoke-attempt-c1907d8444114e87b22a1aa2b5d56f2f\"}",
+      "result": "{\"status\": \"HOLD\", \"successful_live_launch\": \"FAIL_CONFIG_BEFORE_MODEL_SESSION\", \"cancel_live\": \"NOT_RUN_HOLD_FIRST_RESULT_MISSING\", \"native_attempts\": 1, \"native_cancel_calls\": 0, \"native_session\": null, \"automatic_retry\": false, \"job\": \"job-2cde181b96a343298a2d939ce2f45fe9\", \"request\": \"smoke-request-1\", \"attempt\": \"attempt-c1907d8444114e87b22a1aa2b5d56f2f\", \"result\": {\"kind\": \"review\", \"runId\": \"attempt-c1907d8444114e87b22a1aa2b5d56f2f\", \"worktree\": \"D:\\\\AI\\\\worktrees\\\\hermes-pm-ingress-20261031\\\\.artifacts\\\\live-smoke-20261106\\\\workspace-1\", \"returncode\": 1, \"timedOut\": false, \"stdout\": \"\", \"stderr\": \"\"}, \"stderr\": \"Error loading config.toml: model_providers contains reserved built-in provider IDs: `openai`. Built-in providers cannot be overridden. Rename your custom provider (for example, `openai-custom`).\\nin `model_providers`\\n\\n\", \"root_process_readback\": {\"pid\": 33568, \"expected_start_ticks\": \"134384567844359066\", \"absent\": true, \"error\": 87}, \"named_job_readback\": {\"absent\": true, \"error\": 2}, \"descendants_independent_terminal_proof\": \"UNKNOWN: job closed after active=0 controller readback\", \"external_effects_settled\": \"UNKNOWN\", \"billing_settled\": \"UNKNOWN\", \"retry_knobs_on_builtin_openai\": \"UNSUPPORTED_BY_INSTALLED_CLI\", \"follow_up\": \"Owner direction required before any new exec; no automatic continuation\"}"
+    }
+  ],
+  "effects": []
+}

@@ -1,0 +1,16 @@
+{
+  "pid": 33568,
+  "start_ticks": "134384567844359066",
+  "job_object": "Local\\HermesSmoke-attempt-c1907d8444114e87b22a1aa2b5d56f2f",
+  "namespace": "live-smoke-20261106",
+  "project": "synthetic-smoke-only",
+  "job": "job-2cde181b96a343298a2d939ce2f45fe9",
+  "revision": "a659a205e03e87d86f3e397cec383f079ab7f75b5a93035a72cd5ec346c21568",
+  "attempt": "attempt-c1907d8444114e87b22a1aa2b5d56f2f",
+  "request_digest": "37f91de0088b63df00c3f3ed44cb32a20755ef849c1e7c5b9ccaf7b32993a5d3",
+  "controller_epoch": 1,
+  "runtime": "codex",
+  "session": "attempt-c1907d8444114e87b22a1aa2b5d56f2f",
+  "process": "33568",
+  "start": "134384567844359066"
+}

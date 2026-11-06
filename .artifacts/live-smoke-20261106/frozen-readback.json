@@ -1,0 +1,110 @@
+{
+  "status": "PASS",
+  "files": [
+    {
+      "path": "docs/runbooks/primary-job-execution.md",
+      "size_matches": true,
+      "sha256_matches": true
+    },
+    {
+      "path": "schemas/v2/defs.schema.json",
+      "size_matches": true,
+      "sha256_matches": true
+    },
+    {
+      "path": "schemas/v2/peer-result.schema.json",
+      "size_matches": true,
+      "sha256_matches": true
+    },
+    {
+      "path": "schemas/v2/primary-job.schema.json",
+      "size_matches": true,
+      "sha256_matches": true
+    },
+    {
+      "path": "schemas/v2/primary-result.schema.json",
+      "size_matches": true,
+      "sha256_matches": true
+    },
+    {
+      "path": "tests/unit/test_primary_job.py",
+      "size_matches": true,
+      "sha256_matches": true
+    },
+    {
+      "path": "tools/catalog/__init__.py",
+      "size_matches": true,
+      "sha256_matches": true
+    },
+    {
+      "path": "tools/catalog/jsonschema_lite.py",
+      "size_matches": true,
+      "sha256_matches": true
+    },
+    {
+      "path": "tools/catalog/peer_boundary.py",
+      "size_matches": true,
+      "sha256_matches": true
+    },
+    {
+      "path": "tools/catalog/scan.py",
+      "size_matches": true,
+      "sha256_matches": true
+    },
+    {
+      "path": "tools/orchestration/__init__.py",
+      "size_matches": true,
+      "sha256_matches": true
+    },
+    {
+      "path": "tools/orchestration/classifier.py",
+      "size_matches": true,
+      "sha256_matches": true
+    },
+    {
+      "path": "tools/orchestration/controller.py",
+      "size_matches": true,
+      "sha256_matches": true
+    },
+    {
+      "path": "tools/orchestration/drivers.py",
+      "size_matches": true,
+      "sha256_matches": true
+    },
+    {
+      "path": "tools/orchestration/isolation.py",
+      "size_matches": true,
+      "sha256_matches": true
+    },
+    {
+      "path": "tools/orchestration/maintainer.py",
+      "size_matches": true,
+      "sha256_matches": true
+    },
+    {
+      "path": "tools/orchestration/policy.py",
+      "size_matches": true,
+      "sha256_matches": true
+    },
+    {
+      "path": "tools/orchestration/primary.py",
+      "size_matches": true,
+      "sha256_matches": true
+    },
+    {
+      "path": "tools/orchestration/process.py",
+      "size_matches": true,
+      "sha256_matches": true
+    },
+    {
+      "path": "tools/orchestration/result.py",
+      "size_matches": true,
+      "sha256_matches": true
+    },
+    {
+      "path": "tools/orchestration/state.py",
+      "size_matches": true,
+      "sha256_matches": true
+    }
+  ]
+}

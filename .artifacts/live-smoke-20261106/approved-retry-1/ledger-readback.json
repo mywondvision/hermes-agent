@@ -1,0 +1,118 @@
+{
+  "writers": [
+    {
+      "namespace": "live-smoke-20261106",
+      "owner": "single-local-controller",
+      "epoch": 2,
+      "expires": 1793984706.3799143
+    }
+  ],
+  "operations": [
+    {
+      "namespace": "live-smoke-20261106",
+      "project": "synthetic-smoke-only",
+      "request_id": "smoke-request-1",
+      "binding": "d7fa88c82a632696469cb5602c57a11c1f35fa247504245f50afd6f7ba6b640c",
+      "job": "job-2cde181b96a343298a2d939ce2f45fe9",
+      "revision": "a659a205e03e87d86f3e397cec383f079ab7f75b5a93035a72cd5ec346c21568",
+      "effect_key": null
+    },
+    {
+      "namespace": "live-smoke-20261106",
+      "project": "synthetic-smoke-only",
+      "request_id": "smoke-approved-retry-1-request-1",
+      "binding": "3b0941d22e955f6e8e3078baf2f93704532d4791f9c30537c150b57469782523",
+      "job": "job-c66d2f6997754d30823966e8feecf42f",
+      "revision": "a7ccf7bae7b956896f7144300d2feeea263d60e8d5526f178671ae014de28e57",
+      "effect_key": null
+    },
+    {
+      "namespace": "live-smoke-20261106",
+      "project": "synthetic-smoke-only",
+      "request_id": "smoke-approved-retry-1-request-2",
+      "binding": "cb2e71625c45c97ca6de89cee3a80acf382816c90dde2c6f8edbedf5e11c4cad",
+      "job": "job-c874f68244cc4a4d9d40669cd054c880",
+      "revision": "a8e1fe3ac37ad2681136917fc6b4c6e35f10673df4d6510b1d206697e7437653",
+      "effect_key": null
+    },
+    {
+      "namespace": "live-smoke-20261106",
+      "project": "synthetic-smoke-only",
+      "request_id": "cancel-lost-response",
+      "binding": "a5853d79cbab597d7597ce7edfe6de52e534ba12ef0301b5ead4d4275418a4b1",
+      "job": "job-c874f68244cc4a4d9d40669cd054c880",
+      "revision": "a8e1fe3ac37ad2681136917fc6b4c6e35f10673df4d6510b1d206697e7437653",
+      "effect_key": "36b51a3c1fb40fa8566f91e69d37cf999cc84939928ad8f927bf4d995485c6c4"
+    },
+    {
+      "namespace": "live-smoke-20261106",
+      "project": "synthetic-smoke-only",
+      "request_id": "cancel-redelivery-new-id",
+      "binding": "a5853d79cbab597d7597ce7edfe6de52e534ba12ef0301b5ead4d4275418a4b1",
+      "job": "job-c874f68244cc4a4d9d40669cd054c880",
+      "revision": "a8e1fe3ac37ad2681136917fc6b4c6e35f10673df4d6510b1d206697e7437653",
+      "effect_key": "36b51a3c1fb40fa8566f91e69d37cf999cc84939928ad8f927bf4d995485c6c4"
+    }
+  ],
+  "jobs": [
+    {
+      "namespace": "live-smoke-20261106",
+      "project": "synthetic-smoke-only",
+      "job": "job-2cde181b96a343298a2d939ce2f45fe9",
+      "revision": "a659a205e03e87d86f3e397cec383f079ab7f75b5a93035a72cd5ec346c21568",
+      "contract": "93ce6a3d0ede16535563fdd4c2463fe903e152ddb9dd95aae68b5d935e07db9a",
+      "target": "{\"namespace\": \"live-smoke-20261106\", \"project\": \"synthetic-smoke-only\", \"job\": \"job-2cde181b96a343298a2d939ce2f45fe9\", \"revision\": \"a659a205e03e87d86f3e397cec383f079ab7f75b5a93035a72cd5ec346c21568\", \"attempt\": \"attempt-c1907d8444114e87b22a1aa2b5d56f2f\", \"request_digest\": \"37f91de0088b63df00c3f3ed44cb32a20755ef849c1e7c5b9ccaf7b32993a5d3\", \"controller_epoch\": 1, \"runtime\": \"codex\", \"session\": \"attempt-c1907d8444114e87b22a1aa2b5d56f2f\", \"process\": \"33568\", \"start\": \"134384567844359066\"}"
+    },
+    {
+      "namespace": "live-smoke-20261106",
+      "project": "synthetic-smoke-only",
+      "job": "job-c66d2f6997754d30823966e8feecf42f",
+      "revision": "a7ccf7bae7b956896f7144300d2feeea263d60e8d5526f178671ae014de28e57",
+      "contract": "2c437a253ec83133d26e74ee1cad69277a0f28f97d644ddda6d293c437f4e89c",
+      "target": "{\"namespace\": \"live-smoke-20261106\", \"project\": \"synthetic-smoke-only\", \"job\": \"job-c66d2f6997754d30823966e8feecf42f\", \"revision\": \"a7ccf7bae7b956896f7144300d2feeea263d60e8d5526f178671ae014de28e57\", \"attempt\": \"attempt-dfc5e5917d5b43f884d93fc8195ebdc1\", \"request_digest\": \"76def36c7ca1dbb72f1e88161f8bdb5ba0aaceccf1ea72c4808c06ba52035f4c\", \"controller_epoch\": 2, \"runtime\": \"codex\", \"session\": \"01a1b1c4-90eb-7c63-bcf2-3ec6c7392579\", \"process\": \"23172\", \"start\": \"134384574108811070\"}"
+    },
+    {
+      "namespace": "live-smoke-20261106",
+      "project": "synthetic-smoke-only",
+      "job": "job-c874f68244cc4a4d9d40669cd054c880",
+      "revision": "a8e1fe3ac37ad2681136917fc6b4c6e35f10673df4d6510b1d206697e7437653",
+      "contract": "2c437a253ec83133d26e74ee1cad69277a0f28f97d644ddda6d293c437f4e89c",
+      "target": "{\"namespace\": \"live-smoke-20261106\", \"project\": \"synthetic-smoke-only\", \"job\": \"job-c874f68244cc4a4d9d40669cd054c880\", \"revision\": \"a8e1fe3ac37ad2681136917fc6b4c6e35f10673df4d6510b1d206697e7437653\", \"attempt\": \"attempt-426b7b910de94ec3b1856368c9322b40\", \"request_digest\": \"b8e2dc6b01d627aa0e1b4a3191fc7f2976b64537145a6fd2c0d2030477ae70f5\", \"controller_epoch\": 2, \"runtime\": \"codex\", \"session\": \"01a1b1c4-c4ed-7ba2-800f-efa6d3c78949\", \"process\": \"26072\", \"start\": \"134384574242021339\"}"
+    }
+  ],
+  "launches": [
+    {
+      "job": "job-2cde181b96a343298a2d939ce2f45fe9",
+      "attempt": "attempt-c1907d8444114e87b22a1aa2b5d56f2f",
+      "state": "FAILED_CONFIG_HOLD",
+      "binding": "{\"pid\": 33568, \"start_ticks\": \"134384567844359066\", \"job_object\": \"Local\\\\HermesSmoke-attempt-c1907d8444114e87b22a1aa2b5d56f2f\"}",
+      "result": "{\"status\": \"HOLD\", \"successful_live_launch\": \"FAIL_CONFIG_BEFORE_MODEL_SESSION\", \"cancel_live\": \"NOT_RUN_HOLD_FIRST_RESULT_MISSING\", \"native_attempts\": 1, \"native_cancel_calls\": 0, \"native_session\": null, \"automatic_retry\": false, \"job\": \"job-2cde181b96a343298a2d939ce2f45fe9\", \"request\": \"smoke-request-1\", \"attempt\": \"attempt-c1907d8444114e87b22a1aa2b5d56f2f\", \"result\": {\"kind\": \"review\", \"runId\": \"attempt-c1907d8444114e87b22a1aa2b5d56f2f\", \"worktree\": \"D:\\\\AI\\\\worktrees\\\\hermes-pm-ingress-20261031\\\\.artifacts\\\\live-smoke-20261106\\\\workspace-1\", \"returncode\": 1, \"timedOut\": false, \"stdout\": \"\", \"stderr\": \"\"}, \"stderr\": \"Error loading config.toml: model_providers contains reserved built-in provider IDs: `openai`. Built-in providers cannot be overridden. Rename your custom provider (for example, `openai-custom`).\\nin `model_providers`\\n\\n\", \"root_process_readback\": {\"pid\": 33568, \"expected_start_ticks\": \"134384567844359066\", \"absent\": true, \"error\": 87}, \"named_job_readback\": {\"absent\": true, \"error\": 2}, \"descendants_independent_terminal_proof\": \"UNKNOWN: job closed after active=0 controller readback\", \"external_effects_settled\": \"UNKNOWN\", \"billing_settled\": \"UNKNOWN\", \"retry_knobs_on_builtin_openai\": \"UNSUPPORTED_BY_INSTALLED_CLI\", \"follow_up\": \"Owner direction required before any new exec; no automatic continuation\"}"
+    },
+    {
+      "job": "job-c66d2f6997754d30823966e8feecf42f",
+      "attempt": "attempt-dfc5e5917d5b43f884d93fc8195ebdc1",
+      "state": "TERMINAL_SUCCESS",
+      "binding": "{\"pid\": 23172, \"start_ticks\": \"134384574108811070\", \"job_object\": \"Local\\\\HermesSmoke-attempt-dfc5e5917d5b43f884d93fc8195ebdc1\"}",
+      "result": "{\"verdict\": {\"status\": \"PASS\", \"job\": \"job-c66d2f6997754d30823966e8feecf42f\", \"attempt\": \"attempt-dfc5e5917d5b43f884d93fc8195ebdc1\", \"target\": {\"namespace\": \"live-smoke-20261106\", \"project\": \"synthetic-smoke-only\", \"job\": \"job-c66d2f6997754d30823966e8feecf42f\", \"revision\": \"a7ccf7bae7b956896f7144300d2feeea263d60e8d5526f178671ae014de28e57\", \"attempt\": \"attempt-dfc5e5917d5b43f884d93fc8195ebdc1\", \"request_digest\": \"76def36c7ca1dbb72f1e88161f8bdb5ba0aaceccf1ea72c4808c06ba52035f4c\", \"controller_epoch\": 2, \"runtime\": \"codex\", \"session\": \"01a1b1c4-90eb-7c63-bcf2-3ec6c7392579\", \"process\": \"23172\", \"start\": \"134384574108811070\"}, \"result\": {\"marker\": \"synthetic-95fc1f9965664af6866ef6bc3346dc68\", \"value\": 17, \"sum\": 10}, \"native_launches\": 1, \"observer_tree_stopped\": true, \"billing_settled\": \"UNKNOWN\"}, \"terminal_observer\": \"D:\\\\AI\\\\worktrees\\\\hermes-pm-ingress-20261031\\\\.artifacts\\\\live-smoke-20261106\\\\approved-retry-1\\\\attempt-1\\\\terminal-observer.json\", \"terminal_observer_sha256\": \"b4e94a3e2633ffa137ab09d6b8b00d59b4e1439fce674d439c2d8e7aacfaf0fe\", \"driver_result\": {\"kind\": \"review\", \"runId\": \"attempt-dfc5e5917d5b43f884d93fc8195ebdc1\", \"worktree\": \"D:\\\\AI\\\\worktrees\\\\hermes-pm-ingress-20261031\\\\.artifacts\\\\live-smoke-20261106\\\\approved-retry-1\\\\workspace-1\", \"returncode\": 0, \"timedOut\": false, \"stdout\": \"\", \"stderr\": \"\"}}"
+    },
+    {
+      "job": "job-c874f68244cc4a4d9d40669cd054c880",
+      "attempt": "attempt-426b7b910de94ec3b1856368c9322b40",
+      "state": "TERMINAL_LOCAL_CANCEL_HOLD",
+      "binding": "{\"pid\": 26072, \"start_ticks\": \"134384574242021339\", \"job_object\": \"Local\\\\HermesSmoke-attempt-426b7b910de94ec3b1856368c9322b40\"}",
+      "result": "{\"verdict\": {\"status\": \"HOLD\", \"mechanical_checks\": \"PASS\", \"job\": \"job-c874f68244cc4a4d9d40669cd054c880\", \"attempt\": \"attempt-426b7b910de94ec3b1856368c9322b40\", \"target\": {\"namespace\": \"live-smoke-20261106\", \"project\": \"synthetic-smoke-only\", \"job\": \"job-c874f68244cc4a4d9d40669cd054c880\", \"revision\": \"a8e1fe3ac37ad2681136917fc6b4c6e35f10673df4d6510b1d206697e7437653\", \"attempt\": \"attempt-426b7b910de94ec3b1856368c9322b40\", \"request_digest\": \"b8e2dc6b01d627aa0e1b4a3191fc7f2976b64537145a6fd2c0d2030477ae70f5\", \"controller_epoch\": 2, \"runtime\": \"codex\", \"session\": \"01a1b1c4-c4ed-7ba2-800f-efa6d3c78949\", \"process\": \"26072\", \"start\": \"134384574242021339\"}, \"lost_reply\": {\"contract_version\": \"hermes-pm-ingress/v1\", \"hold\": true, \"issues\": [\"RESPONSE_LOST\"], \"operation\": \"request_cancel\", \"outcome\": \"UNKNOWN\", \"payload_digest\": \"3c369b407d4e5c32a7cfb80fea2515c564629b5f02ba03364add646467c8b538\", \"request_id\": \"cancel-lost-response\", \"view\": {}}, \"replay\": {\"contract_version\": \"hermes-pm-ingress/v1\", \"hold\": true, \"issues\": [], \"operation\": \"request_cancel\", \"outcome\": \"CANCEL_REQUESTED\", \"payload_digest\": \"3c369b407d4e5c32a7cfb80fea2515c564629b5f02ba03364add646467c8b538\", \"request_id\": \"cancel-lost-response\", \"view\": {\"cancel_state\": \"CANCEL_REQUESTED\", \"observed_at\": 1793983836.456623, \"reservation\": \"POSSIBLY_CONSUMED_HELD\", \"retention\": [], \"scheduler_outcome\": \"ALREADY_REQUESTED\", \"scheduler_reservation_state\": \"POSSIBLY_CONSUMED\", \"uncertainty\": [\"BILLING_AND_EXTERNAL_EFFECTS_UNKNOWN\"], \"verified_claims\": [], \"worker_stopped\": false}}, \"new_id_replay\": {\"contract_version\": \"hermes-pm-ingress/v1\", \"hold\": true, \"issues\": [], \"operation\": \"request_cancel\", \"outcome\": \"CANCEL_REQUESTED\", \"payload_digest\": \"3c369b407d4e5c32a7cfb80fea2515c564629b5f02ba03364add646467c8b538\", \"request_id\": \"cancel-redelivery-new-id\", \"view\": {\"cancel_state\": \"CANCEL_REQUESTED\", \"observed_at\": 1793983836.4616046, \"reservation\": \"POSSIBLY_CONSUMED_HELD\", \"retention\": [], \"scheduler_outcome\": \"ALREADY_REQUESTED\", \"scheduler_reservation_state\": \"POSSIBLY_CONSUMED\", \"uncertainty\": [\"BILLING_AND_EXTERNAL_EFFECTS_UNKNOWN\"], \"verified_claims\": [], \"worker_stopped\": false}}, \"native_cancel_calls\": 1, \"native_launches_total\": 3, \"independent_tree_stopped\": true, \"retained_handles_signaled\": {\"26072\": true, \"30112\": true, \"20636\": true, \"32828\": true, \"27484\": true, \"29004\": true, \"33152\": true, \"22208\": true, \"22824\": true}, \"external_effects_settled\": \"UNKNOWN\", \"billing_settled\": \"UNKNOWN\", \"recovery\": \"SQLite connection and port reopened; controller/process handles remained live\"}, \"terminal_observer\": \"D:\\\\AI\\\\worktrees\\\\hermes-pm-ingress-20261031\\\\.artifacts\\\\live-smoke-20261106\\\\approved-retry-1\\\\attempt-2\\\\terminal-observer.json\", \"terminal_observer_sha256\": \"815b20aa9651cb4ac9a3f66375863d398beb73913c13fc55eeeefd8b9fb9d9c0\", \"driver_result\": {\"kind\": \"review\", \"runId\": \"attempt-426b7b910de94ec3b1856368c9322b40\", \"worktree\": \"D:\\\\AI\\\\worktrees\\\\hermes-pm-ingress-20261031\\\\.artifacts\\\\live-smoke-20261106\\\\approved-retry-1\\\\workspace-2\", \"returncode\": 123, \"timedOut\": false, \"stdout\": \"\", \"stderr\": \"\"}}"
+    }
+  ],
+  "effects": [
+    {
+      "effect_key": "36b51a3c1fb40fa8566f91e69d37cf999cc84939928ad8f927bf4d995485c6c4",
+      "target": "{\"namespace\": \"live-smoke-20261106\", \"project\": \"synthetic-smoke-only\", \"job\": \"job-c874f68244cc4a4d9d40669cd054c880\", \"revision\": \"a8e1fe3ac37ad2681136917fc6b4c6e35f10673df4d6510b1d206697e7437653\", \"attempt\": \"attempt-426b7b910de94ec3b1856368c9322b40\", \"request_digest\": \"b8e2dc6b01d627aa0e1b4a3191fc7f2976b64537145a6fd2c0d2030477ae70f5\", \"controller_epoch\": 2, \"runtime\": \"codex\", \"session\": \"01a1b1c4-c4ed-7ba2-800f-efa6d3c78949\", \"process\": \"26072\", \"start\": \"134384574242021339\"}",
+      "state": "CANCEL_REQUESTED",
+      "dispatch_epoch": 2,
+      "cancel_at": 1793983835.7653058,
+      "fence_ref": "local-controller-exact-binding",
+      "proof": null,
+      "proof_epoch": null
+    }
+  ]
+}

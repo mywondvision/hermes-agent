@@ -1,0 +1,15 @@
+{
+  "source": "current user reply + explicit third-attempt approval",
+  "retry_reply": "Если ты исправил, то повторяй",
+  "cancel_reply": "Да, разрешаю третью для отмены",
+  "model": "gpt-6.1-sol",
+  "effort": "high",
+  "environment": "same current Windows host, existing Codex authentication",
+  "max_native_attempts": 2,
+  "max_native_attempts_overall": 3,
+  "previous_native_attempts": 1,
+  "automatic_retries": false,
+  "scope": "one corrected read-only retry, then one cancel attempt only after first JSON verification",
+  "production": false,
+  "owner_store": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\live-smoke-20261106\\owner.sqlite"
+}

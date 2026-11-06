@@ -1,0 +1,184 @@
+{
+  "schemaVersion": 1,
+  "crId": "CR-hermes-symphony-ingress-offline-20261106",
+  "reviewedRevision": {
+    "exact": "sha256:2b81bd93c646f49e1b48f28cef36f6623663eaf4f6850cad08f735dcadcdb7fd",
+    "normalized": "sha256:03ce595b7ad07391373eb1d7226fc2c69e5fa982f3b2e56930234e834d084f6d"
+  },
+  "verdict": "PASS",
+  "reviewer": {
+    "mode": "isolated-subagent",
+    "contextId": "root-ingress_hygiene",
+    "role": "context-hygiene-reviewer",
+    "runtime": "Codex"
+  },
+  "preparer": {
+    "contextId": "root-hermes-continuation-20261106"
+  },
+  "inputs": [
+    "context-pack",
+    "candidate-cr",
+    "owner-directives",
+    "verified-evidence",
+    "prefilter"
+  ],
+  "protectedFacts": [
+    {
+      "id": "scope",
+      "textHash": "sha256:ae0b6b228a6759ed4bf008ca2f4ee1e9f44dea269f13a06b645d28c712752299",
+      "outcome": "preserved"
+    },
+    {
+      "id": "safety",
+      "textHash": "sha256:de8cd5da042a79f3fafdf514cc5e794889b3b98c9e0243cfa60a0eb726287319",
+      "outcome": "preserved"
+    },
+    {
+      "id": "gate",
+      "textHash": "sha256:18acdf8d7f335dfdf39d309fc405238306da06d068ebd6690d6fb3468e9a7937",
+      "outcome": "preserved",
+      "note": "Hygiene PASS permits owner review only. Implementation of this delta still requires explicit ok."
+    },
+    {
+      "id": "ingress-unknown",
+      "textHash": "sha256:8dceb5bc762f568ff2913a6240475ca68d625acd419f2e8a3b0808c2e8d49a4e",
+      "outcome": "preserved",
+      "note": "Material UNKNOWN remains bounded to the documented local search scope; no universal absence claim."
+    },
+    {
+      "id": "production-excluded",
+      "textHash": "sha256:e97c7c68522c9ccd3548050968d1c12beb555eba4db37309d3d4e14d7245228a",
+      "outcome": "preserved",
+      "note": "Production architecture, ingress, storage, transport, credentials, native backend, independent observer, live acceptance and publication remain unapproved."
+    },
+    {
+      "id": "runtime-evidence-unknown",
+      "textHash": "sha256:4311c95c4ab24ba66896a90aca3967faaea472ea09be6395a62e5c2d3fd052a2",
+      "outcome": "preserved",
+      "note": "Historical infrastructure failures remain a material verification risk, not a current product FAIL or fresh runtime PASS."
+    },
+    {
+      "id": "ac01",
+      "textHash": "sha256:e3e1b11a2eaeabd29534bb2b67aeb2111fc5851bdfd87b25f4a128088456910a",
+      "outcome": "preserved",
+      "note": "PROPOSED acceptance criterion; not owner-approved or an active execution requirement."
+    },
+    {
+      "id": "ac02",
+      "textHash": "sha256:ca2b8085ea42ee482bec8018705b4f214322b9599ecdd3050a4e954a5eb78fbf",
+      "outcome": "preserved",
+      "note": "PROPOSED acceptance criterion; not owner-approved or an active execution requirement."
+    },
+    {
+      "id": "ac03",
+      "textHash": "sha256:80716fa83e349ca1c0e068fbd94d143e35230c72de84fc91f40b68cc0eda6cd7",
+      "outcome": "preserved",
+      "note": "PROPOSED acceptance criterion; not owner-approved or an active execution requirement."
+    },
+    {
+      "id": "ac04",
+      "textHash": "sha256:391fb5c13ce7562a87c3f6ac64af8c2e869def1f3fa4ebb4a6d7c4939b193f84",
+      "outcome": "preserved",
+      "note": "PROPOSED acceptance criterion; not owner-approved or an active execution requirement."
+    },
+    {
+      "id": "ac05",
+      "textHash": "sha256:4ff6574b9791f3e543d0b20da04c43f8209def548b12da94a3304561556c43b2",
+      "outcome": "preserved",
+      "note": "PROPOSED acceptance criterion; not owner-approved or an active execution requirement."
+    },
+    {
+      "id": "ac06",
+      "textHash": "sha256:c1bca06239c55f8847576c55569740f396e6228e5d280db66e31b30b8d3e2d3c",
+      "outcome": "preserved",
+      "note": "PROPOSED acceptance criterion; not owner-approved or an active execution requirement."
+    },
+    {
+      "id": "ac07",
+      "textHash": "sha256:030674b06b4dd2fffe1e4f154deb9c0942749953d6d30209afbdc01709f4034f",
+      "outcome": "preserved",
+      "note": "PROPOSED acceptance criterion; not owner-approved or an active execution requirement."
+    },
+    {
+      "id": "ac08",
+      "textHash": "sha256:08418e84bd3fbe983893e92c20fd28e04feaa7e0fe189c3ce0c26778d1ed6d0c",
+      "outcome": "preserved",
+      "note": "PROPOSED acceptance criterion; not owner-approved or an active execution requirement."
+    },
+    {
+      "id": "ac09",
+      "textHash": "sha256:11d4e5dd6940b3da556200f7cbf3b86502e826d8aed940b66e2659769b0da2f4",
+      "outcome": "preserved",
+      "note": "PROPOSED acceptance criterion; not owner-approved or an active execution requirement."
+    },
+    {
+      "id": "proposal-9",
+      "textHash": "sha256:8f981fcbe4679a9e89043ad1c1d3a24e3331521dbfda29534813d057cf4fbd3f",
+      "outcome": "preserved",
+      "note": "PROPOSED test-only reference architecture. All proposal-* claims remain unapproved and excluded from activeRequirements; PASS does not accept their architecture."
+    }
+  ],
+  "activeRequirements": [
+    "scope",
+    "safety",
+    "gate",
+    "production-excluded"
+  ],
+  "removed": [],
+  "staleClaims": [],
+  "unsupportedClaims": [
+    "proposal-9",
+    "proposal-10",
+    "proposal-12-0",
+    "proposal-12-1",
+    "proposal-12-2",
+    "proposal-12-3",
+    "proposal-12-4",
+    "proposal-12-5",
+    "proposal-12-6",
+    "proposal-12-7",
+    "proposal-13",
+    "ac01",
+    "ac02",
+    "ac03",
+    "ac04",
+    "ac05",
+    "ac06",
+    "ac07",
+    "ac08",
+    "ac09"
+  ],
+  "conflicts": [],
+  "superseded": [],
+  "unknowns": [
+    "ingress-unknown",
+    "runtime-evidence-unknown"
+  ],
+  "missingEvidence": [],
+  "cleanedCr": {
+    "locator": "docs/change-requests/CR-hermes-symphony-ingress-offline-20261106.md",
+    "revision": "sha256:2b81bd93c646f49e1b48f28cef36f6623663eaf4f6850cad08f735dcadcdb7fd"
+  },
+  "telemetry": {
+    "hygieneRequired": true,
+    "charsBefore": 12704,
+    "charsAfter": 12704,
+    "protectedFactsChanged": false,
+    "staleCount": 0,
+    "conflictCount": 0,
+    "sourcesConsulted": [
+      ".artifacts/context-hygiene/CR-hermes-symphony-ingress-offline-20261106/context-pack.json",
+      "docs/change-requests/CR-hermes-symphony-ingress-offline-20261106.md",
+      "docs/audits/CR-hermes-symphony-ingress-offline-20261106/source-inventory.json",
+      "tools/symphony_pm_adapter.py",
+      "plugins/symphony_pm/__init__.py",
+      "tests/tools/test_symphony_pm_adapter_cancel_s2.py",
+      ".artifacts/frozen-s2/snapshot-manifest.json",
+      ".artifacts/continuation-20261106-codex/REPORT.md",
+      "D:/Codex/codex-home/plugins/cache/bitrix24-codex-integrators/bitrix24-codex-integrator-kit/0.16.8/role-prompts/context-hygiene-reviewer.md",
+      "D:/Codex/codex-home/plugins/cache/bitrix24-codex-integrators/bitrix24-codex-integrator-kit/0.16.8/skills/context-hygiene/references/contract.md",
+      "D:/Codex/codex-home/plugins/cache/bitrix24-codex-integrators/bitrix24-codex-integrator-kit/0.16.8/skills/context-hygiene/schemas/hygiene-report.schema.json",
+      "D:/Codex/codex-home/plugins/cache/bitrix24-codex-integrators/bitrix24-codex-integrator-kit/0.16.8/skills/context-hygiene/scripts/hygiene_gate.py"
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "source": "current user request + explicit async reply",
+  "reply": "Да, согласую два запуска",
+  "model": "gpt-6.1-sol",
+  "effort": "high",
+  "environment": "current Windows host, existing Codex authentication",
+  "max_native_attempts": 2,
+  "automatic_retries": false,
+  "production": false,
+  "scope": "task-local in-process binding and two synthetic read-only smoke jobs"
+}

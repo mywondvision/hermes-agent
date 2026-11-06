@@ -1,0 +1,9 @@
+{
+  "crId": "CR-hermes-symphony-ingress-offline-20261106",
+  "revision": "sha256:2b81bd93c646f49e1b48f28cef36f6623663eaf4f6850cad08f735dcadcdb7fd",
+  "source": "user:request_user_input_async:2026-11-06:offline-delta-approval",
+  "answer": "ok — реализовать офлайн-дельту",
+  "approvedScope": "Offline SQLite owner/port fixture and AC01-AC09 in the current Hermes worktree only",
+  "excluded": ["production", "Symphony writes", "credentials/access", "plugin activation in user home", "merge/publication"],
+  "acceptanceLimit": "No successful runtime acceptance claim while canonical test runner is unavailable"
+}

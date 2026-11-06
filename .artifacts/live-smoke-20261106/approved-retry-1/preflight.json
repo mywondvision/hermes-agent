@@ -1,0 +1,17 @@
+{
+  "version": "codex-cli 0.167.0",
+  "features": [
+    "effort-selection",
+    "ephemeral",
+    "model-selection",
+    "non-interactive",
+    "permission-control",
+    "result-file",
+    "structured-output",
+    "working-directory",
+    "worktree"
+  ],
+  "readiness": "ready",
+  "model": "gpt-6.1-sol",
+  "effort": "high"
+}

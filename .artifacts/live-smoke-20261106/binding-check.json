@@ -1,0 +1,17 @@
+{
+  "status": "PASS",
+  "port_calls": 1,
+  "native_attempts": 0,
+  "response": {
+    "contract_version": "hermes-pm-ingress/v1",
+    "hold": true,
+    "issues": [
+      "PORT_OUTCOME_UNKNOWN"
+    ],
+    "operation": "get_status",
+    "outcome": "UNKNOWN",
+    "payload_digest": "23a0f40b035cb9676106fde12d7c925bfc75d81cae21ff774c640d65440f42fa",
+    "request_id": "binding-probe",
+    "view": {}
+  }
+}

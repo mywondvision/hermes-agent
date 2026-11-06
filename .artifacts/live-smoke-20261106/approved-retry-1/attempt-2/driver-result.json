@@ -1,0 +1,9 @@
+{
+  "kind": "review",
+  "runId": "attempt-426b7b910de94ec3b1856368c9322b40",
+  "worktree": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\live-smoke-20261106\\approved-retry-1\\workspace-2",
+  "returncode": 123,
+  "timedOut": false,
+  "stdout": "",
+  "stderr": ""
+}

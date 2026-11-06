@@ -1,0 +1,17 @@
+Traceback (most recent call last):
+  File "D:\AI\worktrees\hermes-pm-ingress-20261031\.artifacts\live-smoke-20261106\smoke.py", line 582, in <module>
+    {"prepare": prepare, "process-check": process_check, "binding-check": binding_check,
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     "reconcile-unstarted": reconcile_unstarted,
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     "continue-unstarted": lambda: campaign(continue_unstarted=True),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     "run": campaign, "inspect": inspect}[sys.argv[1]]()
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "D:\AI\worktrees\hermes-pm-ingress-20261031\.artifacts\live-smoke-20261106\smoke.py", line 584, in <lambda>
+    "continue-unstarted": lambda: campaign(continue_unstarted=True),
+                                  ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\AI\worktrees\hermes-pm-ingress-20261031\.artifacts\live-smoke-20261106\smoke.py", line 410, in campaign
+    assert not a.error and a.returncode == 0 and not a.timed_out, a.error or a.returncode
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1

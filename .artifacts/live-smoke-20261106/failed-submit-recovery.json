@@ -1,0 +1,25 @@
+{
+  "status": "PASS_NO_NEW_LAUNCH_AFTER_FAILED_SUBMIT",
+  "native_attempts_before": 1,
+  "native_attempts_after": 1,
+  "response": {
+    "contract_version": "hermes-pm-ingress/v1",
+    "hold": false,
+    "issues": [],
+    "operation": "submit_intent",
+    "outcome": "SUBMITTED",
+    "payload_digest": "76344b26ee0ac0adc8cddfd2d93c1d6a13b92b09b241f1025beaa4ac0c40ffef",
+    "request_id": "smoke-request-1",
+    "view": {
+      "admission": "NOT_CONFIRMED",
+      "age_seconds": 0.0,
+      "evidence_refs": [],
+      "job_ref": "job-2cde181b96a343298a2d939ce2f45fe9",
+      "job_revision": "a659a205e03e87d86f3e397cec383f079ab7f75b5a93035a72cd5ec346c21568",
+      "observed_at": 1793983444.0022988,
+      "scheduler_outcome": "DUPLICATE",
+      "uncertainty": []
+    }
+  },
+  "cancel_recovery": "NOT_RUN"
+}

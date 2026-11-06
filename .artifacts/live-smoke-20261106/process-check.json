@@ -1,0 +1,50 @@
+{
+  "status": "PASS",
+  "proof": {
+    "observed_at": 1793983004.898648,
+    "active": 0,
+    "total": 5,
+    "terminated": 0,
+    "pids": [],
+    "members": [],
+    "known_processes": [
+      {
+        "pid": 32348,
+        "start_ticks": "134384566041998267",
+        "actual_start_ticks": "134384566041998267",
+        "identity_matches": true,
+        "signaled": true
+      },
+      {
+        "pid": 20200,
+        "start_ticks": "134384566042843023",
+        "actual_start_ticks": "134384566042843023",
+        "identity_matches": true,
+        "signaled": true
+      },
+      {
+        "pid": 24584,
+        "start_ticks": "134384566044533657",
+        "actual_start_ticks": "134384566044533657",
+        "identity_matches": true,
+        "signaled": true
+      },
+      {
+        "pid": 33108,
+        "start_ticks": "134384566043124141",
+        "actual_start_ticks": "134384566043124141",
+        "identity_matches": true,
+        "signaled": true
+      },
+      {
+        "pid": 25668,
+        "start_ticks": "134384566044700651",
+        "actual_start_ticks": "134384566044700651",
+        "identity_matches": true,
+        "signaled": true
+      }
+    ],
+    "tree_stopped": true
+  },
+  "model_attempts": 0
+}

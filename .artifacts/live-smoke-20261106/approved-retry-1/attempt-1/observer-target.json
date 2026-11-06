@@ -1,0 +1,9 @@
+{
+  "job_object": "Local\\HermesSmoke-attempt-dfc5e5917d5b43f884d93fc8195ebdc1",
+  "known_processes": [
+    {
+      "pid": 23172,
+      "start_ticks": "134384574108811070"
+    }
+  ]
+}

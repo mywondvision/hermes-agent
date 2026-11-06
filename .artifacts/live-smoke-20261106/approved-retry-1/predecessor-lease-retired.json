@@ -1,0 +1,13 @@
+{
+  "proof": {
+    "exact_root_not_running": true,
+    "previous_job_absent": true,
+    "at": 1793983805.787029
+  },
+  "old_writer": {
+    "namespace": "live-smoke-20261106",
+    "owner": "single-local-controller",
+    "epoch": 1,
+    "expires": 1793983973.4337347
+  }
+}
