@@ -330,6 +330,7 @@ def test_explicit_cleanup_uses_same_unknown_ticket_without_another_native_send(r
     assert rig.pm_cancel().state == "UNKNOWN"
     job = object.__new__(module.WindowsJob)
     job.handle, job.process, job.process_handles = 123, SimpleNamespace(pid=4242), {}
+    job._closed = False
     job._cancel_route = lambda cause: rig.engine.cancel(rig.target, cause)
     closed = []
     monkeypatch.setattr(module, "close_handle", lambda handle: closed.append(handle) or 1)
@@ -337,3 +338,120 @@ def test_explicit_cleanup_uses_same_unknown_ticket_without_another_native_send(r
     assert closed == [123] and len(rig.calls) == 1
     assert rig.rows("effects")[0]["state"] == "UNKNOWN"
     assert {row["cause"] for row in rig.rows("cancel_causes")} == {"PM_CANCEL", "EMERGENCY_CLEANUP"}
+
+
+@pytest.mark.platforms("windows")
+@pytest.mark.parametrize("lost_ack", [False, True])
+def test_actual_windows_receiver_replay_with_new_permit_never_calls_native_twice(rig, monkeypatch, lost_ack):
+    from types import SimpleNamespace
+    spec = importlib.util.spec_from_file_location("_smoke_native_guard", ART / "winjob.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    job = object.__new__(module.WindowsJob)
+    job.handle, job.process = 123, SimpleNamespace(pid=4242, _handle=789)
+    job._cancel_gate = rig.ctl.NativeCancelGate()
+    monkeypatch.setattr(module, "creation_ticks", lambda _h: rig.target.start)
+    native_calls = []
+
+    def native(*_args):
+        native_calls.append("native")
+        if lost_ack:
+            raise OSError("acknowledgement unknown")
+        return 1
+    monkeypatch.setattr(module, "terminate_job", native)
+    permit = rig.ctl.DispatchPermit(rig.target, lambda: None)
+    if lost_ack:
+        with pytest.raises(OSError):
+            job.cancel_once(permit)
+    else:
+        assert job.cancel_once(permit) is True
+    assert job.cancel_once(rig.ctl.DispatchPermit(rig.target, lambda: None)) is False
+    assert native_calls == ["native"]
+
+
+@pytest.mark.platforms("windows")
+@pytest.mark.parametrize("release_error", [False, True])
+def test_close_releases_all_handles_despite_coordinator_or_close_failure(ctl, monkeypatch, release_error):
+    from types import SimpleNamespace
+    spec = importlib.util.spec_from_file_location("_smoke_close_failure", ART / "winjob.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    job = object.__new__(module.WindowsJob)
+    job.handle, job.process = 123, SimpleNamespace(pid=4242)
+    job.process_handles, job._closed = {1: 234, 2: 345}, False
+
+    def unavailable(_cause):
+        raise RuntimeError("coordinator storage failed")
+    job._cancel_route = unavailable
+    releases = []
+
+    def close(handle):
+        releases.append(handle)
+        if release_error and handle == 234:
+            raise OSError("handle result unknown")
+        return 1
+    monkeypatch.setattr(module, "close_handle", close)
+    monkeypatch.setattr(module, "terminate_job", lambda *_a: pytest.fail("second native cancel forbidden"))
+    with pytest.raises((RuntimeError, ctl.CancelRejected)):
+        job.close()
+    assert releases == [123, 234, 345] and job._closed
+    job.close()
+    assert releases == [123, 234, 345]
+
+
+@pytest.mark.platforms("windows")
+def test_campaign_cleanup_survives_snapshot_log_attempt_and_owner_failures(ctl):
+    from types import SimpleNamespace
+    spec = importlib.util.spec_from_file_location("_smoke_campaign_cleanup", ART / "smoke.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    operations = []
+
+    def fail(label):
+        operations.append(label)
+        raise OSError(label)
+
+    attempts = [SimpleNamespace(attempt="one", control=SimpleNamespace(
+                    capture=lambda: fail("snapshot-one"), close=lambda: fail("close-one"))),
+                SimpleNamespace(attempt="two", control=SimpleNamespace(
+                    capture=lambda: {"active": 0}, close=lambda: operations.append("close-two")))]
+    owner = SimpleNamespace(close=lambda: fail("owner-close"))
+    driver = SimpleNamespace(cleanup=lambda _pack: operations.append("driver-cleanup"))
+    with pytest.raises(RuntimeError, match="CLEANUP_UNKNOWN_HOLD"):
+        module.cleanup_attempts(attempts, owner, driver, record=lambda *_a, **_k: fail("log-two"))
+    assert operations == ["snapshot-one", "close-one", "log-two", "close-two", "owner-close", "driver-cleanup"]
+
+
+@pytest.mark.parametrize("running", [False, True])
+def test_restart_parent_always_reaps_owned_c1_without_touching_worker(ctl, running):
+    spec = importlib.util.spec_from_file_location("_smoke_restart_cleanup", ART / "controller_restart_probe.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    operations = []
+
+    class Controller:
+        def poll(self):
+            return None if running else 23
+
+        def kill(self):
+            operations.append("owned-controller-kill")
+
+        def wait(self, timeout):
+            operations.append(("owned-controller-wait", timeout))
+    module.reap_controller(Controller())
+    assert operations == (["owned-controller-kill"] if running else []) + [("owned-controller-wait", 10)]
+
+
+def test_restart_parent_waits_even_when_controller_kill_fails(ctl):
+    from types import SimpleNamespace
+    spec = importlib.util.spec_from_file_location("_smoke_restart_cleanup_error", ART / "controller_restart_probe.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    waits = []
+
+    def kill():
+        raise OSError("owned controller stop unknown")
+    controller = SimpleNamespace(poll=lambda: None, kill=kill, wait=lambda timeout: waits.append(timeout))
+    with pytest.raises(OSError):
+        module.reap_controller(controller)
+    assert waits == [10]

@@ -400,6 +400,27 @@ def submit(number):
             "raw_constraints": ["No production, no network tools, no edits, no delegation, no retry"]}
 
 
+def cleanup_attempts(attempts, owner, driver, *, record=log):
+    """Close every owned resource despite diagnostics or another attempt's failure."""
+    failures = []
+    for attempt in attempts:
+        try:
+            record("FINAL_JOB_READBACK", attempt=attempt.attempt, snapshot=attempt.control.capture())
+        except BaseException as exc:  # Cleanup still runs on interruption, then reports HOLD.
+            failures.append(exc)
+        try:
+            attempt.control.close()
+        except BaseException as exc:
+            failures.append(exc)
+    for close in (owner.close, lambda: driver.cleanup(None)):
+        try:
+            close()
+        except BaseException as exc:
+            failures.append(exc)
+    if failures:
+        raise RuntimeError("CLEANUP_UNKNOWN_HOLD:" + ",".join(type(e).__name__ for e in failures)) from failures[0]
+
+
 def campaign(continue_unstarted=False):
     assert not (HERE / "native-campaign-hold.json").exists(), "Prior native failure: HOLD, no retry"
     marker = "continue-unstarted.once" if continue_unstarted else "campaign.once"
@@ -510,14 +531,10 @@ def campaign(continue_unstarted=False):
         log("CANCEL_VERIFIED_HOLD", attempt=b.attempt, native_cancel_calls=port.cancel_calls,
             native_launches=count, tree_stopped=terminal["tree_stopped"])
     finally:
-        module.unwire()
-        for a in port.attempts.values():
-            # close() routes explicit cleanup through the same spent-ticket coordinator.
-            snap = a.control.capture()
-            log("FINAL_JOB_READBACK", attempt=a.attempt, snapshot=snap)
-            a.control.close()
-        owner.close()
-        driver.cleanup(None)
+        try:
+            module.unwire()
+        finally:
+            cleanup_attempts(list(port.attempts.values()), owner, driver)
 
 
 def process_check():

@@ -39,6 +39,7 @@ def read(path):
 def plan():
     return {"status": "NOT_RUN", "kind": "real-controller-process-restart-with-synthetic-python-worker",
             "controllers": ["C1", "C2"], "native_codex_sessions": 0,
+            "controller_launcher": "existing base Python + current dependency paths; retained PID verified before worker admission",
             "worker": "current Python, bounded 90-second sleep + child; no project data",
             "cut": "C1 os._exit after OS effect and before durable acknowledgement",
             "recovery": "C2 new process, new owner epoch, same SQLite, receiver=None; observer only",
@@ -82,6 +83,8 @@ def c1(work):
     self_handle = w.checked(w.open_process(0x100000 | 0x1000, False, os.getpid()))
     save(work / "c1-identity.json", {"pid": os.getpid(), "start_ticks": w.creation_ticks(self_handle)})
     w.close_handle(self_handle)
+    # Parent proves the retained Popen handle names C1 before any worker can exist.
+    wait_for(lambda: (work / "parent-accepted-c1-identity.json").exists(), 20)
     owner = factory(work)
     token = owner.claim("C1", time.time(), ttl=90)
     request = pm.SubmitIntent("restart-submit", PROJECT, "bounded synthetic wait", ())
@@ -168,19 +171,43 @@ def c2(work):
                                    "receiver": None, "target": asdict(target)})
 
 
+def reap_controller(controller):
+    """Retained handle identifies our controller; never target worker PID or resend its cancel."""
+    try:
+        if controller.poll() is None:
+            controller.kill()
+    finally:
+        controller.wait(timeout=10)
+
+
+def controller_command():
+    """Reuse the installed base Python + current dependency paths, without a venv launcher shim."""
+    executable = Path(sys._base_executable)
+    if not executable.is_file():
+        raise RuntimeError("Existing base interpreter unavailable; no environment is created")
+    script = str(Path(__file__).resolve())
+    bootstrap = ("import runpy,sys;sys.path[:]=" + repr(list(sys.path)) + ";sys.argv=[" + repr(script)
+                 + ",*sys.argv[1:]];runpy.run_path(" + repr(script) + ",run_name='__main__')")
+    return [str(executable), "-B", "-c", bootstrap]
+
+
 def run(parent):
     import winjob as w
     work = parent / ("execution-" + uuid.uuid4().hex)
     work.mkdir()
-    command = [sys.executable, "-B", str(Path(__file__).resolve())]
+    command = controller_command()
     handles, job_handle = [], None
     with (work / "controllers.out").open("wb") as log:
         controller = subprocess.Popen(command + ["c1", "--execute", "--directory", str(work)], stdout=log, stderr=log)
         try:
+            wait_for(lambda: (work / "c1-identity.json").exists(), 20)
+            identity = read(work / "c1-identity.json")
+            if identity["pid"] != controller.pid or identity["start_ticks"] != w.creation_ticks(int(controller._handle)):
+                raise RuntimeError("C1 is not the exact retained process; no worker admission")
+            save(work / "parent-accepted-c1-identity.json", identity)
             wait_for(lambda: (work / "observer-target.json").exists(), 20)
             expected = read(work / "observer-target.json")
             job_handle = w.checked(w.open_job(4, False, expected["job_object"]))
-            identity = read(work / "c1-identity.json")
             for pid in [identity["pid"], *[p["pid"] for p in expected["known_processes"]]]:
                 handle = w.open_process(0x100000 | 0x1000, False, pid)
                 if handle:
@@ -201,11 +228,23 @@ def run(parent):
             save(work / "result.json", {"mechanical_controller_restart": "UNKNOWN", "overall": "HOLD"})
             raise
         finally:
-            # Query handle close preserves the kernel fail-safe; parent never resends native cancel.
-            if job_handle:
-                w.close_handle(job_handle)
-            for handle in handles:
-                w.close_handle(handle)
+            cleanup_errors = []
+            try:
+                # Reaping cannot depend on successful evidence/identity file reads.
+                reap_controller(controller)
+            except BaseException as exc:
+                cleanup_errors.append(exc)
+            finally:
+                # Query handle close preserves the kernel fail-safe; no second Job cancel.
+                for handle in ([job_handle] if job_handle else []) + handles:
+                    try:
+                        w.checked(w.close_handle(handle))
+                    except OSError as exc:
+                        cleanup_errors.append(exc)
+            if cleanup_errors:
+                save(work / "result.json", {"mechanical_controller_restart": "UNKNOWN", "overall": "HOLD",
+                                            "cleanup": "CONTROLLER_OR_HANDLE_RELEASE_UNKNOWN"})
+                raise RuntimeError("RESTART_CLEANUP_UNKNOWN_HOLD") from cleanup_errors[0]
 
 
 if __name__ == "__main__":

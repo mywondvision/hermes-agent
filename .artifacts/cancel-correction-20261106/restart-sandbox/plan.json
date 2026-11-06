@@ -6,6 +6,7 @@
     "C2"
   ],
   "native_codex_sessions": 0,
+  "controller_launcher": "existing base Python + current dependency paths; retained PID verified before worker admission",
   "worker": "current Python, bounded 90-second sleep + child; no project data",
   "cut": "C1 os._exit after OS effect and before durable acknowledgement",
   "recovery": "C2 new process, new owner epoch, same SQLite, receiver=None; observer only",

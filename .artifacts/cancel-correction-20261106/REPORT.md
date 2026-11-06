@@ -1,4 +1,4 @@
-# Cancel correction: кандидат на независимый code review
+# Cancel correction: consolidated candidate на независимый code review
 
 Линия: CR-hermes-symphony-ingress-offline-20261106, corrective pass после live smoke ebcc60d2644df20bf2d8ca70735b29d8da3ee78e. Gate Hygiene PASS/READY по новой ограниченной дельте; разрешена одна read-only review-сессия GPT-6.1 Sol High, два прохода (Hygiene и итоговый code review). Новый native Codex worker и полный повтор live smoke не запускались.
 
@@ -16,7 +16,9 @@ Verifier: новая логика читает immutable Git objects по ebcc60
 - Основной campaign: cancel 19 PASS; verifier 25 PASS + один fixture setup error (`PREPARED` event не имеет payload). `targeted.txt`.
 - Исправлен только builder ошибочного fixture; этот case — 1 PASS. `evidence-fix.txt`.
 - Изменён timeout drain в finally и добавлены coordinator-error варианты: четыре актуальных timeout case — 4 PASS. `runtime-fix.txt`.
-- Покрытие итогового набора: 21 cancel + 26 evidence = **47 уникальных актуальных cases**, с переиспользованием только не затронутых результатов. Фактические команды/прогоны указаны выше; единый выдуманный «47 в одном свежем запуске» не заявляется.
+- Независимый review исходного локального checkpoint `6da26005e26c3255c3baf6a3f2c553c973b97aff` выявил два cleanup blockers: исключение route/capture/log могло пропустить handle release/следующие attempts; failure path prepared probe не reaped C1. Выполнен один consolidated corrective pass.
+- `WindowsJob.close()` теперь освобождает каждый handle в finally даже при ошибке coordinator/другого handle; общий cleanup пытается обработать каждый attempt, owner и driver несмотря на диагностические ошибки и затем сообщает UNKNOWN/HOLD. Raw receiver проверен повторной выдачей permit и потерей ack без второй API отправки. Prepared probe запускает тот же установленный base Python с текущими dependency paths, проверяет retained C1 PID/start до worker admission и отдельно bounded reap собственного C1; новые environments не создаются.
+- Затронутый cancel module после этого прохода: **29 PASS**, `cleanup-fix.txt`; verifier-функции после него не менялись и сохраняют 25+1 PASS. Итоговое покрытие **29 cancel + 26 evidence = 55 актуальных cases**, с переиспользованием только не затронутых результатов. Единый выдуманный «55 в одном свежем запуске» не заявляется.
 - Целевой Ruff и C901≤20 PASS. Прежние 144/144 относятся к неизменившимся public adapter/plugin/offline-owner, а не к новому runtime коду. Полный repository aggregate не объявляется зелёным.
 
 Настоящий restart: `controller_restart_probe.py prepare` создал plan.json со статусом **NOT_RUN**. Сценарий: один synthetic Python worker + child, C1 durable intent и OS effect, os._exit до ack; отдельный query-only observer сохраняет handles; C2 — новый процесс, новый owner epoch после independent death proof C1, тот же journal, receiver=None, только readback. Подготовка не считается исполнением. Новых сред/ключей/production не создавалось.
@@ -28,6 +30,7 @@ Verifier: новая логика читает immutable Git objects по ebcc60
 & ./.artifacts/cancel-correction-20261106/run-targeted.ps1
 & ./.artifacts/cancel-correction-20261106/run-targeted.ps1 -EvidenceFix
 & ./.artifacts/cancel-correction-20261106/run-targeted.ps1 -RuntimeFix
+& ./.artifacts/cancel-correction-20261106/run-targeted.ps1 -CleanupFix
 & 'D:/AI/envs/hermes-pm-ingress-test-20261106/Scripts/python.exe' -B .artifacts/live-smoke-20261106/verify_evidence.py
 & 'D:/AI/envs/hermes-pm-ingress-test-20261106/Scripts/python.exe' -B .artifacts/live-smoke-20261106/controller_restart_probe.py prepare
 ```

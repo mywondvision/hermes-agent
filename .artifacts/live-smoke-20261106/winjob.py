@@ -137,6 +137,7 @@ class WindowsJob:
         self.process_handles = {}
         self._cancel_gate = NativeCancelGate()
         self._cancel_route = None
+        self._closed = False
 
     def start_suspended(self, argv, cwd, env, stdout, stderr):
         self.process = subprocess.Popen(argv, cwd=cwd, env=env, stdin=subprocess.PIPE,
@@ -200,16 +201,27 @@ class WindowsJob:
         return {"job_object": self.name, "known_processes": list(self.known.values())}
 
     def close(self):
-        if self.process is not None:
-            if self._cancel_route is not None:
-                # Includes UNKNOWN: route records the cause and reads state, never resends.
-                # Closing an active kill-on-close Job is an unacknowledged kernel fail-safe.
-                self._cancel_route("EMERGENCY_CLEANUP")
-            elif snapshot(self.handle)["active"]:
-                raise CancelRejected("ACTIVE_CLOSE_REQUIRES_DURABLE_CANCEL_ROUTE")
-        checked(close_handle(self.handle))
-        for h in self.process_handles.values():
-            checked(close_handle(h))
+        if self._closed:
+            return
+        try:
+            if self.process is not None:
+                if self._cancel_route is not None:
+                    self._cancel_route("EMERGENCY_CLEANUP")
+                elif snapshot(self.handle)["active"]:
+                    raise CancelRejected("ACTIVE_CLOSE_WITHOUT_DURABLE_ROUTE_UNKNOWN")
+        finally:
+            # Storage/lease/observer errors cannot suppress kernel kill-on-close.
+            # Failure remains UNKNOWN; releasing handles is not a terminal receipt.
+            self._closed = True
+            failures = []
+            for handle in [self.handle, *self.process_handles.values()]:
+                try:
+                    checked(close_handle(handle))
+                except OSError as exc:
+                    failures.append(exc)
+            self.process_handles.clear()
+            if failures:
+                raise CancelRejected("HANDLE_RELEASE_UNKNOWN") from failures[0]
 
 
 if __name__ == "__main__":

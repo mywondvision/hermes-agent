@@ -1,4 +1,4 @@
-param([switch]$Baseline,[switch]$EvidenceFix,[switch]$RuntimeFix)
+param([switch]$Baseline,[switch]$EvidenceFix,[switch]$RuntimeFix,[switch]$CleanupFix)
 $ErrorActionPreference = 'Stop'
 Set-Location 'D:/AI/worktrees/hermes-pm-ingress-20261031'
 $env:HERMES_PYTHON = 'D:/AI/envs/hermes-pm-ingress-test-20261106/Scripts/python.exe'
@@ -25,6 +25,10 @@ if ($Baseline) {
     & 'C:/Program Files/Git/bin/bash.exe' scripts/run_tests.sh tests/plugins/test_symphony_smoke_cancel.py -k test_real_runner_timeout_routes_to_ticket_and_keeps_both_wait_limits -j 1 --file-retries 0 -v *> .artifacts/cancel-correction-20261106/runtime-fix.txt
     $testExit = $LASTEXITCODE
     Get-Content .artifacts/cancel-correction-20261106/runtime-fix.txt -Tail 18
+} elseif ($CleanupFix) {
+    & 'C:/Program Files/Git/bin/bash.exe' scripts/run_tests.sh tests/plugins/test_symphony_smoke_cancel.py -j 1 --file-retries 0 -v *> .artifacts/cancel-correction-20261106/cleanup-fix.txt
+    $testExit = $LASTEXITCODE
+    Get-Content .artifacts/cancel-correction-20261106/cleanup-fix.txt -Tail 18
 } else {
     & 'C:/Program Files/Git/bin/bash.exe' scripts/run_tests.sh tests/plugins/test_symphony_smoke_cancel.py tests/plugins/test_symphony_smoke_evidence.py -j 1 --file-retries 0 -v *> .artifacts/cancel-correction-20261106/targeted.txt
     $testExit = $LASTEXITCODE
