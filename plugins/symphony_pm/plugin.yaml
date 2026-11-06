@@ -1,0 +1,7 @@
+name: symphony_pm
+version: 0.1.0
+description: "Hermes PM -> Symphony scheduler ingress (ADD-HERMES-PM-INGRESS-01). Registers the symphony_pm_ingress tool UNWIRED: no port, no transport, no config or home reads. Every call holds (UNAVAILABLE) and the tool stays out of the model's schema until an in-process transport wires a SymphonyPmPort and a trusted-context source through wire()."
+author: mywondvision
+kind: standalone
+provides_tools:
+  - symphony_pm_ingress
