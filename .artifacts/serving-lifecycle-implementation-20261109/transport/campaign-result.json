@@ -1,0 +1,25 @@
+{
+  "argv": [
+    "C:/Program Files/Git/bin/bash.exe",
+    "scripts/run_tests.sh",
+    "-j",
+    "1",
+    "--file-retries",
+    "0",
+    "--file-timeout",
+    "60",
+    "tests/plugins/test_symphony_pm_journal.py",
+    "tests/plugins/test_symphony_pm_lifecycle.py",
+    "tests/plugins/test_symphony_pm_permit_source.py",
+    "tests/plugins/test_symphony_pm_serving.py"
+  ],
+  "attempt": 1,
+  "native_worker": false,
+  "model": false,
+  "microphone": false,
+  "external_audio": false,
+  "paid_resources": false,
+  "exit": 0,
+  "outcome": "FINISHED",
+  "seconds": 89.859
+}

@@ -1,0 +1,82 @@
+{
+  "utc": "2026-11-09T17:16:52.112324+00:00",
+  "base": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+  "files": 8,
+  "passed": 114,
+  "failed": 0,
+  "runner_seconds": 132.1,
+  "command_seconds": 135.703,
+  "per_file": [
+    {
+      "path": "tests/hermes_cli/test_plugin_services.py",
+      "passed": 16,
+      "seconds": 20.7
+    },
+    {
+      "path": "tests/hermes_cli/test_web_server_plugin_services.py",
+      "passed": 2,
+      "seconds": 12.2
+    },
+    {
+      "path": "tests/plugins/test_symphony_pm_ingress_offline.py",
+      "passed": 38,
+      "seconds": 33.7
+    },
+    {
+      "path": "tests/plugins/test_symphony_pm_plugin.py",
+      "passed": 10,
+      "seconds": 18.4
+    },
+    {
+      "path": "tests/plugins/test_symphony_pm_serving.py",
+      "passed": 4,
+      "seconds": 11.9
+    },
+    {
+      "path": "tests/tools/test_symphony_pm_adapter.py",
+      "passed": 35,
+      "seconds": 15.1
+    },
+    {
+      "path": "tests/tools/test_symphony_pm_adapter_cancel_s2.py",
+      "passed": 7,
+      "seconds": 11.5
+    },
+    {
+      "path": "tests/tui_gateway/test_plugin_service_lifecycle.py",
+      "passed": 2,
+      "seconds": 8.2
+    }
+  ],
+  "source_hash_checks": {
+    "gateway/run_adapters.py": true,
+    "gateway/run_shutdown.py": true,
+    "gateway/run_startup.py": true,
+    "hermes_cli/plugin_isolation.py": true,
+    "hermes_cli/plugin_request_binding.py": true,
+    "hermes_cli/plugin_services.py": true,
+    "hermes_cli/plugins.py": true,
+    "hermes_cli/plugins_ledger.py": true,
+    "hermes_cli/web_server_app.py": true,
+    "plugins/symphony_pm/__init__.py": true,
+    "plugins/symphony_pm/service.py": true,
+    "tests/hermes_cli/test_plugin_services.py": true,
+    "tests/hermes_cli/test_web_server_plugin_services.py": true,
+    "tests/plugins/test_symphony_pm_serving.py": true,
+    "tests/tui_gateway/test_plugin_service_lifecycle.py": true,
+    "tui_gateway/entry.py": true,
+    "tui_gateway/plugin_service_lifecycle.py": true,
+    "tui_gateway/server.py": true
+  },
+  "source_unchanged_during_campaign": true,
+  "campaign_invocations": 1,
+  "file_retries": 0,
+  "code_evidence": "E1 targeted unit/contract; real discovery and registry with fixture-only issuer/port",
+  "production_approval_source": "UNKNOWN",
+  "full_serving_transport": "NOT_READY",
+  "voice_global_hotkey": "NOT_IMPLEMENTED",
+  "live_russian_voice_reply": "NOT_RUN",
+  "native_task": "NOT_RUN",
+  "general_cancel": "HOLD",
+  "publication_installation_production": "NOT_RUN"
+}

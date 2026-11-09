@@ -1,6 +1,33 @@
 # CR: Hermes → Symphony — lifecycle owner и in-process transport
 
-context_hygiene: HYGIENE_PENDING
+context_hygiene: PASS rev=d408f7b5b619e13ab13fd113b428b7e5633399719d0b7732df7fa66a8d2d691d report=docs/audits/CR-hermes-symphony-serving-lifecycle-20261106/hygiene-d408f7b5b619.json
+
+## Действующая поправка: generic host binding (2026-11-09)
+
+Приоритет: этот раздел уточняет исходную ревизию `c28c4ba9bc9b3b3deb70d61469231da65f5aef3ab7bd468d340f87e55c6e49d1`. Владелец дал `ок` на CODE scope исходного serving CR, затем `да` на включение generic host binding в тот же CR и один независимый review изменённого контракта. До валидного review новой ревизии код не меняется. Исторические DRAFT/read-only/gate формулировки ниже не отменяют этих решений; они не являются текущим статусом допуска. Доказательства и ограничения исходного CR сохраняются.
+
+Граница допуска: поправка разрешает подготовить и проверить изменённый контракт. Она не выдаёт разрешения на no-model E1/E2 campaign, transport pilot, native/model sessions, микрофон, передачу речи, paid resources, production, новые ключи/доступы, установку, push или merge. Единственный writer — текущий Hermes интегратор. Bimo остаётся владельцем ASR/retrieval/GPU, kit и другие worktree не изменяются. Бюджеты parent CR, попытки и spent effects не обнуляются. Разрешён ровно один новый независимый read-only review этого изменения; корректирующие model-проходы этим не разрешаются.
+
+### Требуемая generic привязка
+
+1. Разделить объявление и запуск сервиса: plugin `register(ctx)` объявляет factory без создания journal, owner lock, Job или worker. Только owning serving host запускает service после owning-profile discovery и до admission новых conversations. Diagnostic/discovery команды не запускают service. Startup failure закрывает admission соответствующего consumer и оставляет UNAVAILABLE/HOLD; logger/fail-open hook не заменяет эту гарантию.
+2. Host передаёт immutable profile home, namespace и lifetime generation. Один service/port на profile+namespace; повторное подключение не создаёт второго owner. Явные profile scopes сохраняются в background callbacks, shutdown и thread hops. `plugins.isolation: host` не обходится; невозможность передать live in-process port означает отказ. Не добавлять daemon, IPC, queue, HTTP, scheduler или отдельный Hermes runtime.
+3. Request authority приходит только из host-owned проверенного источника и связывается с immutable profile/session/request identity, approved payload digest, contract и grant. Plugin получает её в ограниченном request scope; вне него, после завершения, при mismatch/expiry или отсутствии issuer — None/HOLD. Session/call IDs, cwd, текст запроса, config boolean, `confirmed: true` или согласие на разработку не создают execution grant. Partial ASR не является командой. Передача context через tool args запрещена.
+4. До native admission необходимо определить конкретный approval source и проверить его связь с exact model/environment/attempt permit. Пока он не закреплён, native admission остаётся HOLD. Generic binding не подделывает grant, не создаёт новый доступ и не выдаёт этот недостающий источник за работающую интеграцию. Реализация generic части может оставаться inert при отсутствии источника; недостижимый placeholder нельзя предъявлять как завершённый serving transport.
+5. При shutdown/unload/force rediscovery host первым закрывает admission, затем выполняет bounded drain и ledger cleanup в owning profile. Каждый успешно приобретённый ресурс получает cleanup до публикации service; abandoned loader не публикует live service. Ошибки cleanup не дают cancel ACK. Старое поколение service и late request callbacks не получают новый dispatch slot.
+6. Единственный конкретный consumer — существующий `symphony_pm`: loaded owning-profile module → existing adapter → один Port/LifecycleOwner → существующий CodexDriver с attempt-bound runner. Factory declaration не меняет текущий prompt/tool prefix; активация поверхности — до новых conversations. Сбой service отказывает внутри уже выбранного handler, без смены toolset посреди turn.
+
+### Scope файлов и совместимость
+
+Разрешённая область поправки: generic plugin service/request-binding sibling modules в `hermes_cli`, узкие additive методы `PluginContext`/`PluginManager`, lifecycle call sites owning host в `tui_gateway` и `gateway`, consumer внутри существующего `plugins/symphony_pm`, соответствующие tests/docs. Новые API должны иметь первого consumer и реальную host call site. Названия `plugin_services.py` и request-binding module — варианты размещения, не утверждённые сигнатуры. Конкретные пути выбираются по area AGENTS до редактирования. Не hardcode-ить Symphony в core; не менять kit driver/frozen S2, общую adapter schema, профили или config оператора. Существующие plugins без новой регистрации сохраняют поведение.
+
+### Критерии и неизвестное
+
+Новые критерии: discovery без serving не создаёт ресурсы; повторный start не дублирует owner; профили не разделяют authority/handles; request binding не переживает окончание запроса и не даёт authority постороннему потоку или detached task; missing/expired/mismatched grant отказывает; startup/reload/shutdown закрывают admission; loader abandonment не публикует service; pinned host isolation не обходится; старые plugins совместимы; mid-session prompt/tool prefix сохраняется. Далее действуют исходные journal/launch/cancel crash criteria. Выполнение этих проверок NOT_RUN и требует отдельного допуска на bounded no-model campaign, а не нового model smoke.
+
+Материальное UNKNOWN: конкретный production approval source и его доставка из UI/native permit в request binding пока не закреплены. Это блокирует native admission и сквозную приёмку, но не позволяет заменять их синтетическим context. OS observer/Job lifetime/crash recovery этой поправкой не доказаны. Общий cancel/release остаётся HOLD; ASR cancel/остановка записи не доказывают остановку worker. Rollback сохраняет журнал, identity, effects и reservations; старую схему поверх spent intent не восстанавливать.
+
+## Исходная ревизия: исторический статус и сохранённая спецификация
 
 Статус: DRAFT, предложение не принято. Реализация не разрешена.
 Профиль: Standard + Hardened extension для durable dispatch/OS lifetime; текущий evidence cap E0 (чтение и документы). Будущие no-model E1/E2 требуют отдельного допуска на выполнение. Владелец решения — пользователь. Дельта продолжает ingress/cancel CR, не обнуляет прежний proof budget. Два оставшихся рубежа: независимый Hygiene + ok на реализацию; отдельное точное разрешение transport pilot.

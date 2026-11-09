@@ -1,0 +1,153 @@
+{
+  "base": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+  "method": "AST parse/compile only; no project imports or tests executed",
+  "files": [
+    {
+      "path": "gateway/run_adapters.py",
+      "sha256": "6f44c11950a75a2659f432f76534888e61420388591b3bd0afec786c60af79b3",
+      "syntax": "VALID",
+      "lines": 1990,
+      "base_lines": 1988,
+      "imports_executed": false
+    },
+    {
+      "path": "gateway/run_shutdown.py",
+      "sha256": "20a36c0017bba4361a4ed7b2ba2860f805c243af14d7a533ff7cb39b6ae1c889",
+      "syntax": "VALID",
+      "lines": 2246,
+      "base_lines": 2246,
+      "imports_executed": false
+    },
+    {
+      "path": "gateway/run_startup.py",
+      "sha256": "9026b21ab942dbd4f23bdf48fb814a6c352ffb75482b8861f9b8b4666cc36592",
+      "syntax": "VALID",
+      "lines": 1957,
+      "base_lines": 1955,
+      "imports_executed": false
+    },
+    {
+      "path": "hermes_cli/plugin_isolation.py",
+      "sha256": "71fc113b41def118057a3c6fe4d07a57642de25adb6add09ee22dc3881354e76",
+      "syntax": "VALID",
+      "lines": 144,
+      "base_lines": 143,
+      "imports_executed": false
+    },
+    {
+      "path": "hermes_cli/plugin_request_binding.py",
+      "sha256": "328d8e7e017bdbbcdb61239e2d05231039f2601cf3bbd77108df87e4a3227258",
+      "syntax": "VALID",
+      "lines": 103,
+      "base_lines": null,
+      "imports_executed": false
+    },
+    {
+      "path": "hermes_cli/plugin_services.py",
+      "sha256": "ebe81a0ba3137d7731cf29729a7df7acb3bc97a260994b4d50e5dd42619ea5de",
+      "syntax": "VALID",
+      "lines": 262,
+      "base_lines": null,
+      "imports_executed": false
+    },
+    {
+      "path": "hermes_cli/plugins.py",
+      "sha256": "c8318665af6e97a79861f9dde39dbeb836e4a792e7f40526e1a65adc565ecafb",
+      "syntax": "VALID",
+      "lines": 2163,
+      "base_lines": 2163,
+      "imports_executed": false
+    },
+    {
+      "path": "hermes_cli/plugins_ledger.py",
+      "sha256": "bd7e3f5ad336e78a8fe555f0255f216e9b298612d52b2c434d1723a0f0780291",
+      "syntax": "VALID",
+      "lines": 309,
+      "base_lines": 307,
+      "imports_executed": false
+    },
+    {
+      "path": "hermes_cli/web_server_app.py",
+      "sha256": "39b2a4490dadaf1f0d487918654acf2f70f6622c9df6362d784bc62bbf5041d8",
+      "syntax": "VALID",
+      "lines": 248,
+      "base_lines": 236,
+      "imports_executed": false
+    },
+    {
+      "path": "plugins/symphony_pm/__init__.py",
+      "sha256": "c0ba1ad6ffa8dd66a1bcf7ea2a8b912a73e61fff590c25abee39fc71ab32a279",
+      "syntax": "VALID",
+      "lines": 114,
+      "base_lines": 110,
+      "imports_executed": false
+    },
+    {
+      "path": "plugins/symphony_pm/service.py",
+      "sha256": "3ce3694e5c40c94ca7f6038190751533d3dda8618aea7bd8a0f5dc955aaa8d3b",
+      "syntax": "VALID",
+      "lines": 116,
+      "base_lines": null,
+      "imports_executed": false
+    },
+    {
+      "path": "tests/hermes_cli/test_plugin_services.py",
+      "sha256": "8a8824c49ff042f5163d59010fe6ea82a14d148c2fd785919cce047b416aaffd",
+      "syntax": "VALID",
+      "lines": 214,
+      "base_lines": null,
+      "imports_executed": false
+    },
+    {
+      "path": "tests/hermes_cli/test_web_server_plugin_services.py",
+      "sha256": "14a7f08cf4b176bb53ef5d4ed6a38db2d6866532389fa6cd6c00747a0d501d46",
+      "syntax": "VALID",
+      "lines": 39,
+      "base_lines": null,
+      "imports_executed": false
+    },
+    {
+      "path": "tests/plugins/test_symphony_pm_serving.py",
+      "sha256": "363bf811e2940aee67c53ec37abe10284128fe14be0d9dd3c155e7f7b0e91d96",
+      "syntax": "VALID",
+      "lines": 101,
+      "base_lines": null,
+      "imports_executed": false
+    },
+    {
+      "path": "tests/tui_gateway/test_plugin_service_lifecycle.py",
+      "sha256": "f0e2318a7eea4a8dae7e1871912d0d1527f67c85c223eedaa30319369ac264f7",
+      "syntax": "VALID",
+      "lines": 38,
+      "base_lines": null,
+      "imports_executed": false
+    },
+    {
+      "path": "tui_gateway/entry.py",
+      "sha256": "ee034f68c7134b3d2bb2eef3a7d3daf36f9d9682dd839167454b76a7bac5ec20",
+      "syntax": "VALID",
+      "lines": 431,
+      "base_lines": 425,
+      "imports_executed": false
+    },
+    {
+      "path": "tui_gateway/plugin_service_lifecycle.py",
+      "sha256": "11bd238650ce373298a40353c3558686a0cf150d9d854d1691b676b46f717378",
+      "syntax": "VALID",
+      "lines": 27,
+      "base_lines": null,
+      "imports_executed": false
+    },
+    {
+      "path": "tui_gateway/server.py",
+      "sha256": "5b9d3d2a93e370668cc352070047fff423e0a5873603c8a3f3fc97efcc6f8dac",
+      "syntax": "VALID",
+      "lines": 2036,
+      "base_lines": 2042,
+      "imports_executed": false
+    }
+  ],
+  "unit_tests": "NOT_RUN",
+  "runtime": "NOT_RUN",
+  "native": "NOT_RUN"
+}

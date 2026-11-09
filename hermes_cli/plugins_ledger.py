@@ -246,6 +246,8 @@ class PluginLedgerMixin:
             registrations.extend(
                 r for key in target_keys for r in self._ownership_ledger.get(key, []) if r.persistent and r.active
             )
+        from hermes_cli.plugin_services import close_plugin_service_admission
+        close_plugin_service_admission(self, target_keys)
         found = bool(target_keys or registrations)
         self._dispose_registrations(registrations)
         self._forget_registrations(registrations)

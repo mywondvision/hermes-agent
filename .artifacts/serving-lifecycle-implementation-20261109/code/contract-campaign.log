@@ -1,0 +1,32 @@
+▶ not activated — using HERMES_PYTHON: D:\AI\envs\hermes-pm-ingress-test-20261106\Scripts\python.exe
+▶ running per-file parallel test suite via run_tests_parallel.py
+  (TZ=UTC LANG=C.UTF-8 PYTHONHASHSEED=0; clean env)
+▶ pre-compiling bytecode cache
+▶ launching test runner
+Discovered 8 test files (~86 tests) under ['tests\\hermes_cli\\test_plugin_services.py', 'tests\\hermes_cli\\test_web_server_plugin_services.py', 'tests\\plugins\\test_symphony_pm_serving.py', 'tests\\tui_gateway\\test_plugin_service_lifecycle.py', 'tests\\tools\\test_symphony_pm_adapter.py', 'tests\\tools\\test_symphony_pm_adapter_cancel_s2.py', 'tests\\plugins\\test_symphony_pm_plugin.py', 'tests\\plugins\\test_symphony_pm_ingress_offline.py']; running with -j 1
+[ 14.0% |    12/~86 | ✓16 | ✗ 0] ✓ tests\hermes_cli\test_plugin_services.py (16✓, 20.7s)
+[ 15.1% |    13/~86 | ✓18 | ✗ 0] ✓ tests\hermes_cli\test_web_server_plugin_services.py (2✓, 12.2s)
+[ 32.6% |    28/~86 | ✓56 | ✗ 0] ✓ tests\plugins\test_symphony_pm_ingress_offline.py (38✓, 33.7s)
+[ 44.2% |    38/~86 | ✓66 | ✗ 0] ✓ tests\plugins\test_symphony_pm_plugin.py (10✓, 18.4s)
+[ 48.8% |    42/~86 | ✓70 | ✗ 0] ✓ tests\plugins\test_symphony_pm_serving.py (4✓, 11.9s)
+[ 89.5% |    77/~86 | ✓105 | ✗  0] ✓ tests\tools\test_symphony_pm_adapter.py (35✓, 15.1s)
+[ 97.7% |    84/~86 | ✓112 | ✗  0] ✓ tests\tools\test_symphony_pm_adapter_cancel_s2.py (7✓, 11.5s)
+[100.0% |    86/~86 | ✓114 | ✗  0] ✓ tests\tui_gateway\test_plugin_service_lifecycle.py (2✓, 8.2s)
+
+=== Summary: 8 files, 114 tests passed, 0 failed (100% complete) in 132.1s (1 workers) ===
+  Durations cached to test_durations.json (8 files)
+
+=== Per-file subprocess time distribution ===
+  Files:   8
+  Total subprocess CPU-wall: 131.6s  (runner wall: 132.1s, parallelism: 1x)
+  P50: 15.14s  P90: 33.70s  P95: 33.70s  P99: 33.70s  Max: 33.70s
+  <1s: 0 files (0%)  <2s: 0 files (0%)
+  Top 10 slowest:
+     33.70s  tests\plugins\test_symphony_pm_ingress_offline.py
+     20.67s  tests\hermes_cli\test_plugin_services.py
+     18.37s  tests\plugins\test_symphony_pm_plugin.py
+     15.14s  tests\tools\test_symphony_pm_adapter.py
+     12.16s  tests\hermes_cli\test_web_server_plugin_services.py
+     11.93s  tests\plugins\test_symphony_pm_serving.py
+     11.47s  tests\tools\test_symphony_pm_adapter_cancel_s2.py
+      8.18s  tests\tui_gateway\test_plugin_service_lifecycle.py

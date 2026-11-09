@@ -2183,12 +2183,11 @@ class GatewayShutdownMixin(GatewaySessionEndMixin):
 
     async def _stop_impl(self) -> None:
         """Run every ``_stop_*`` phase under the thread-based shutdown watchdog."""
+        from hermes_cli.plugin_services import close_host_service_admission, stop_host_services
+        close_host_service_admission(self)
         from gateway.run import GatewayRunner
-        # Thread-based watchdog (asyncio timeouts cannot recover a frozen loop): dumps stacks and
-        # os._exit past drain+grace so the service manager revives us. Skipped under pytest.
-        # Arm a plain OS thread at the start of stop(); if teardown never finishes within drain+grace it
-        # dumps faulthandler stacks and os._exit so KeepAlive/systemd can revive. Skip under pytest so
-        # stop()-driving unit tests don't get a delayed hard-exit in the worker. See #66892.
+        # A thread watchdog dumps stacks and os._exit past drain+grace if asyncio freezes (#66892).
+        # Skip under pytest so stop()-driving tests cannot receive a delayed hard-exit.
         _watchdog_done = threading.Event()
         self._shutdown_watchdog_done = _watchdog_done
         # Shutdown-path doubles may lack the deferred-worker counter.
@@ -2219,6 +2218,7 @@ class GatewayShutdownMixin(GatewaySessionEndMixin):
             GatewayRunner._stop_quiesce_and_close_session_dbs(self, timeout, ctx)
             await GatewayRunner._stop_persist_exit_state(self, ctx)
         finally:
+            stop_host_services(self, timeout=0.0)
             _watchdog_done.set()
 
     async def stop(

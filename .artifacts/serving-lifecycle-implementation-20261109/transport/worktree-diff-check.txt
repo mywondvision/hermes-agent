@@ -1,0 +1,26 @@
+.artifacts/live-smoke-20261106/events.jsonl:12: trailing whitespace.
++{"at": 1793988117.5083702, "event": "NATIVE_STARTED", "job": "job-504da36f66c444e2853cbd753c128685", "attempt": "attempt-one", "pid": 4242, "start_ticks": "123456", "job_object": "probe"}
+.artifacts/live-smoke-20261106/events.jsonl:13: trailing whitespace.
++{"at": 1793988117.8278556, "event": "NATIVE_STARTED", "job": "job-e2b021a77f714966ae87ec85e7bcdeeb", "attempt": "attempt-one", "pid": 4242, "start_ticks": "123456", "job_object": "probe"}
+.artifacts/live-smoke-20261106/events.jsonl:14: trailing whitespace.
++{"at": 1793988494.6581812, "event": "NATIVE_STARTED", "job": "job-2218cf0d0ebd49f58312df4a49fc3475", "attempt": "attempt-one", "pid": 4242, "start_ticks": "123456", "job_object": "probe"}
+.artifacts/live-smoke-20261106/events.jsonl:15: trailing whitespace.
++{"at": 1793988494.9464447, "event": "NATIVE_STARTED", "job": "job-163eba5356ce4805889a003fb074d86c", "attempt": "attempt-one", "pid": 4242, "start_ticks": "123456", "job_object": "probe"}
+.artifacts/live-smoke-20261106/events.jsonl:16: trailing whitespace.
++{"at": 1793988495.2123811, "event": "NATIVE_STARTED", "job": "job-68d6ef771eb0437593e98fc45d14a18b", "attempt": "attempt-one", "pid": 4242, "start_ticks": "123456", "job_object": "probe"}
+.artifacts/live-smoke-20261106/events.jsonl:17: trailing whitespace.
++{"at": 1793988495.4318538, "event": "NATIVE_STARTED", "job": "job-b6f4af9e14874892b837eb692e2838bc", "attempt": "attempt-one", "pid": 4242, "start_ticks": "123456", "job_object": "probe"}
+.artifacts/live-smoke-20261106/events.jsonl:18: trailing whitespace.
++{"at": 1793989443.831478, "event": "NATIVE_STARTED", "job": "job-0a987507992d44928b85e4d9ae0eac27", "attempt": "attempt-one", "pid": 4242, "start_ticks": "123456", "job_object": "probe"}
+.artifacts/live-smoke-20261106/events.jsonl:19: trailing whitespace.
++{"at": 1793989443.984705, "event": "NATIVE_STARTED", "job": "job-d4c260b78686404c82ab26d73dc27318", "attempt": "attempt-one", "pid": 4242, "start_ticks": "123456", "job_object": "probe"}
+.artifacts/live-smoke-20261106/events.jsonl:20: trailing whitespace.
++{"at": 1793989444.186522, "event": "NATIVE_STARTED", "job": "job-bf5bd82520d24817805a9c374ca7d023", "attempt": "attempt-one", "pid": 4242, "start_ticks": "123456", "job_object": "probe"}
+.artifacts/live-smoke-20261106/events.jsonl:21: trailing whitespace.
++{"at": 1793989444.3239431, "event": "NATIVE_STARTED", "job": "job-1d64a00abf3548df84a1c93ec1797512", "attempt": "attempt-one", "pid": 4242, "start_ticks": "123456", "job_object": "probe"}
+warning: in the working copy of '.artifacts/frozen-s2/snapshot-manifest.json', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'docs/audits/CR-hermes-symphony-ingress-offline-20261106/live-smoke-20261106/REPORT.md', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'docs/audits/CR-hermes-symphony-ingress-offline-20261106/live-smoke-20261106/approved-retry-1-summary.json', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'docs/audits/CR-hermes-symphony-ingress-offline-20261106/live-smoke-20261106/approved-retry-1.md', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'docs/audits/CR-hermes-symphony-ingress-offline-20261106/live-smoke-20261106/summary.json', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'docs/change-requests/CR-hermes-symphony-serving-lifecycle-20261106.md', CRLF will be replaced by LF the next time Git touches it

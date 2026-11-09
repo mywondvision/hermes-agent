@@ -1,0 +1,28 @@
+{
+  "status": "CONSUMED_FINISHED",
+  "owner_approved": true,
+  "campaigns": 1,
+  "retries": 0,
+  "max_seconds": 600,
+  "files": [
+    "tests/plugins/test_symphony_pm_journal.py",
+    "tests/plugins/test_symphony_pm_lifecycle.py",
+    "tests/plugins/test_symphony_pm_permit_source.py",
+    "tests/plugins/test_symphony_pm_serving.py"
+  ],
+  "scope": "SQLite in disposable temp profile, fixture receiver/observer/approval callbacks, real plugin discovery; canonical runner subprocesses only",
+  "excluded": [
+    "native worker",
+    "model",
+    "microphone",
+    "external speech",
+    "new gateway/runtime",
+    "production",
+    "dependencies",
+    "paid resources",
+    "commit/push"
+  ],
+  "previous_campaign_remaining": 0,
+  "previous_campaign_replay": false,
+  "campaign_remaining": 0
+}

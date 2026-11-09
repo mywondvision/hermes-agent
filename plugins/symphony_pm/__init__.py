@@ -4,8 +4,8 @@ The adapter deliberately has no import-time registration; this plugin is its one
 binding to the Hermes tool registry, through the ``PluginContext`` the loader hands to
 ``register(ctx)``. At load the tool is registered UNWIRED (no port, no trusted-context source):
 its ``check_fn`` is False, so ``get_tool_definitions`` never emits it, and a direct dispatch
-returns ``UNAVAILABLE``/``hold``. Nothing here reads config, the home, the environment or the
-network; nothing starts a thread or a process.
+returns ``UNAVAILABLE``/``hold``. Discovery additionally declares an inert host-service factory;
+no issuer, driver, thread, process or network request is created here.
 
 Wiring seam
 -----------
@@ -80,6 +80,10 @@ def register(ctx: Any) -> None:
     global _ctx
     _ctx = ctx
     _bind(None, None)
+    declare = getattr(ctx, "register_runtime_service", None)
+    if declare is not None:  # older native hosts retain the original inert/manual wire contract
+        from .service import ServingIngress
+        declare("ingress", lambda scope: ServingIngress(ctx, scope))
 
 
 def wire(

@@ -258,14 +258,8 @@ def _load_interim_assistant_messages() -> bool:
 
 
 def _shutdown_sessions() -> None:
-    # Durable-first: flush transcripts (bounded budget) BEFORE the slow teardown so a supervisor SIGKILL can't lose them.
-    for step in (_flush_sessions_before_exit, _release_gateway_wake_owner, _stop_turns_before_exit):
-        with contextlib.suppress(Exception):
-            step()
-    with _sessions_lock:
-        sids = list(_sessions)
-    for sid in sids:
-        _close_session_by_id(sid, end_reason="tui_shutdown")
+    from tui_gateway.plugin_service_lifecycle import shutdown_sessions
+    shutdown_sessions(sys.modules[__name__])
 
 
 # Session reaping / flushing knobs (session_reaper.py). TTL is the last-resort net for disconnect paths that

@@ -1,0 +1,297 @@
+{
+  "schemaVersion": 1,
+  "crId": "CR-hermes-symphony-serving-lifecycle-20261106",
+  "reviewedRevision": {
+    "exact": "sha256:071f996b26734da37e914a5008f707f5393394d9f2c5e6b5a741400eeab48234",
+    "normalized": "sha256:d408f7b5b619e13ab13fd113b428b7e5633399719d0b7732df7fa66a8d2d691d"
+  },
+  "packHash": "sha256:19bb045b841cee2bdf4502c69f708111e1369d2556274c1792489451e8bd1f72",
+  "verdict": "PASS",
+  "reviewer": {
+    "mode": "isolated-subagent",
+    "contextId": "root.serving_binding_hygiene",
+    "role": "context-hygiene-reviewer",
+    "runtime": "/root/serving_binding_hygiene"
+  },
+  "preparer": {
+    "contextId": "root-serving-binding-20261109"
+  },
+  "inputs": [
+    "context-pack",
+    "candidate-cr",
+    "owner-directives",
+    "accepted-decisions",
+    "verified-evidence",
+    "prefilter"
+  ],
+  "protectedFacts": [
+    {
+      "id": "owner-10-0",
+      "textHash": "sha256:b8a6e3a6c7e8118a16b948f4931364a4b5088b5e58f727870ed4daafd2f49107",
+      "outcome": "preserved",
+      "note": "Текст сохранён дословно. Старый read-only статус superseded актуальными решениями; operational restrictions сохраняются."
+    },
+    {
+      "id": "owner-18-0",
+      "textHash": "sha256:6e242f934ab44fccf004deb176117ccb6f0e04dd72ceae93bed2ee5d1d1bab69",
+      "outcome": "preserved"
+    },
+    {
+      "id": "preserved-1",
+      "textHash": "sha256:632668c087c9360484c3c975e52f0b4c1a801fc1cb5121fbfedfa586a2fae56c",
+      "outcome": "preserved",
+      "note": "Дословно сохранён как исторический статус. Не является действующим запретом исходного CODE scope и не отменяет отдельные campaign/pilot gates."
+    },
+    {
+      "id": "preserved-6",
+      "textHash": "sha256:ad4d4f66480391c03f9d21f92407ca8d3d825bfc7a6113065379f7e365795985",
+      "outcome": "preserved"
+    },
+    {
+      "id": "preserved-9",
+      "textHash": "sha256:449e0f9d8095332934350a14a6f7261fc753b65021102e1d71fc42e2bdfa603f",
+      "outcome": "preserved"
+    },
+    {
+      "id": "preserved-10",
+      "textHash": "sha256:b77c958bc616d62221e64ac56c54bb81150f7dc288c2749747343b9b1ab6e4e4",
+      "outcome": "preserved"
+    },
+    {
+      "id": "preserved-11",
+      "textHash": "sha256:ef8f3101340a60fb14461570ad5b5a2f22c2176d2e64ae6d6dc15e00f13ac7b6",
+      "outcome": "preserved"
+    },
+    {
+      "id": "preserved-12",
+      "textHash": "sha256:d8eabdfeb630531f9a8f2b789c77f748761b004dd9730f7a765159d1ff7f9007",
+      "outcome": "preserved"
+    },
+    {
+      "id": "preserved-13",
+      "textHash": "sha256:e7b923dbdb2fea2787ca1be21cd699c22121c248da193733dc42e57968330385",
+      "outcome": "preserved"
+    },
+    {
+      "id": "preserved-14",
+      "textHash": "sha256:4366748d78905c9a8a803b76e8b7f4a4fc7a74fec35e6cb7da101f898b57b0fa",
+      "outcome": "preserved"
+    },
+    {
+      "id": "preserved-15",
+      "textHash": "sha256:b5fb89f0c3c8a9558460c988de280dcf224cc0948536220bcba8803b42efa5a2",
+      "outcome": "preserved"
+    },
+    {
+      "id": "preserved-16",
+      "textHash": "sha256:cd68243ff31b89292b8d68df9776c086a3073b1c261dc5087bd63f1599517f24",
+      "outcome": "preserved",
+      "note": "No-model campaign остаётся NOT_RUN и требует отдельного допуска; reviewer не выполнял tests/runtime."
+    },
+    {
+      "id": "preserved-17",
+      "textHash": "sha256:b803ba91567ce78c95800aac30f42a4f70ab56257dcf599c44a4252f78148cfd",
+      "outcome": "preserved"
+    },
+    {
+      "id": "preserved-18",
+      "textHash": "sha256:f7d9a445b97323415dd4ba345403cc442953ae95d05429d11d21689cf7960c13",
+      "outcome": "preserved"
+    },
+    {
+      "id": "preserved-19",
+      "textHash": "sha256:c7ce5230b0c1da1cc196942321f15e1eb1676a55c014ce00a9293c26ba141eff",
+      "outcome": "preserved"
+    },
+    {
+      "id": "preserved-20",
+      "textHash": "sha256:64d85d231fe63d1666603e5623872eeaa108a308df5204159f9536f436de84a4",
+      "outcome": "preserved"
+    },
+    {
+      "id": "amend-owner-scope",
+      "textHash": "sha256:a76ec41c56870599ed2e8167b4f65acfd7d091608dd11a33a2ccb9f0aceebf73",
+      "outcome": "preserved",
+      "note": "Исходный CODE approval и разрешение amendment/review различаются. Этот PASS подтверждает hygiene ревизии, не является новым owner approval или native permit."
+    },
+    {
+      "id": "amend-owner-limits",
+      "textHash": "sha256:5b76067e62ed1c416a0dee75de1b6df66e2e87d50d4c84b42e4a05a32c5dae8c",
+      "outcome": "preserved",
+      "note": "Выполнен один независимый read-only проход без делегирования, сети, project-code execution или записей. contextId сериализован без slash для schema; реальный context id указан в reviewer.runtime."
+    },
+    {
+      "id": "amend-files",
+      "textHash": "sha256:154101133bce9ae01858c3b604c0140f373d5378db5d47c7b0e0d102efedd843",
+      "outcome": "preserved",
+      "note": "Proposed scope сохранён; не повышен до active requirement. Artifact — Hermes plugin-host/runtime; обязательные поля Bitrix24 Cloud domain gate к нему не относятся. Новые API names/signatures остаются предложениями."
+    },
+    {
+      "id": "amend-acceptance",
+      "textHash": "sha256:fa5a9a1209681b0edcb6b652c3cad6c74192dd663a3a5c4c09bc881112c65871",
+      "outcome": "preserved",
+      "note": "Proposed acceptance сохранён дословно, не представлен как выполненный или отдельно одобренный."
+    },
+    {
+      "id": "amend-unknown",
+      "textHash": "sha256:02070dfe32a94fd59053ed2f18f70e6557550c07d67b252d41cae862a721f1ec",
+      "outcome": "preserved",
+      "note": "Production approval source не установлен; native admission и сквозная приёмка HOLD. Generic inert binding нельзя считать завершённым transport."
+    }
+  ],
+  "activeRequirements": [
+    "preserved-6",
+    "preserved-9",
+    "preserved-10",
+    "preserved-11",
+    "preserved-12",
+    "preserved-13",
+    "preserved-14",
+    "preserved-15",
+    "preserved-16",
+    "preserved-17",
+    "preserved-18",
+    "preserved-20",
+    "amend-owner-scope",
+    "amend-owner-limits"
+  ],
+  "removed": [],
+  "staleClaims": [
+    {
+      "id": "evidence-0-0",
+      "action": "reverified",
+      "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483"
+    },
+    {
+      "id": "evidence-1-0",
+      "action": "reverified",
+      "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483"
+    },
+    {
+      "id": "evidence-2-0",
+      "action": "reverified",
+      "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483"
+    },
+    {
+      "id": "evidence-3-0",
+      "action": "reverified",
+      "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483"
+    },
+    {
+      "id": "evidence-4-0",
+      "action": "reverified",
+      "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483"
+    },
+    {
+      "id": "evidence-5-0",
+      "action": "reverified",
+      "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483"
+    },
+    {
+      "id": "evidence-6-0",
+      "action": "reverified",
+      "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483"
+    },
+    {
+      "id": "evidence-7-0",
+      "action": "reverified",
+      "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483"
+    },
+    {
+      "id": "evidence-8-0",
+      "action": "reverified",
+      "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483"
+    },
+    {
+      "id": "evidence-9-0",
+      "action": "reverified",
+      "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483"
+    },
+    {
+      "id": "preserved-2",
+      "action": "marked-stale"
+    },
+    {
+      "id": "preserved-5",
+      "action": "marked-stale"
+    },
+    {
+      "id": "preserved-7",
+      "action": "marked-stale"
+    },
+    {
+      "id": "preserved-8",
+      "action": "marked-stale"
+    },
+    {
+      "id": "preserved-21",
+      "action": "marked-stale"
+    },
+    {
+      "id": "current-rehydration",
+      "action": "marked-stale"
+    }
+  ],
+  "unsupportedClaims": [
+    "proposal-14-0",
+    "proposal-14-1800",
+    "proposal-14-3600",
+    "amend-binding-1",
+    "amend-binding-2",
+    "amend-binding-3",
+    "amend-binding-4",
+    "amend-binding-5",
+    "amend-binding-6",
+    "amend-files",
+    "amend-acceptance"
+  ],
+  "conflicts": [],
+  "superseded": [
+    {
+      "id": "owner-10-0",
+      "by": "amend-owner-limits"
+    },
+    {
+      "id": "preserved-1",
+      "by": "amend-owner-scope"
+    }
+  ],
+  "unknowns": [
+    "owner-18-0",
+    "preserved-19",
+    "amend-unknown"
+  ],
+  "missingEvidence": [],
+  "cleanedCr": {
+    "locator": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\docs\\change-requests\\CR-hermes-symphony-serving-lifecycle-20261106.md",
+    "revision": "sha256:071f996b26734da37e914a5008f707f5393394d9f2c5e6b5a741400eeab48234"
+  },
+  "telemetry": {
+    "hygieneRequired": true,
+    "charsBefore": 19772,
+    "charsAfter": 19772,
+    "protectedFactsChanged": false,
+    "staleCount": 16,
+    "conflictCount": 0,
+    "sourcesConsulted": [
+      ".artifacts/serving-lifecycle-implementation-20261109/amended-context-pack.json",
+      "docs/change-requests/CR-hermes-symphony-serving-lifecycle-20261106.md",
+      ".artifacts/serving-lifecycle-implementation-20261109/OWNER_DECISIONS.md",
+      ".artifacts/serving-lifecycle-implementation-20261109/preflight.json",
+      ".artifacts/serving-lifecycle-implementation-20261109/approved-parent-cr.md",
+      ".artifacts/voice-integration-20261109/serving-revalidation.json",
+      ".artifacts/voice-integration-20261109/serving-current-state.json",
+      ".artifacts/voice-integration-20261109/review-budget-exception.json",
+      ".artifacts/controller-restart-20261106/REPORT.md",
+      ".artifacts/controller-restart-20261106/verification.json",
+      ".artifacts/controller-restart-20261106/durable-readback.json",
+      ".artifacts/controller-restart-20261106/package-hashes.json",
+      "plugins/symphony_pm/__init__.py",
+      "tests/fixtures/symphony_pm_ingress/owner.py",
+      ".artifacts/live-smoke-20261106/cancel_control.py",
+      ".artifacts/live-smoke-20261106/smoke.py",
+      ".artifacts/live-smoke-20261106/winjob.py",
+      "tools/symphony_pm_adapter.py"
+    ]
+  }
+}

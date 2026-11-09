@@ -1,0 +1,201 @@
+{
+  "schemaVersion": 1,
+  "crId": "CR-hermes-symphony-serving-lifecycle-20261106",
+  "reviewedRevision": {
+    "exact": "sha256:af5851df67d720bc511bf520cad503aa1a5f857bb943b22e1719184455a9c5eb",
+    "normalized": "sha256:c28c4ba9bc9b3b3deb70d61469231da65f5aef3ab7bd468d340f87e55c6e49d1"
+  },
+  "packHash": "sha256:20dfffdc379a158dcaedb20df3f3d0e585f84592c8e3e4899ad60a496c7b994e",
+  "verdict": "PASS",
+  "reviewer": {
+    "mode": "isolated-subagent",
+    "contextId": "root.serving_hygiene",
+    "role": "context-hygiene-reviewer",
+    "runtime": "Codex native subagent; Windows"
+  },
+  "preparer": {
+    "contextId": "root-voice-integration-20261109"
+  },
+  "inputs": [
+    "context-pack",
+    "candidate-cr",
+    "owner-directives",
+    "verified-evidence",
+    "prefilter"
+  ],
+  "protectedFacts": [
+    {
+      "id": "owner-10-0",
+      "textHash": "sha256:b8a6e3a6c7e8118a16b948f4931364a4b5088b5e58f727870ed4daafd2f49107",
+      "outcome": "preserved",
+      "note": "All restrictions retained. The scoped review-budget exception permits this metadata review only; implementation, runtime, model, native-worker and transport-pilot permissions are unchanged."
+    },
+    {
+      "id": "owner-18-0",
+      "textHash": "sha256:6e242f934ab44fccf004deb176117ccb6f0e04dd72ceae93bed2ee5d1d1bab69",
+      "outcome": "preserved",
+      "note": "Power loss, native Codex restart-stop, remote inference, billing and external settlement remain UNKNOWN."
+    },
+    {
+      "id": "preserved-1",
+      "textHash": "sha256:632668c087c9360484c3c975e52f0b4c1a801fc1cb5121fbfedfa586a2fae56c",
+      "outcome": "preserved",
+      "note": "DRAFT, E0 evidence cap, unchanged prior proof budget, separate implementation approval and exact transport-pilot authorization are retained."
+    },
+    {
+      "id": "preserved-6",
+      "textHash": "sha256:ad4d4f66480391c03f9d21f92407ca8d3d825bfc7a6113065379f7e365795985",
+      "outcome": "preserved",
+      "note": "Proposed scope remains agent-inference/INFERRED/PROPOSED. Its text survives in the historical candidate without becoming an accepted requirement."
+    },
+    {
+      "id": "preserved-16",
+      "textHash": "sha256:cd68243ff31b89292b8d68df9776c086a3073b1c261dc5087bd63f1599517f24",
+      "outcome": "preserved",
+      "note": "Future no-model acceptance campaign remains conditional on separate permission, isolated temporary state and bounded execution. Successful historical smoke must not be repeated."
+    },
+    {
+      "id": "preserved-17",
+      "textHash": "sha256:b803ba91567ce78c95800aac30f42a4f70ab56257dcf599c44a4252f78148cfd",
+      "outcome": "preserved",
+      "note": "Candidate acceptance matrix retained verbatim. This review neither executes its scenarios nor reports their acceptance."
+    },
+    {
+      "id": "preserved-18",
+      "textHash": "sha256:f7d9a445b97323415dd4ba345403cc442953ae95d05429d11d21689cf7960c13",
+      "outcome": "preserved",
+      "note": "Material out-of-scope constraints now have the protected out-of-scope classification, including unchanged kit driver/frozen S2 and no new core tool, ENV config, queue, HTTP or scheduler facade."
+    },
+    {
+      "id": "preserved-19",
+      "textHash": "sha256:c7ce5230b0c1da1cc196942321f15e1eb1676a55c014ce00a9293c26ba141eff",
+      "outcome": "preserved",
+      "note": "Production transport blockers remain material UNKNOWN. Synthetic process evidence does not establish general cancel/release or production readiness."
+    },
+    {
+      "id": "preserved-20",
+      "textHash": "sha256:64d85d231fe63d1666603e5623872eeaa108a308df5204159f9536f436de84a4",
+      "outcome": "preserved",
+      "note": "Rollback, journal preservation, no second cancellation path and protection of unrelated files/processes remain unchanged."
+    }
+  ],
+  "activeRequirements": [],
+  "removed": [],
+  "staleClaims": [
+    {
+      "id": "evidence-0-0",
+      "action": "reverified",
+      "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483"
+    },
+    {
+      "id": "evidence-1-0",
+      "action": "reverified",
+      "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483"
+    },
+    {
+      "id": "evidence-2-0",
+      "action": "reverified",
+      "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483"
+    },
+    {
+      "id": "evidence-3-0",
+      "action": "reverified",
+      "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483"
+    },
+    {
+      "id": "evidence-4-0",
+      "action": "reverified",
+      "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483"
+    },
+    {
+      "id": "evidence-5-0",
+      "action": "reverified",
+      "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483"
+    },
+    {
+      "id": "evidence-6-0",
+      "action": "reverified",
+      "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483"
+    },
+    {
+      "id": "evidence-7-0",
+      "action": "reverified",
+      "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483"
+    },
+    {
+      "id": "evidence-8-0",
+      "action": "reverified",
+      "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483"
+    },
+    {
+      "id": "evidence-9-0",
+      "action": "reverified",
+      "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483"
+    },
+    {
+      "id": "preserved-2",
+      "action": "marked-stale"
+    },
+    {
+      "id": "preserved-5",
+      "action": "marked-stale"
+    },
+    {
+      "id": "preserved-7",
+      "action": "marked-stale"
+    },
+    {
+      "id": "preserved-8",
+      "action": "marked-stale"
+    },
+    {
+      "id": "preserved-21",
+      "action": "marked-stale"
+    }
+  ],
+  "unsupportedClaims": [
+    "proposal-14-0",
+    "proposal-14-1800",
+    "proposal-14-3600",
+    "preserved-6",
+    "preserved-9",
+    "preserved-10",
+    "preserved-11",
+    "preserved-12",
+    "preserved-13",
+    "preserved-14",
+    "preserved-15"
+  ],
+  "conflicts": [],
+  "superseded": [],
+  "unknowns": [
+    "owner-18-0",
+    "preserved-19"
+  ],
+  "missingEvidence": [],
+  "telemetry": {
+    "hygieneRequired": true,
+    "charsBefore": 13967,
+    "charsAfter": 13967,
+    "protectedFactsChanged": false,
+    "staleCount": 15,
+    "conflictCount": 0,
+    "sourcesConsulted": [
+      ".artifacts/voice-integration-20261109/serving-context-pack.json",
+      ".artifacts/voice-integration-20261109/review-budget-exception.json",
+      ".artifacts/voice-integration-20261109/serving-current-state.json",
+      ".artifacts/voice-integration-20261109/serving-revalidation.json",
+      "docs/change-requests/CR-hermes-symphony-serving-lifecycle-20261106.md",
+      ".artifacts/controller-restart-20261106/REPORT.md",
+      ".artifacts/controller-restart-20261106/verification.json",
+      ".artifacts/controller-restart-20261106/durable-readback.json",
+      ".artifacts/controller-restart-20261106/package-hashes.json",
+      "plugins/symphony_pm/__init__.py",
+      "tests/fixtures/symphony_pm_ingress/owner.py",
+      ".artifacts/live-smoke-20261106/cancel_control.py",
+      ".artifacts/live-smoke-20261106/smoke.py",
+      ".artifacts/live-smoke-20261106/winjob.py",
+      "tools/symphony_pm_adapter.py"
+    ]
+  }
+}

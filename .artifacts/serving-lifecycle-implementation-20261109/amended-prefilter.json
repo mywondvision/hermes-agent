@@ -1,0 +1,116 @@
+{
+  "revision": {
+    "exact": "sha256:071f996b26734da37e914a5008f707f5393394d9f2c5e6b5a741400eeab48234",
+    "normalized": "sha256:d408f7b5b619e13ab13fd113b428b7e5633399719d0b7732df7fa66a8d2d691d"
+  },
+  "chars": 19772,
+  "sections": [
+    {
+      "heading": "CR: Hermes → Symphony — lifecycle owner и in-process transport",
+      "line": 1,
+      "chars": 100,
+      "class": "CANONICAL_SPEC"
+    },
+    {
+      "heading": "Действующая поправка: generic host binding (2026-11-09)",
+      "line": 5,
+      "chars": 1150,
+      "class": "CANONICAL_SPEC"
+    },
+    {
+      "heading": "Требуемая generic привязка",
+      "line": 11,
+      "chars": 2636,
+      "class": "CANONICAL_SPEC"
+    },
+    {
+      "heading": "Scope файлов и совместимость",
+      "line": 20,
+      "chars": 748,
+      "class": "CANONICAL_SPEC"
+    },
+    {
+      "heading": "Критерии и неизвестное",
+      "line": 24,
+      "chars": 1202,
+      "class": "CANONICAL_SPEC"
+    },
+    {
+      "heading": "Исходная ревизия: исторический статус и сохранённая спецификация",
+      "line": 30,
+      "chars": 530,
+      "class": "HISTORICAL"
+    },
+    {
+      "heading": "Контекст и источники",
+      "line": 35,
+      "chars": 1571,
+      "class": "CANONICAL_SPEC"
+    },
+    {
+      "heading": "Цель и область",
+      "line": 45,
+      "chars": 651,
+      "class": "CANONICAL_SPEC"
+    },
+    {
+      "heading": "Что переиспользовать, что отсутствует",
+      "line": 51,
+      "chars": 2036,
+      "class": "CANONICAL_SPEC"
+    },
+    {
+      "heading": "Предлагаемый минимальный дизайн (PROPOSED)",
+      "line": 63,
+      "chars": 4689,
+      "class": "CANONICAL_SPEC"
+    },
+    {
+      "heading": "Acceptance и отдельная no-model кампания (NOT_RUN)",
+      "line": 74,
+      "chars": 2453,
+      "class": "CANONICAL_SPEC"
+    },
+    {
+      "heading": "Зависимости, риски и rollback",
+      "line": 92,
+      "chars": 1474,
+      "class": "CANONICAL_SPEC"
+    },
+    {
+      "heading": "Gate и граница утверждений",
+      "line": 100,
+      "chars": 533,
+      "class": "CANONICAL_SPEC"
+    }
+  ],
+  "stalePins": [
+    {
+      "line": 37,
+      "sha": "3feceb1f7c0b1e37a6e5a6ce00ffa6fa6aa1e02b"
+    },
+    {
+      "line": 37,
+      "sha": "fda3bda4bffece8bc3cca7e11be8dd8e72eef91d"
+    },
+    {
+      "line": 37,
+      "sha": "b766aecb8524a5c0b78197cda7a144473af4fd07"
+    },
+    {
+      "line": 37,
+      "sha": "369a012c"
+    },
+    {
+      "line": 43,
+      "sha": "048d446ba484d5d3ca8b052210dbeed3e18d7fb8"
+    }
+  ],
+  "rawBlocks": [],
+  "duplicates": [],
+  "proposalMarkers": [
+    14,
+    47,
+    63
+  ]
+}

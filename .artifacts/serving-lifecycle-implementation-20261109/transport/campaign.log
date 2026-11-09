@@ -1,0 +1,24 @@
+▶ not activated — using HERMES_PYTHON: D:\AI\envs\hermes-pm-ingress-test-20261106\Scripts\python.exe
+▶ running per-file parallel test suite via run_tests_parallel.py
+  (TZ=UTC LANG=C.UTF-8 PYTHONHASHSEED=0; clean env)
+▶ pre-compiling bytecode cache
+▶ launching test runner
+Discovered 4 test files (~24 tests) under ['tests\\plugins\\test_symphony_pm_journal.py', 'tests\\plugins\\test_symphony_pm_lifecycle.py', 'tests\\plugins\\test_symphony_pm_permit_source.py', 'tests\\plugins\\test_symphony_pm_serving.py']; running with -j 1
+[ 25.0% |     6/~24 | ✓6 | ✗0] ✓ tests\plugins\test_symphony_pm_journal.py (6✓, 32.1s)
+[ 54.2% |    13/~24 | ✓13 | ✗ 0] ✓ tests\plugins\test_symphony_pm_lifecycle.py (7✓, 15.8s)
+[ 75.0% |    18/~24 | ✓18 | ✗ 0] ✓ tests\plugins\test_symphony_pm_permit_source.py (5✓, 13.3s)
+[100.0% |    24/~24 | ✓24 | ✗ 0] ✓ tests\plugins\test_symphony_pm_serving.py (6✓, 20.9s)
+
+=== Summary: 4 files, 24 tests passed, 0 failed (100% complete) in 82.8s (1 workers) ===
+  Durations cached to test_durations.json (4 files)
+
+=== Per-file subprocess time distribution ===
+  Files:   4
+  Total subprocess CPU-wall: 82.1s  (runner wall: 82.8s, parallelism: 1x)
+  P50: 20.92s  P90: 32.06s  P95: 32.06s  P99: 32.06s  Max: 32.06s
+  <1s: 0 files (0%)  <2s: 0 files (0%)
+  Top 10 slowest:
+     32.06s  tests\plugins\test_symphony_pm_journal.py
+     20.92s  tests\plugins\test_symphony_pm_serving.py
+     15.81s  tests\plugins\test_symphony_pm_lifecycle.py
+     13.26s  tests\plugins\test_symphony_pm_permit_source.py

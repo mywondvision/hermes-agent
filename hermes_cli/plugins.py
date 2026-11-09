@@ -33,7 +33,6 @@ from hermes_cli.config import load_config_readonly
 from hermes_cli.middleware import VALID_MIDDLEWARE
 from hermes_cli.plugin_capabilities import plugin_capability_granted
 from hermes_cli.relay_plugin_cutover import RELAY_PLUGINS_CONFIG_ENV, legacy_relay_plugin_keys
-# Sibling modules' names are re-exported here (origin) so plugins and tests keep one import path.
 from hermes_cli.plugins_manifest import (
     _CONFIG_SCHEMA_TYPES, SUPPORTED_MANIFEST_VERSION, PluginManifest, _portable_data_namespace,
     manifest_key, parse_manifest_file, resolve_module_origin, resolve_plugin_load_order,
@@ -58,6 +57,7 @@ from hermes_cli.plugins_dispatch import (
     is_valid_system_prompt_section_id, resolve_plugin_command_result,
 )
 from hermes_cli.plugins_capability_ctx import PluginCapabilityCtxMixin
+from hermes_cli.plugin_services import PluginServiceContextMixin
 from hermes_cli.plugins_ledger import PluginLedgerMixin, PluginRegistration
 from hermes_cli.plugins_registrars import _SCOPED_PROVIDER_REGISTRARS, make_scoped_provider_registrar
 from hermes_cli.plugins_state import (
@@ -227,7 +227,7 @@ class LoadedPlugin:
     deferred: bool = False
 
 
-class PluginContext(PluginCapabilityCtxMixin):
+class PluginContext(PluginServiceContextMixin, PluginCapabilityCtxMixin):
     """Facade given to plugins so they can register tools and hooks."""
 
     def __init__(self, manifest: PluginManifest, manager: PluginManager):
@@ -1040,7 +1040,7 @@ def _ignore_after_abandoned_load(method):
 
 # Every mutating entry point plugins reach through ``ctx`` during register(); applied by name so the
 # guard cannot drift from the surface as registrars are added.
-for _name, _method in list(vars(PluginContext).items()):
+for _name, _method in [*vars(PluginContext).items(), *vars(PluginServiceContextMixin).items()]:
     if callable(_method) and (_name.startswith("register_") or _name in {"subscribe", "on_unload"}):
         setattr(PluginContext, _name, _ignore_after_abandoned_load(_method))
 del _name, _method

@@ -1,0 +1,892 @@
+{
+  "method": "AST parse/compile, source sizes/hash scan, git diff --check; no project imports or tests",
+  "head": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+  "project_execution": false,
+  "files": [
+    {
+      "path": "plugins/symphony_pm/transport/__init__.py",
+      "sha256": "17959a813ce91e6b1cbdeb783bc65ead35567d22092f4fef6f726d7a91aa918d",
+      "syntax": "VALID",
+      "lines": 1,
+      "functions": [],
+      "test_functions": 0
+    },
+    {
+      "path": "plugins/symphony_pm/transport/approval.py",
+      "sha256": "a78226ced71e8ef46c912594f201c9f9a52a74aa5c362bcd265497d75ec9ffce",
+      "syntax": "VALID",
+      "lines": 85,
+      "functions": [
+        {
+          "name": "__init__",
+          "line": 21,
+          "lines": 7
+        },
+        {
+          "name": "request_permit",
+          "line": 29,
+          "lines": 36
+        },
+        {
+          "name": "__call__",
+          "line": 66,
+          "lines": 20
+        }
+      ],
+      "test_functions": 0
+    },
+    {
+      "path": "plugins/symphony_pm/transport/bootstrap.py",
+      "sha256": "2fc687b823c7fa4ed2dff1c11af410ea663fff9d08c66b1e87cb541f81b89329",
+      "syntax": "VALID",
+      "lines": 60,
+      "functions": [
+        {
+          "name": "__init__",
+          "line": 11,
+          "lines": 3
+        },
+        {
+          "name": "close",
+          "line": 15,
+          "lines": 12
+        },
+        {
+          "name": "__call__",
+          "line": 47,
+          "lines": 14
+        }
+      ],
+      "test_functions": 0
+    },
+    {
+      "path": "plugins/symphony_pm/transport/journal.py",
+      "sha256": "bd0cf58365b5f1452cd626e1e53c9907069445b2295b5724eeec1dbd49c98710",
+      "syntax": "VALID",
+      "lines": 366,
+      "functions": [
+        {
+          "name": "encode",
+          "line": 26,
+          "lines": 2
+        },
+        {
+          "name": "permit_from_json",
+          "line": 30,
+          "lines": 5
+        },
+        {
+          "name": "ticket_from_json",
+          "line": 37,
+          "lines": 4
+        },
+        {
+          "name": "__init__",
+          "line": 44,
+          "lines": 10
+        },
+        {
+          "name": "_connection",
+          "line": 56,
+          "lines": 9
+        },
+        {
+          "name": "_transaction",
+          "line": 67,
+          "lines": 12
+        },
+        {
+          "name": "_authorize",
+          "line": 80,
+          "lines": 8
+        },
+        {
+          "name": "previous_owner",
+          "line": 89,
+          "lines": 4
+        },
+        {
+          "name": "claim",
+          "line": 94,
+          "lines": 23
+        },
+        {
+          "name": "rotate_controller",
+          "line": 118,
+          "lines": 9
+        },
+        {
+          "name": "observer_state",
+          "line": 128,
+          "lines": 7
+        },
+        {
+          "name": "_healthy",
+          "line": 136,
+          "lines": 5
+        },
+        {
+          "name": "record_permit",
+          "line": 142,
+          "lines": 14
+        },
+        {
+          "name": "find_permit",
+          "line": 157,
+          "lines": 13
+        },
+        {
+          "name": "_permit",
+          "line": 171,
+          "lines": 15
+        },
+        {
+          "name": "reserve_launch",
+          "line": 187,
+          "lines": 28
+        },
+        {
+          "name": "_launch",
+          "line": 216,
+          "lines": 7
+        },
+        {
+          "name": "read_launch",
+          "line": 224,
+          "lines": 3
+        },
+        {
+          "name": "authorize_control",
+          "line": 228,
+          "lines": 18
+        },
+        {
+          "name": "unfinished",
+          "line": 247,
+          "lines": 3
+        },
+        {
+          "name": "bind_native",
+          "line": 251,
+          "lines": 17
+        },
+        {
+          "name": "mark_resume_intent",
+          "line": 269,
+          "lines": 8
+        },
+        {
+          "name": "verify_launch_authority",
+          "line": 278,
+          "lines": 11
+        },
+        {
+          "name": "cancel_intent",
+          "line": 290,
+          "lines": 19
+        },
+        {
+          "name": "note_cancel_cause",
+          "line": 310,
+          "lines": 9
+        },
+        {
+          "name": "finish_cancel",
+          "line": 320,
+          "lines": 6
+        },
+        {
+          "name": "effect",
+          "line": 327,
+          "lines": 4
+        },
+        {
+          "name": "save_readback",
+          "line": 332,
+          "lines": 7
+        },
+        {
+          "name": "known_members",
+          "line": 340,
+          "lines": 5
+        },
+        {
+          "name": "record_members",
+          "line": 346,
+          "lines": 10
+        },
+        {
+          "name": "record_result",
+          "line": 357,
+          "lines": 10
+        }
+      ],
+      "test_functions": 0
+    },
+    {
+      "path": "plugins/symphony_pm/transport/lifecycle.py",
+      "sha256": "01dafdffc81c98702e71f42d15859bd1eb3369b082b8522c69e0eeb7b85169d8",
+      "syntax": "VALID",
+      "lines": 364,
+      "functions": [
+        {
+          "name": "assert_owned",
+          "line": 25,
+          "lines": 1
+        },
+        {
+          "name": "require_predecessor_dead",
+          "line": 26,
+          "lines": 1
+        },
+        {
+          "name": "close",
+          "line": 27,
+          "lines": 1
+        },
+        {
+          "name": "handshake",
+          "line": 63,
+          "lines": 1
+        },
+        {
+          "name": "read",
+          "line": 64,
+          "lines": 1
+        },
+        {
+          "name": "set_loss_handler",
+          "line": 65,
+          "lines": 1
+        },
+        {
+          "name": "close",
+          "line": 66,
+          "lines": 1
+        },
+        {
+          "name": "validate_driver_call",
+          "line": 77,
+          "lines": 1
+        },
+        {
+          "name": "create_suspended",
+          "line": 78,
+          "lines": 1
+        },
+        {
+          "name": "__init__",
+          "line": 92,
+          "lines": 2
+        },
+        {
+          "name": "__call__",
+          "line": 95,
+          "lines": 2
+        },
+        {
+          "name": "__init__",
+          "line": 100,
+          "lines": 24
+        },
+        {
+          "name": "_bindings",
+          "line": 125,
+          "lines": 3
+        },
+        {
+          "name": "_check",
+          "line": 129,
+          "lines": 4
+        },
+        {
+          "name": "_refresh_observer",
+          "line": 134,
+          "lines": 18
+        },
+        {
+          "name": "observer_lost",
+          "line": 153,
+          "lines": 6
+        },
+        {
+          "name": "replace_observer",
+          "line": 160,
+          "lines": 9
+        },
+        {
+          "name": "rotate_controller",
+          "line": 170,
+          "lines": 6
+        },
+        {
+          "name": "record_permit",
+          "line": 177,
+          "lines": 4
+        },
+        {
+          "name": "find_permit",
+          "line": 182,
+          "lines": 4
+        },
+        {
+          "name": "_context",
+          "line": 187,
+          "lines": 6
+        },
+        {
+          "name": "submit",
+          "line": 194,
+          "lines": 15
+        },
+        {
+          "name": "run_command",
+          "line": 210,
+          "lines": 40
+        },
+        {
+          "name": "_local_stop",
+          "line": 251,
+          "lines": 19
+        },
+        {
+          "name": "cancel_internal",
+          "line": 271,
+          "lines": 46
+        },
+        {
+          "name": "control_target",
+          "line": 318,
+          "lines": 4
+        },
+        {
+          "name": "status",
+          "line": 323,
+          "lines": 12
+        },
+        {
+          "name": "close",
+          "line": 336,
+          "lines": 29
+        }
+      ],
+      "test_functions": 0
+    },
+    {
+      "path": "plugins/symphony_pm/transport/port.py",
+      "sha256": "f2ec4156b03861dfc22aa4d421315ae466e97294fb605bd20a59adb1cf6c5a6b",
+      "syntax": "VALID",
+      "lines": 63,
+      "functions": [
+        {
+          "name": "__init__",
+          "line": 7,
+          "lines": 2
+        },
+        {
+          "name": "_common",
+          "line": 10,
+          "lines": 8
+        },
+        {
+          "name": "submit_intent",
+          "line": 19,
+          "lines": 12
+        },
+        {
+          "name": "get_status",
+          "line": 32,
+          "lines": 14
+        },
+        {
+          "name": "request_cancel",
+          "line": 47,
+          "lines": 17
+        }
+      ],
+      "test_functions": 0
+    },
+    {
+      "path": "plugins/symphony_pm/transport/schema.py",
+      "sha256": "ce8c3390a4c7aecd748d03f37b2a97c39f9aaccdee6a854d1c2c021b90b1a49b",
+      "syntax": "VALID",
+      "lines": 82,
+      "functions": [
+        {
+          "name": "initialize",
+          "line": 42,
+          "lines": 41
+        }
+      ],
+      "test_functions": 0
+    },
+    {
+      "path": "plugins/symphony_pm/transport/types.py",
+      "sha256": "cef3858d3b4ac7150c234fbafbf9a5d5b003d26ae55b4659269768900349578a",
+      "syntax": "VALID",
+      "lines": 176,
+      "functions": [
+        {
+          "name": "digest",
+          "line": 18,
+          "lines": 2
+        },
+        {
+          "name": "finite",
+          "line": 22,
+          "lines": 7
+        },
+        {
+          "name": "identifier",
+          "line": 31,
+          "lines": 2
+        },
+        {
+          "name": "sha",
+          "line": 35,
+          "lines": 2
+        },
+        {
+          "name": "binding_from_json",
+          "line": 167,
+          "lines": 10
+        },
+        {
+          "name": "valid",
+          "line": 44,
+          "lines": 3
+        },
+        {
+          "name": "validate",
+          "line": 57,
+          "lines": 6
+        },
+        {
+          "name": "validate",
+          "line": 84,
+          "lines": 8
+        },
+        {
+          "name": "validate",
+          "line": 110,
+          "lines": 17
+        },
+        {
+          "name": "binding_digest",
+          "line": 129,
+          "lines": 2
+        },
+        {
+          "name": "effect_key",
+          "line": 154,
+          "lines": 3
+        },
+        {
+          "name": "validate",
+          "line": 158,
+          "lines": 7
+        }
+      ],
+      "test_functions": 0
+    },
+    {
+      "path": "plugins/symphony_pm/service.py",
+      "sha256": "f7de03bad36c21de87ef5a1278c9f59722910a53a42052437d61a7b9a3d0752e",
+      "syntax": "VALID",
+      "lines": 123,
+      "functions": [
+        {
+          "name": "__init__",
+          "line": 35,
+          "lines": 2
+        },
+        {
+          "name": "_call",
+          "line": 38,
+          "lines": 4
+        },
+        {
+          "name": "submit_intent",
+          "line": 43,
+          "lines": 2
+        },
+        {
+          "name": "get_status",
+          "line": 46,
+          "lines": 2
+        },
+        {
+          "name": "request_cancel",
+          "line": 49,
+          "lines": 2
+        },
+        {
+          "name": "__init__",
+          "line": 54,
+          "lines": 18
+        },
+        {
+          "name": "handle",
+          "line": 73,
+          "lines": 24
+        },
+        {
+          "name": "_bound_context",
+          "line": 98,
+          "lines": 12
+        },
+        {
+          "name": "__init__",
+          "line": 113,
+          "lines": 2
+        },
+        {
+          "name": "register",
+          "line": 116,
+          "lines": 8
+        }
+      ],
+      "test_functions": 0
+    },
+    {
+      "path": "tests/plugins/symphony_serving_support.py",
+      "sha256": "b0d136e1216befbd22422b359592a1c001fd0f084e4d359da6eaa8f8d4eb77e4",
+      "syntax": "VALID",
+      "lines": 127,
+      "functions": [
+        {
+          "name": "rig",
+          "line": 100,
+          "lines": 12
+        },
+        {
+          "name": "approve",
+          "line": 114,
+          "lines": 14
+        },
+        {
+          "name": "__init__",
+          "line": 15,
+          "lines": 4
+        },
+        {
+          "name": "assert_owned",
+          "line": 20,
+          "lines": 3
+        },
+        {
+          "name": "require_predecessor_dead",
+          "line": 24,
+          "lines": 3
+        },
+        {
+          "name": "close",
+          "line": 28,
+          "lines": 2
+        },
+        {
+          "name": "__init__",
+          "line": 33,
+          "lines": 3
+        },
+        {
+          "name": "handshake",
+          "line": 37,
+          "lines": 3
+        },
+        {
+          "name": "read",
+          "line": 41,
+          "lines": 4
+        },
+        {
+          "name": "set_loss_handler",
+          "line": 46,
+          "lines": 2
+        },
+        {
+          "name": "close",
+          "line": 49,
+          "lines": 2
+        },
+        {
+          "name": "__init__",
+          "line": 54,
+          "lines": 5
+        },
+        {
+          "name": "resume",
+          "line": 60,
+          "lines": 2
+        },
+        {
+          "name": "wait_result",
+          "line": 63,
+          "lines": 5
+        },
+        {
+          "name": "check_binding",
+          "line": 69,
+          "lines": 3
+        },
+        {
+          "name": "cancel_once",
+          "line": 73,
+          "lines": 6
+        },
+        {
+          "name": "close_fail_safe",
+          "line": 80,
+          "lines": 2
+        },
+        {
+          "name": "__init__",
+          "line": 85,
+          "lines": 3
+        },
+        {
+          "name": "validate_driver_call",
+          "line": 89,
+          "lines": 3
+        },
+        {
+          "name": "create_suspended",
+          "line": 93,
+          "lines": 5
+        },
+        {
+          "name": "launch",
+          "line": 105,
+          "lines": 3
+        }
+      ],
+      "test_functions": 0
+    },
+    {
+      "path": "tests/plugins/test_symphony_pm_journal.py",
+      "sha256": "b060b6e19c6d81c81e30aaa5606b73095a5bfa92d72b4669ed654611bbaffd82",
+      "syntax": "VALID",
+      "lines": 88,
+      "functions": [
+        {
+          "name": "test_lost_submit_reply_reuses_durable_ticket_after_connection_reopen",
+          "line": 15,
+          "lines": 12
+        },
+        {
+          "name": "test_unknown_unbound_intent_blocks_another_request_and_new_attempt",
+          "line": 29,
+          "lines": 11
+        },
+        {
+          "name": "test_controller_rotation_fences_old_token_without_lease_takeover",
+          "line": 42,
+          "lines": 14
+        },
+        {
+          "name": "test_legacy_migration_preserves_spent_effect_and_quarantines",
+          "line": 58,
+          "lines": 15
+        },
+        {
+          "name": "test_foreign_database_is_not_adopted",
+          "line": 75,
+          "lines": 6
+        },
+        {
+          "name": "test_version_marker_without_serving_tables_is_refused",
+          "line": 83,
+          "lines": 6
+        }
+      ],
+      "test_functions": 6
+    },
+    {
+      "path": "tests/plugins/test_symphony_pm_lifecycle.py",
+      "sha256": "0ec8f9562db4fe7ba99bfa891c5fb2531d951525099f4b547884634844e27972",
+      "syntax": "VALID",
+      "lines": 123,
+      "functions": [
+        {
+          "name": "test_bound_resume_and_duplicate_submit_create_only_one_receiver",
+          "line": 11,
+          "lines": 12
+        },
+        {
+          "name": "test_pm_timeout_cleanup_share_one_effect_even_when_ack_lost",
+          "line": 25,
+          "lines": 15
+        },
+        {
+          "name": "test_timeout_drains_and_does_not_allow_cleanup_to_dispatch_twice",
+          "line": 42,
+          "lines": 12
+        },
+        {
+          "name": "test_recovery_never_creates_receiver_or_restores_spent_slot",
+          "line": 56,
+          "lines": 15
+        },
+        {
+          "name": "test_host_admission_close_prevents_native_entry",
+          "line": 73,
+          "lines": 12
+        },
+        {
+          "name": "test_query_only_local_stop_retains_hold_and_does_not_release_reservation",
+          "line": 87,
+          "lines": 15
+        },
+        {
+          "name": "test_storage_cut_after_create_closes_owned_receiver_without_resume_or_retry",
+          "line": 104,
+          "lines": 20
+        },
+        {
+          "name": "unavailable",
+          "line": 109,
+          "lines": 2
+        }
+      ],
+      "test_functions": 7
+    },
+    {
+      "path": "tests/plugins/test_symphony_pm_permit_source.py",
+      "sha256": "2eee5d8240c39c6ed6f2effe1131b6eba38bf701265f961b33e1b352569f1ad5",
+      "syntax": "VALID",
+      "lines": 96,
+      "functions": [
+        {
+          "name": "_source",
+          "line": 12,
+          "lines": 3
+        },
+        {
+          "name": "test_native_permit_requires_correlated_once_decision_and_exact_plan",
+          "line": 17,
+          "lines": 20
+        },
+        {
+          "name": "test_mismatched_or_denied_approval_never_creates_permit",
+          "line": 39,
+          "lines": 16
+        },
+        {
+          "name": "test_stale_controller_during_human_wait_cannot_install_grant",
+          "line": 57,
+          "lines": 15
+        },
+        {
+          "name": "test_other_profile_transport_is_refused_before_present",
+          "line": 74,
+          "lines": 7
+        },
+        {
+          "name": "test_authority_lookup_reads_exact_grant_without_prompting",
+          "line": 83,
+          "lines": 14
+        },
+        {
+          "name": "present",
+          "line": 24,
+          "lines": 5
+        },
+        {
+          "name": "present",
+          "line": 63,
+          "lines": 3
+        }
+      ],
+      "test_functions": 5
+    },
+    {
+      "path": "tests/plugins/test_symphony_pm_serving.py",
+      "sha256": "80ec11204ab8154c730f9eff2fb6653bf6a1710d003bd638b5570de0d388dbc8",
+      "syntax": "VALID",
+      "lines": 138,
+      "functions": [
+        {
+          "name": "loaded",
+          "line": 23,
+          "lines": 13
+        },
+        {
+          "name": "_call",
+          "line": 43,
+          "lines": 2
+        },
+        {
+          "name": "_bind",
+          "line": 47,
+          "lines": 20
+        },
+        {
+          "name": "test_discovery_and_unconfigured_host_remain_inert",
+          "line": 69,
+          "lines": 7
+        },
+        {
+          "name": "test_explicit_binding_dispatches_once_and_revokes_captured_handler_on_stop",
+          "line": 78,
+          "lines": 11
+        },
+        {
+          "name": "test_model_payload_change_does_not_mint_a_grant",
+          "line": 91,
+          "lines": 5
+        },
+        {
+          "name": "test_wrong_issuer_and_missing_session_refuse_before_port",
+          "line": 98,
+          "lines": 4
+        },
+        {
+          "name": "test_host_defers_bootstrap_until_start_and_closes_owned_resource",
+          "line": 104,
+          "lines": 19
+        },
+        {
+          "name": "test_failed_bootstrap_closes_acquired_resource_and_does_not_retry",
+          "line": 125,
+          "lines": 14
+        },
+        {
+          "name": "common",
+          "line": 39,
+          "lines": 2
+        },
+        {
+          "name": "source",
+          "line": 53,
+          "lines": 9
+        },
+        {
+          "name": "factory",
+          "line": 109,
+          "lines": 4
+        },
+        {
+          "name": "factory",
+          "line": 129,
+          "lines": 4
+        }
+      ],
+      "test_functions": 6
+    },
+    {
+      "path": ".artifacts/serving-lifecycle-implementation-20261109/transport/run-transport-campaign.py",
+      "sha256": "243e5d21350a65b91987219aecff3fe03737bfc728b2e9d0044fdd277d8f960b",
+      "syntax": "VALID",
+      "lines": 49,
+      "functions": [],
+      "test_functions": 0
+    }
+  ],
+  "scoped_diff_check": "PASS",
+  "worktree_diff_check_exit": 2,
+  "worktree_diff_check_evidence": "worktree-diff-check.txt",
+  "changed_since_114_pass": [
+    "plugins/symphony_pm/service.py",
+    "tests/plugins/test_symphony_pm_serving.py"
+  ]
+}

@@ -231,6 +231,18 @@ async def http_lifespan(app: FastAPI):
 
 @asynccontextmanager
 async def app_lifespan(app: FastAPI):
-    lifespan = http_lifespan if getattr(app.state, "gateway_runner", None) is not None else standalone_lifespan
-    async with lifespan(app):
+    from contextlib import AsyncExitStack
+    attached = getattr(app.state, "gateway_runner", None) is not None
+    lifespan = http_lifespan if attached else standalone_lifespan
+    async with AsyncExitStack() as lifetime:
+        if not attached:
+            from tui_gateway import server
+            from hermes_cli.plugin_services import (
+                close_host_service_admission, start_host_services, stop_host_services,
+            )
+            lifetime.callback(stop_host_services, server)
+        await lifetime.enter_async_context(lifespan(app))
+        if not attached:
+            lifetime.callback(close_host_service_admission, server)
+            start_host_services(server, server._launch_home())
         yield

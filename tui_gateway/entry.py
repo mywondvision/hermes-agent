@@ -324,10 +324,16 @@ def main():
         _log_exit(f"refused: {server._launch_home()} is owned by a running gateway; attach to it instead")
         sys.exit(1)
     try:
+        from hermes_cli.plugin_services import start_host_services
+        start_host_services(server, home)
         _serve()
     finally:
+        from hermes_cli.plugin_services import stop_host_services
         from gateway.runtime_ownership import process_ownership
-        process_ownership.release(home)
+        try:
+            stop_host_services(server)
+        finally:
+            process_ownership.release(home)
 
 
 def _serve():

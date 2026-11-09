@@ -1086,6 +1086,8 @@ class GatewayAdapterLifecycleMixin:
             profile_runtime_cfg = _load_gateway_config()
             from hermes_cli.plugins import discover_plugins, get_plugin_manager
             discover_plugins()
+            from hermes_cli.plugin_services import start_host_services
+            start_host_services(self, profile_home)
             self._subscribe_plugin_rewire(get_plugin_manager(), profile_name, profile_home)
             # This profile's `hooks:` block: start() registered before any profile scope existed.
             self._register_config_hooks(

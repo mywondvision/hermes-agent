@@ -1,0 +1,45 @@
+{
+  "utc": "2026-11-09T18:00:48.318231+00:00",
+  "status": "FIXTURE_CONTRACT_PASS_NATIVE_HOLD",
+  "head": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+  "files": 4,
+  "passed": 24,
+  "failed": 0,
+  "runner_seconds": 82.8,
+  "command_seconds": 89.859,
+  "per_file": [
+    {
+      "path": "tests/plugins/test_symphony_pm_journal.py",
+      "passed": 6,
+      "seconds": 32.1
+    },
+    {
+      "path": "tests/plugins/test_symphony_pm_lifecycle.py",
+      "passed": 7,
+      "seconds": 15.8
+    },
+    {
+      "path": "tests/plugins/test_symphony_pm_permit_source.py",
+      "passed": 5,
+      "seconds": 13.3
+    },
+    {
+      "path": "tests/plugins/test_symphony_pm_serving.py",
+      "passed": 6,
+      "seconds": 20.9
+    }
+  ],
+  "source_files_verified": 15,
+  "source_mismatches": [],
+  "campaign_runs": 1,
+  "campaign_remaining": 0,
+  "retries": 0,
+  "native_qualified": false,
+  "overall_cancel": "HOLD",
+  "voice_chain": "NOT_ACCEPTED",
+  "receipt_hashes": {
+    "campaign.log": "f7f799a72154b7ee4be1ce05c4b55fc0485e9157271b0d92ce38c0c9f8100494",
+    "campaign-result.json": "78a9dce6c76ee5030c798c7718d38877d09ca6cf9531c95a739a36e6a5a3bc7d",
+    "campaign-attempt.json": "3462b3124a0e49aac69f609b350685e8a82244e561a23865770aaed67141872f"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "base": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+  "code_status": "HOST_BINDING_CONTRACT_PASS_FULL_SERVING_NOT_READY",
+  "syntax_files": 18,
+  "test_files_prepared": 4,
+  "campaign_files_planned": 8,
+  "campaign_runs": 1,
+  "new_native_models_microphone_paid_production_runs": 0,
+  "index_empty": true,
+  "scope": "generic host binding CODE only",
+  "production_approval_source": "UNKNOWN",
+  "general_cancel": "HOLD",
+  "next_command": "python -X utf8 -I -B .artifacts/serving-lifecycle-implementation-20261109/code/run-contract-campaign.py",
+  "next_permission": "No additional campaign authorized; native/installation/production remain separately gated",
+  "campaign_remaining": 0,
+  "tests": {
+    "files": 8,
+    "passed": 114,
+    "failed": 0,
+    "seconds": 135.703
+  },
+  "evidence": ".artifacts\\serving-lifecycle-implementation-20261109\\code\\campaign-proof.json"
+}

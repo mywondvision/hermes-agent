@@ -1,0 +1,926 @@
+{
+  "schemaVersion": 1,
+  "crId": "CR-hermes-symphony-serving-lifecycle-20261106",
+  "purpose": "cr-review",
+  "candidate": {
+    "locator": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\docs\\change-requests\\CR-hermes-symphony-serving-lifecycle-20261106.md",
+    "revision": "sha256:071f996b26734da37e914a5008f707f5393394d9f2c5e6b5a741400eeab48234"
+  },
+  "base": {
+    "sha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+    "branch": "codex/hermes-symphony-cancel-correction-20261106"
+  },
+  "claims": [
+    {
+      "id": "owner-10-0",
+      "kind": "safety",
+      "text": "Текущий допуск: чтение, анализ, CR и gate artifacts. Новые модели, Codex workers, live-прогоны, production, ключи, постоянные доступы, push и merge запрещены. До отдельного ok реализация этой дельты не начинается. Успешный smoke не повторять. Настоящий pilot требует отдельного согласования модели, среды и точного количества attempts.",
+      "authority": "owner-directive",
+      "status": "OWNER_CONFIRMED",
+      "lifecycle": "SUPERSEDED",
+      "material": true,
+      "source": {
+        "type": "owner-message",
+        "locator": "user:2026-11-06:serving-lifecycle-delta"
+      },
+      "textHash": "sha256:b8a6e3a6c7e8118a16b948f4931364a4b5088b5e58f727870ed4daafd2f49107"
+    },
+    {
+      "id": "proposal-14-0",
+      "kind": "note",
+      "text": "1. Serving bootstrap создаёт LifecycleOwner и один Port до приёма запросов. Profile scope связывается явно; DB path выводится из переданного profile home, не из module-global environment. Lock ключуется canonical profile/namespace. При host-isolation, где live port не передаётся, запуск отказывает; обход pinned isolation запрещён. Сам plugin не патчит Hermes core. Точное место host bootstrap должно быть выбрано при реализации из существующих lifecycle seams; отсутствие подходящей seam — HOLD с отдельной generic extension, не hardcode Symphony в core.\n2. Внутри serving process LifecycleOwner владеет Job Object, управляющими process handles и receiver. Controller — заменяемая логическая writer-сессия. Observer — отдельный от controller компонент с query-only non-inheritable handles; он не держит terminate capability. Защита от гибели всего serving process — Windows Job kill-on-close. Здесь намеренно не обещается переживание observer/serving crash с живым worker: при утрате последнего Job handle kernel может остановить дерево, это отдельный fail-safe, не acknowledged cancel. Отдельный daemon/IPC сейчас не добавляется.\n3. Journal хранит versioned owner incarnation, profile/namespace, host boot identity, serving/controller PID + exact OS creation identity, writer epoch, observer generation/health; job/revision/request digest/attempt/runtime/session; named Job identity и root/известные members PID+creation; launch intent, native binding и cancel effect. Числовые handle values не durable identity. После reboot или несовпадения host generation attach запрещён; запись остаётся UNKNOWN/HOLD. Job name с уникальным attempt сам по себе недостаточен для доверия.\n4. Admission: exclusive owner lock → проверка trusted grant/contract/profile → восстановление незавершённых launches/effect",
+      "authority": "agent-inference",
+      "status": "INFERRED",
+      "lifecycle": "PROPOSED",
+      "source": {
+        "type": "agent-note",
+        "locator": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\docs\\change-requests\\CR-hermes-symphony-serving-lifecycle-20261106.md"
+      },
+      "textHash": "sha256:1be96a5ee05861b462fe770899f849aff4fd2969326220e282b7386509211965"
+    },
+    {
+      "id": "proposal-14-1800",
+      "kind": "note",
+      "text": "s → healthy observer handshake → durable launch ticket → suspended create → assign Job → exact binding + observer coverage durable commit → resume. Непривязанный launch intent после сбоя не возобновляется по отсутствию command.json: возможен уже созданный worker. Он блокирует новый attempt до достаточной сверки. Ошибка до resume допускает только отдельно определённый pre-admission rollback собственных exact handles; ошибка storage оставляет неопределённость.\n5. Fencing: lease expiry недостаточно для takeover. В том же serving process lifecycle lock сериализует смену writer и native entry. При новом serving process требуются exclusive OS lock и exact predecessor process death (retained handle либо freshly verified PID/start + wait); отсутствие доступа/identity mismatch означает HOLD. В одной транзакции записывается новый epoch; старый token отвергается каждым write/permit. Native receiver под тем же lifecycle lock повторно проверяет incarnation/epoch/target, тратит send slot до native entry. Так закрывается race между authorize и эффектом. Wall clock lease не доказывает death.\n6. Recovery: сначала readback, затем разрешение работы. Spent DISPATCH_INTENT/UNKNOWN никогда не создаёт новый receiver/send slot или launch, не повторяет native cancel, сохраняет effect key и исходный dispatch_epoch. Новый controller получает reconcile-only доступ к такому attempt. Fresh proof связывается с текущими writer epoch/observer generation, но исходный target не переписывается. Без непустого exact process evidence, Job coverage и свежести локальный stop не утверждается; missing Job/access denied/чужой PID не равны terminal proof.\n7. Потеря observer: немедленно закрыть admission и native dispatch. Управляющие handles остаются у LifecycleOwner; восстановленный observer сначала заново подтве",
+      "authority": "agent-inference",
+      "status": "INFERRED",
+      "lifecycle": "PROPOSED",
+      "source": {
+        "type": "agent-note",
+        "locator": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\docs\\change-requests\\CR-hermes-symphony-serving-lifecycle-20261106.md"
+      },
+      "textHash": "sha256:f2a75a5309ba9ccea3837a73d2cdde54cba3656932c66c11b6005ef81a433db4"
+    },
+    {
+      "id": "proposal-14-3600",
+      "kind": "note",
+      "text": "рждает exact identities и полное известное дерево. Уже начатая native entry учитывается как spent. При гибели serving process новый owner не наследует handles: заново открывает только query handles после доказательства predecessor death. Если объект исчез или процесс уже переиспользован — UNKNOWN, без auto-relaunch. UNKNOWN не снимает reservation; локальный stop даёт только LOCAL_STOPPED_HOLD, не external settlement.\n8. Transport: loaded plugin wire(Port, request-local trusted context source) → adapter → Port → LifecycleOwner journal/admission → существующий CodexDriver с привязанным к attempt runner. Первый вариант сериализует admission и отказывает concurrent launch как busy, не ставит очередь. Runner не использует общий mutable active. PM cancel/watchdog/cleanup идут в один coordinator. Status строится из durable state и OS readback, не из наличия thread в dict. Дедуплицированный submit возвращает прежний job, не вызывает driver повторно. Frozen S2 остаётся закрытым reference snapshot; flags не превращают его в scheduler.",
+      "authority": "agent-inference",
+      "status": "INFERRED",
+      "lifecycle": "PROPOSED",
+      "source": {
+        "type": "agent-note",
+        "locator": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\docs\\change-requests\\CR-hermes-symphony-serving-lifecycle-20261106.md"
+      },
+      "textHash": "sha256:b04b0a0cd4391a583d5dcaf43d88ed0123dd133814370d9ec661884ba8885863"
+    },
+    {
+      "id": "owner-18-0",
+      "kind": "unknown",
+      "text": "Power loss, настоящий Codex restart-stop, remote inference, billing и внешние последствия остаются UNKNOWN. Их отсутствие не блокирует подготовку дизайна, но блокирует утверждение общего cancel/release и production readiness.",
+      "authority": "owner-directive",
+      "status": "UNKNOWN",
+      "lifecycle": "ACTIVE",
+      "material": true,
+      "source": {
+        "type": "owner-message",
+        "locator": "user:2026-11-06:serving-lifecycle-delta"
+      },
+      "textHash": "sha256:6e242f934ab44fccf004deb176117ccb6f0e04dd72ceae93bed2ee5d1d1bab69"
+    },
+    {
+      "id": "evidence-0-0",
+      "kind": "state",
+      "text": "Источник прочитан на базе 3feceb1f7c0b1e37a6e5a6ce00ffa6fa6aa1e02b: .artifacts/controller-restart-20261106/REPORT.md. Исторический runtime результат ограничен своим сценарием.",
+      "authority": "verified-evidence",
+      "status": "OBSERVED",
+      "lifecycle": "ACTIVE",
+      "source": {
+        "type": "repository",
+        "locator": ".artifacts/controller-restart-20261106/REPORT.md",
+        "pinnedSha": "3feceb1f7c0b1e37a6e5a6ce00ffa6fa6aa1e02b",
+        "hash": "sha256:d71d2ce9666b47589acbea1d2e64ac68cbf0995bf9e04dc63591df516fe472aa",
+        "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483"
+      },
+      "textHash": "sha256:b0b987aa91374a54f3b56222bc947368e8a2ebb8fb54fb0f6be860b9c2de689c"
+    },
+    {
+      "id": "evidence-1-0",
+      "kind": "state",
+      "text": "Источник прочитан на базе 3feceb1f7c0b1e37a6e5a6ce00ffa6fa6aa1e02b: .artifacts/controller-restart-20261106/verification.json. Исторический runtime результат ограничен своим сценарием.",
+      "authority": "verified-evidence",
+      "status": "OBSERVED",
+      "lifecycle": "ACTIVE",
+      "source": {
+        "type": "repository",
+        "locator": ".artifacts/controller-restart-20261106/verification.json",
+        "pinnedSha": "3feceb1f7c0b1e37a6e5a6ce00ffa6fa6aa1e02b",
+        "hash": "sha256:1c2efdbb1678aec262a0d37970bbfb58e58ddc2aa8ba4228e2b06b743a56c666",
+        "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483"
+      },
+      "textHash": "sha256:68df2a7b9279351aa933a84195af1d4a66dddd6ae947944b0344941772ecb8e8"
+    },
+    {
+      "id": "evidence-2-0",
+      "kind": "state",
+      "text": "Источник прочитан на базе 3feceb1f7c0b1e37a6e5a6ce00ffa6fa6aa1e02b: .artifacts/controller-restart-20261106/durable-readback.json. Исторический runtime результат ограничен своим сценарием.",
+      "authority": "verified-evidence",
+      "status": "OBSERVED",
+      "lifecycle": "ACTIVE",
+      "source": {
+        "type": "repository",
+        "locator": ".artifacts/controller-restart-20261106/durable-readback.json",
+        "pinnedSha": "3feceb1f7c0b1e37a6e5a6ce00ffa6fa6aa1e02b",
+        "hash": "sha256:fc64b403c7f0c2386645e0bd50fecc1b0fe72a217a8ed1fac0bd171839b45bcf",
+        "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483"
+      },
+      "textHash": "sha256:f47e0946b678070af2958a8be30a5779c0b39f8006a10cf7a3bf848af4630f2f"
+    },
+    {
+      "id": "evidence-3-0",
+      "kind": "state",
+      "text": "Источник прочитан на базе 3feceb1f7c0b1e37a6e5a6ce00ffa6fa6aa1e02b: .artifacts/controller-restart-20261106/package-hashes.json. Исторический runtime результат ограничен своим сценарием.",
+      "authority": "verified-evidence",
+      "status": "OBSERVED",
+      "lifecycle": "ACTIVE",
+      "source": {
+        "type": "repository",
+        "locator": ".artifacts/controller-restart-20261106/package-hashes.json",
+        "pinnedSha": "3feceb1f7c0b1e37a6e5a6ce00ffa6fa6aa1e02b",
+        "hash": "sha256:b0f17f09111d5789e4d4b31453f338ea359fb9ff6daae9808296a9053cadea90",
+        "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483"
+      },
+      "textHash": "sha256:00890d05de2ba2449434dfbbc4867b8e0ffc2ee098b7837b7e310aff8a6d189a"
+    },
+    {
+      "id": "evidence-4-0",
+      "kind": "state",
+      "text": "Источник прочитан на базе 3feceb1f7c0b1e37a6e5a6ce00ffa6fa6aa1e02b: plugins/symphony_pm/__init__.py. Исторический runtime результат ограничен своим сценарием.",
+      "authority": "verified-evidence",
+      "status": "OBSERVED",
+      "lifecycle": "ACTIVE",
+      "source": {
+        "type": "repository",
+        "locator": "plugins/symphony_pm/__init__.py",
+        "pinnedSha": "3feceb1f7c0b1e37a6e5a6ce00ffa6fa6aa1e02b",
+        "hash": "sha256:9860b91764d07e84f2b973a0092d0a4c18876bb18613fb4f8185d4d9042c3dd0",
+        "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483"
+      },
+      "textHash": "sha256:2d28956dce8804061699ef8c94b4e6c5be7688b4a416fd814f0cfd9f138fd8ad"
+    },
+    {
+      "id": "evidence-5-0",
+      "kind": "state",
+      "text": "Источник прочитан на базе 3feceb1f7c0b1e37a6e5a6ce00ffa6fa6aa1e02b: tests/fixtures/symphony_pm_ingress/owner.py. Исторический runtime результат ограничен своим сценарием.",
+      "authority": "verified-evidence",
+      "status": "OBSERVED",
+      "lifecycle": "ACTIVE",
+      "source": {
+        "type": "repository",
+        "locator": "tests/fixtures/symphony_pm_ingress/owner.py",
+        "pinnedSha": "3feceb1f7c0b1e37a6e5a6ce00ffa6fa6aa1e02b",
+        "hash": "sha256:36a7f1f8dc704cf8884d504f8fe0856c58dba7994ea58a46a51322929f8a044a",
+        "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483"
+      },
+      "textHash": "sha256:ef78465b3ebd51a22140650da2496bfe73219ac26454a83cbb3f2d780f2df214"
+    },
+    {
+      "id": "evidence-6-0",
+      "kind": "state",
+      "text": "Источник прочитан на базе 3feceb1f7c0b1e37a6e5a6ce00ffa6fa6aa1e02b: .artifacts/live-smoke-20261106/cancel_control.py. Исторический runtime результат ограничен своим сценарием.",
+      "authority": "verified-evidence",
+      "status": "OBSERVED",
+      "lifecycle": "ACTIVE",
+      "source": {
+        "type": "repository",
+        "locator": ".artifacts/live-smoke-20261106/cancel_control.py",
+        "pinnedSha": "3feceb1f7c0b1e37a6e5a6ce00ffa6fa6aa1e02b",
+        "hash": "sha256:10443e6ce228e7c42bdff7437d73e6ccdac4712178ecb9e2be4542e188113cda",
+        "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483"
+      },
+      "textHash": "sha256:944e3ab1631036c876e87c1629a7daa01094a7ba5af234004a869b1445d6d42e"
+    },
+    {
+      "id": "evidence-7-0",
+      "kind": "state",
+      "text": "Источник прочитан на базе 3feceb1f7c0b1e37a6e5a6ce00ffa6fa6aa1e02b: .artifacts/live-smoke-20261106/smoke.py. Исторический runtime результат ограничен своим сценарием.",
+      "authority": "verified-evidence",
+      "status": "OBSERVED",
+      "lifecycle": "ACTIVE",
+      "source": {
+        "type": "repository",
+        "locator": ".artifacts/live-smoke-20261106/smoke.py",
+        "pinnedSha": "3feceb1f7c0b1e37a6e5a6ce00ffa6fa6aa1e02b",
+        "hash": "sha256:114ac92afb9e8491eda9cf057fab4c68482ee46b54fcd824a696d325ed8259ee",
+        "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483"
+      },
+      "textHash": "sha256:5e678fde3710652d97b9c85e09b110ed09f086f552638cff2294f5150e2dbc22"
+    },
+    {
+      "id": "evidence-8-0",
+      "kind": "state",
+      "text": "Источник прочитан на базе 3feceb1f7c0b1e37a6e5a6ce00ffa6fa6aa1e02b: .artifacts/live-smoke-20261106/winjob.py. Исторический runtime результат ограничен своим сценарием.",
+      "authority": "verified-evidence",
+      "status": "OBSERVED",
+      "lifecycle": "ACTIVE",
+      "source": {
+        "type": "repository",
+        "locator": ".artifacts/live-smoke-20261106/winjob.py",
+        "pinnedSha": "3feceb1f7c0b1e37a6e5a6ce00ffa6fa6aa1e02b",
+        "hash": "sha256:3d6270a4aae5c4da0f31a1c3118eed9f2d7e492b9ee7444a6da7eb0d79d4e93f",
+        "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483"
+      },
+      "textHash": "sha256:122bbf6799ce0d373a5f5f021bbc988451027a42628d0700fc4aa6ceb8b531ab"
+    },
+    {
+      "id": "evidence-9-0",
+      "kind": "state",
+      "text": "Источник прочитан на базе 3feceb1f7c0b1e37a6e5a6ce00ffa6fa6aa1e02b: tools/symphony_pm_adapter.py. Исторический runtime результат ограничен своим сценарием.",
+      "authority": "verified-evidence",
+      "status": "OBSERVED",
+      "lifecycle": "ACTIVE",
+      "source": {
+        "type": "repository",
+        "locator": "tools/symphony_pm_adapter.py",
+        "pinnedSha": "3feceb1f7c0b1e37a6e5a6ce00ffa6fa6aa1e02b",
+        "hash": "sha256:053dc95bb6f6cf0e3fe694870fabe174ba2ca287a6f6e117f51d0f12e646be05",
+        "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483"
+      },
+      "textHash": "sha256:e6ffccd22b59c274a453f59ea7b253281e9e1c37659257c044b6e2049c6c85fd"
+    },
+    {
+      "id": "preserved-1",
+      "kind": "scope",
+      "text": "Статус: DRAFT, предложение не принято. Реализация не разрешена.\nПрофиль: Standard + Hardened extension для durable dispatch/OS lifetime; текущий evidence cap E0 (чтение и документы). Будущие no-model E1/E2 требуют отдельного допуска на выполнение. Владелец решения — пользователь. Дельта продолжает ingress/cancel CR, не обнуляет прежний proof budget. Два оставшихся рубежа: независимый Hygiene + ok на реализацию; отдельное точное разрешение transport pilot.",
+      "authority": "verified-evidence",
+      "status": "OBSERVED",
+      "lifecycle": "SUPERSEDED",
+      "material": true,
+      "source": {
+        "type": "repository",
+        "locator": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\docs\\change-requests\\CR-hermes-symphony-serving-lifecycle-20261106.md",
+        "pinnedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+        "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+        "hash": "sha256:81f0168072b4d4ae22d73d766b9a92b505a1cf3a40537eaeb32a5d3643af01e4"
+      },
+      "textHash": "sha256:632668c087c9360484c3c975e52f0b4c1a801fc1cb5121fbfedfa586a2fae56c"
+    },
+    {
+      "id": "preserved-2",
+      "kind": "note",
+      "text": "Фактическая база: `3feceb1f7c0b1e37a6e5a6ce00ffa6fa6aa1e02b`, ветка `codex/hermes-symphony-cancel-correction-20261106`. Parent — ожидаемый `fda3bda4bffece8bc3cca7e11be8dd8e72eef91d`; проверенная corrective implementation — `b766aecb8524a5c0b78197cda7a144473af4fd07`. Новый HEAD записал controller-restart evidence. Шесть прежних tracked modifications и untracked материалы сохраняются; другой worktree на `369a012c` не меняется.",
+      "authority": "historical-narrative",
+      "status": "STALE",
+      "lifecycle": "QUARANTINED",
+      "material": false,
+      "source": {
+        "type": "repository",
+        "locator": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\docs\\change-requests\\CR-hermes-symphony-serving-lifecycle-20261106.md",
+        "pinnedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+        "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+        "hash": "sha256:81f0168072b4d4ae22d73d766b9a92b505a1cf3a40537eaeb32a5d3643af01e4"
+      },
+      "textHash": "sha256:3b7d5b94101943cbbe8fc1699565921dd7639add1bd69b9d4a0f20cd7d27de42"
+    },
+    {
+      "id": "preserved-3",
+      "kind": "note",
+      "text": "Канонические локаторы: `.artifacts/controller-restart-20261106/{REPORT.md,verification.json,durable-readback.json,package-hashes.json}`. Предыдущий `docs/audits/CR-hermes-symphony-ingress-offline-20261106/cancel-correction-handoff.md` — исторический handoff: его NOT_RUN для C1→C2 устарел, прочие ограничения не снимаются автоматически.",
+      "authority": "verified-evidence",
+      "status": "OBSERVED",
+      "lifecycle": "ACTIVE",
+      "material": false,
+      "source": {
+        "type": "repository",
+        "locator": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\docs\\change-requests\\CR-hermes-symphony-serving-lifecycle-20261106.md",
+        "pinnedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+        "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+        "hash": "sha256:81f0168072b4d4ae22d73d766b9a92b505a1cf3a40537eaeb32a5d3643af01e4"
+      },
+      "textHash": "sha256:f78d1dd11becfbc830e82c4b7f54f54807b72f2421e82e06b079d3bdd18f9316"
+    },
+    {
+      "id": "preserved-4",
+      "kind": "state",
+      "text": "Доказано записанным пакетом: 22 PASS/0 FAIL, synthetic Python root/child/conhost; C1 10836 → C2 23496; epoch 1→2; один native cancel; C2 receiver=None, новый worker отсутствует. Parent observer выжил с query-only handles. Durable readback сохраняет DISPATCH_INTENT, dispatch_epoch=1, proof/proof_epoch=NULL. Общий cancel HOLD, резервация POSSIBLY_CONSUMED_HELD. Это историческое runtime evidence, не новый прогон и не qualification serving path.",
+      "authority": "verified-evidence",
+      "status": "OBSERVED",
+      "lifecycle": "ACTIVE",
+      "material": false,
+      "source": {
+        "type": "repository",
+        "locator": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\docs\\change-requests\\CR-hermes-symphony-serving-lifecycle-20261106.md",
+        "pinnedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+        "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+        "hash": "sha256:81f0168072b4d4ae22d73d766b9a92b505a1cf3a40537eaeb32a5d3643af01e4"
+      },
+      "textHash": "sha256:ff15db2cb9c83fbe8bf7e39d08bb4b46baed0d305f5d904939cd1f3bba9a1bc4"
+    },
+    {
+      "id": "preserved-5",
+      "kind": "note",
+      "text": "Актуальный исполнитель прочитан без запуска: `D:/AI/worktrees/kit-wave1-integration-20261031`, HEAD `048d446ba484d5d3ca8b052210dbeed3e18d7fb8`, VERSION 0.45.4; `runtimes/codex/orchestration/driver.py`, `tools/orchestration/drivers.py`. Это отдельный kit worktree, не установленный plugin cache 0.16.8. В нём ничего не изменяется.",
+      "authority": "historical-narrative",
+      "status": "STALE",
+      "lifecycle": "QUARANTINED",
+      "material": false,
+      "source": {
+        "type": "repository",
+        "locator": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\docs\\change-requests\\CR-hermes-symphony-serving-lifecycle-20261106.md",
+        "pinnedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+        "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+        "hash": "sha256:81f0168072b4d4ae22d73d766b9a92b505a1cf3a40537eaeb32a5d3643af01e4"
+      },
+      "textHash": "sha256:f53ba6f81b90bdee67b1a72ee0a48e2d4caf24d3a0a9f8ad1537437a7afd3e9c"
+    },
+    {
+      "id": "preserved-6",
+      "kind": "scope",
+      "text": "Предлагается сделать жизненный цикл локального исполнения явным в serving process: один owner/port на обслуживаемый profile + namespace; восстановление раньше admission; одна durable identity и один cancel effect для PM_CANCEL/TIMEOUT/EMERGENCY_CLEANUP. Никакой новой очереди или HTTP-сервера.",
+      "authority": "accepted-decision",
+      "status": "OWNER_CONFIRMED",
+      "lifecycle": "ACTIVE",
+      "material": true,
+      "source": {
+        "type": "decision-record",
+        "locator": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\serving-lifecycle-implementation-20261109\\OWNER_DECISIONS.md",
+        "hash": "sha256:f8dcac2eb50af2a2ee7f87a1f8a2d43b0004db7312b8fdb8779cdce5cf6186f9"
+      },
+      "textHash": "sha256:ad4d4f66480391c03f9d21f92407ca8d3d825bfc7a6113065379f7e365795985"
+    },
+    {
+      "id": "preserved-7",
+      "kind": "note",
+      "text": "| Компонент | Переиспользование / необходимая дельта |",
+      "authority": "historical-narrative",
+      "status": "STALE",
+      "lifecycle": "QUARANTINED",
+      "material": false,
+      "source": {
+        "type": "repository",
+        "locator": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\docs\\change-requests\\CR-hermes-symphony-serving-lifecycle-20261106.md",
+        "pinnedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+        "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+        "hash": "sha256:81f0168072b4d4ae22d73d766b9a92b505a1cf3a40537eaeb32a5d3643af01e4"
+      },
+      "textHash": "sha256:8948ec8a9e22aca511b48b540d0a0b1f71a1cea6d5aaee5f0c1e8b22f91a3492"
+    },
+    {
+      "id": "preserved-8",
+      "kind": "note",
+      "text": "|---|---|",
+      "authority": "historical-narrative",
+      "status": "STALE",
+      "lifecycle": "QUARANTINED",
+      "material": false,
+      "source": {
+        "type": "repository",
+        "locator": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\docs\\change-requests\\CR-hermes-symphony-serving-lifecycle-20261106.md",
+        "pinnedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+        "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+        "hash": "sha256:81f0168072b4d4ae22d73d766b9a92b505a1cf3a40537eaeb32a5d3643af01e4"
+      },
+      "textHash": "sha256:4199ba454d6d3ae83657120c2bb6bd674eefc0dd7d3cd4cc844171dc6725135b"
+    },
+    {
+      "id": "preserved-9",
+      "kind": "requirement",
+      "text": "| `tools/symphony_pm_adapter.py` | Сохранить Protocol submit/status/cancel, digest binding, receipts, TrustedPmContextV1 и fail-closed UNAVAILABLE/HOLD. Authority только из request-scoped trusted source. |",
+      "authority": "accepted-decision",
+      "status": "OWNER_CONFIRMED",
+      "lifecycle": "ACTIVE",
+      "material": true,
+      "source": {
+        "type": "decision-record",
+        "locator": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\serving-lifecycle-implementation-20261109\\OWNER_DECISIONS.md",
+        "hash": "sha256:f8dcac2eb50af2a2ee7f87a1f8a2d43b0004db7312b8fdb8779cdce5cf6186f9"
+      },
+      "textHash": "sha256:449e0f9d8095332934350a14a6f7261fc753b65021102e1d71fc42e2bdfa603f"
+    },
+    {
+      "id": "preserved-10",
+      "kind": "requirement",
+      "text": "| `plugins/symphony_pm/__init__.py` | Сохранить wire/unwire через loaded owning-profile module. Wire до начала conversations; смена registry generation не разрешает менять tool surface посреди разговора. При аварии port отказывает внутри handler, не перевязывает toolset каждого turn. |",
+      "authority": "accepted-decision",
+      "status": "OWNER_CONFIRMED",
+      "lifecycle": "ACTIVE",
+      "material": true,
+      "source": {
+        "type": "decision-record",
+        "locator": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\serving-lifecycle-implementation-20261109\\OWNER_DECISIONS.md",
+        "hash": "sha256:f8dcac2eb50af2a2ee7f87a1f8a2d43b0004db7312b8fdb8779cdce5cf6186f9"
+      },
+      "textHash": "sha256:b77c958bc616d62221e64ac56c54bb81150f7dc288c2749747343b9b1ab6e4e4"
+    },
+    {
+      "id": "preserved-11",
+      "kind": "requirement",
+      "text": "| `tests/fixtures/symphony_pm_ingress/owner.py` | Переиспользовать семантику SQLite transaction/dedupe/effect key и проверки token. Не импортировать fixture в production. `claim()` сегодня проверяет lease, но не OS death; fake admit/Observer/FencedSink не пригодны для serving. Нужен project-owned production journal module с совместимой схемой и явной миграцией. |",
+      "authority": "accepted-decision",
+      "status": "OWNER_CONFIRMED",
+      "lifecycle": "ACTIVE",
+      "material": true,
+      "source": {
+        "type": "decision-record",
+        "locator": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\serving-lifecycle-implementation-20261109\\OWNER_DECISIONS.md",
+        "hash": "sha256:f8dcac2eb50af2a2ee7f87a1f8a2d43b0004db7312b8fdb8779cdce5cf6186f9"
+      },
+      "textHash": "sha256:ef8f3101340a60fb14461570ad5b5a2f22c2176d2e64ae6d6dc15e00f13ac7b6"
+    },
+    {
+      "id": "preserved-12",
+      "kind": "requirement",
+      "text": "| `.artifacts/live-smoke-20261106/cancel_control.py` | Сохранить intent-before-effect, spent-on-exception, один permit/effect key, reason/readback отдельно, HOLD. Убрать зависимость от tests fixture и прямого приватного DB API через production journal contract. |",
+      "authority": "accepted-decision",
+      "status": "OWNER_CONFIRMED",
+      "lifecycle": "ACTIVE",
+      "material": true,
+      "source": {
+        "type": "decision-record",
+        "locator": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\serving-lifecycle-implementation-20261109\\OWNER_DECISIONS.md",
+        "hash": "sha256:f8dcac2eb50af2a2ee7f87a1f8a2d43b0004db7312b8fdb8779cdce5cf6186f9"
+      },
+      "textHash": "sha256:d8eabdfeb630531f9a8f2b789c77f748761b004dd9730f7a765159d1ff7f9007"
+    },
+    {
+      "id": "preserved-13",
+      "kind": "requirement",
+      "text": "| `smoke.py`: LiveOwner/LivePort/Attempt/NativeRunner | Только проверенный образец. Dict attempts, mutable runner.active, synthetic context/current payload, два campaign attempts, globals и resume_unstarted не являются transport. Нужны восстановление из journal, request-local binding и сериализация admission без новой очереди. |",
+      "authority": "accepted-decision",
+      "status": "OWNER_CONFIRMED",
+      "lifecycle": "ACTIVE",
+      "material": true,
+      "source": {
+        "type": "decision-record",
+        "locator": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\serving-lifecycle-implementation-20261109\\OWNER_DECISIONS.md",
+        "hash": "sha256:f8dcac2eb50af2a2ee7f87a1f8a2d43b0004db7312b8fdb8779cdce5cf6186f9"
+      },
+      "textHash": "sha256:e7b923dbdb2fea2787ca1be21cd699c22121c248da193733dc42e57968330385"
+    },
+    {
+      "id": "preserved-14",
+      "kind": "requirement",
+      "text": "| `winjob.py` и controller_restart_probe.py | Образцы Windows Job/suspended spawn/query readback; sandbox parent — не production observer. Требуются явный lifecycle и crash matrix. |",
+      "authority": "accepted-decision",
+      "status": "OWNER_CONFIRMED",
+      "lifecycle": "ACTIVE",
+      "material": true,
+      "source": {
+        "type": "decision-record",
+        "locator": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\serving-lifecycle-implementation-20261109\\OWNER_DECISIONS.md",
+        "hash": "sha256:f8dcac2eb50af2a2ee7f87a1f8a2d43b0004db7312b8fdb8779cdce5cf6186f9"
+      },
+      "textHash": "sha256:4366748d78905c9a8a803b76e8b7f4a4fc7a74fec35e6cb7da101f898b57b0fa"
+    },
+    {
+      "id": "preserved-15",
+      "kind": "requirement",
+      "text": "| CodexDriver/CliDriver | Сохранить argv, schema projection/result collection, bypass gate, model/effort/budget validation и runner injection (`argv,cwd,timeout,stdin_text → CommandResult`). Runner не является scheduler или durable cancel owner. Не вызывать readiness/probe/launch сейчас. |",
+      "authority": "accepted-decision",
+      "status": "OWNER_CONFIRMED",
+      "lifecycle": "ACTIVE",
+      "material": true,
+      "source": {
+        "type": "decision-record",
+        "locator": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\serving-lifecycle-implementation-20261109\\OWNER_DECISIONS.md",
+        "hash": "sha256:f8dcac2eb50af2a2ee7f87a1f8a2d43b0004db7312b8fdb8779cdce5cf6186f9"
+      },
+      "textHash": "sha256:b5fb89f0c3c8a9558460c988de280dcf224cc0948536220bcba8803b42efa5a2"
+    },
+    {
+      "id": "preserved-16",
+      "kind": "acceptance",
+      "text": "После отдельного разрешения: выделенные temp HERMES_HOME/runtime/journal; synthetic Python worker, никаких CLI probes или Codex/model calls. Тесты через `scripts/run_tests.sh`, после чтения area AGENTS; Windows свойства на Windows. Один bounded campaign, затем только проверки, затронутые найденными дефектами. Исторический успешный smoke не повторяется.",
+      "authority": "verified-evidence",
+      "status": "OBSERVED",
+      "lifecycle": "ACTIVE",
+      "material": true,
+      "source": {
+        "type": "repository",
+        "locator": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\docs\\change-requests\\CR-hermes-symphony-serving-lifecycle-20261106.md",
+        "pinnedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+        "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+        "hash": "sha256:81f0168072b4d4ae22d73d766b9a92b505a1cf3a40537eaeb32a5d3643af01e4"
+      },
+      "textHash": "sha256:cd68243ff31b89292b8d68df9776c086a3073b1c261dc5087bd63f1599517f24"
+    },
+    {
+      "id": "preserved-17",
+      "kind": "acceptance",
+      "text": "| Сценарий | Критерий приёмки |\n|---|---|\n| stale writer и race native entry/takeover | Старый token не пишет и не посылает native после смены epoch; зависший живой predecessor не вытесняется lease timeout; deterministic barrier проверяет race. |\n| чужой PID / тот же PID, иной start / чужой Job | Attach и cancel отвергнуты; чужие процессы не изменены; admission закрыт. |\n| controller loss при живом lifecycle/observer | Epoch меняется один раз после fencing; target/effect прежние; ни нового worker, ни повторного cancel. |\n| потеря query observer до эффекта и после spent intent | Admission/dispatch закрыты, UNKNOWN/HOLD; новый observer не выпускает sender для spent attempt; fresh readback привязан к новой generation. |\n| потеря всего serving owner/observer | Отдельный synthetic process crash; новый owner открывает journal без inherited handles. Kernel stop маркируется отдельно. Исчезновение Job/недостаточная coverage не даёт ложный PASS или release. |\n| cuts before native / after effect before ack / lost reply | Durable intent не переиздаётся даже если вызова могло не быть. Счётчик native entry ≤1, число launches=1, тот же attempt/effect, reservation held. |\n| lost submit reply / конкурентный submit / storage error | Один durable launch ticket; replay возвращает прежний результат; unbound intent блокирует повтор. Ошибка commit не разрешает resume/новый attempt. |\n| реальный plugin discovery в temp profile, injected no-model runner | До wire UNAVAILABLE, после wire один port call; trusted context не берётся из tool args; два профиля не разделяют authority/handles; mid-session prompt/tool prefix сохраняется. |\n| shutdown и ошибки cleanup | Admission закрыт первым; bounded drain и освобождение всех собственных handles продолжаются при ошибках; закрытие handles не называется cancel ack. |",
+      "authority": "verified-evidence",
+      "status": "OBSERVED",
+      "lifecycle": "ACTIVE",
+      "material": true,
+      "source": {
+        "type": "repository",
+        "locator": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\docs\\change-requests\\CR-hermes-symphony-serving-lifecycle-20261106.md",
+        "pinnedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+        "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+        "hash": "sha256:81f0168072b4d4ae22d73d766b9a92b505a1cf3a40537eaeb32a5d3643af01e4"
+      },
+      "textHash": "sha256:b803ba91567ce78c95800aac30f42a4f70ab56257dcf599c44a4252f78148cfd"
+    },
+    {
+      "id": "preserved-18",
+      "kind": "out-of-scope",
+      "text": "Затронуты: production journal/lifecycle/port/runner в отдельном project-owned transport package, plugin bootstrap, тесты plugin/adapter, документация handoff и state schema. Конкретные новые пути выбираются после ok; shared adapter contract сохраняется. Kit driver и frozen S2 не меняются. Не добавлять core tool, ENV config, queue, HTTP или scheduler facade.",
+      "authority": "verified-evidence",
+      "status": "OBSERVED",
+      "lifecycle": "ACTIVE",
+      "material": true,
+      "source": {
+        "type": "repository",
+        "locator": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\docs\\change-requests\\CR-hermes-symphony-serving-lifecycle-20261106.md",
+        "pinnedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+        "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+        "hash": "sha256:81f0168072b4d4ae22d73d766b9a92b505a1cf3a40537eaeb32a5d3643af01e4"
+      },
+      "textHash": "sha256:f7d9a445b97323415dd4ba345403cc442953ae95d05429d11d21689cf7960c13"
+    },
+    {
+      "id": "preserved-19",
+      "kind": "unknown",
+      "text": "BLOCKING для рабочего транспорта: нет production journal без fixture imports, нет lifetime host/bootstrap, receiver-side atomic fencing, durable launch recovery, request-scoped trusted context и observer health admission. Fixture lease и smoke dict допускают split-brain/потерю binding; OS-only readback не устанавливает внешние последствия. Дешёвое достаточное доказательство дельты — описанная synthetic crash matrix, не новый model smoke. Риски storage/create gap и observer loss ограничиваются fail-closed HOLD, не обещанием exactly-once запуска при power loss.",
+      "authority": "verified-evidence",
+      "status": "UNKNOWN",
+      "lifecycle": "ACTIVE",
+      "material": true,
+      "source": {
+        "type": "repository",
+        "locator": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\docs\\change-requests\\CR-hermes-symphony-serving-lifecycle-20261106.md",
+        "pinnedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+        "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+        "hash": "sha256:81f0168072b4d4ae22d73d766b9a92b505a1cf3a40537eaeb32a5d3643af01e4"
+      },
+      "textHash": "sha256:c7ce5230b0c1da1cc196942321f15e1eb1676a55c014ce00a9293c26ba141eff"
+    },
+    {
+      "id": "preserved-20",
+      "kind": "safety",
+      "text": "Rollback: отключить новые admissions/transport до нового сеанса, unwire в безопасной lifecycle точке, дождаться bounded drain собственных attempts; cleanup использует прежний coordinator, не прямой второй cancel. Сохранить journal, identities/effects/reservations и evidence. Не откатывать DB snapshot поверх spent intent и не downgrade-ить несовместимую схему. Старую версию запускать только если она понимает journal либо inert; ручная сверка unresolved attempts обязательна. Чужие файлы/процессы не трогать.",
+      "authority": "verified-evidence",
+      "status": "OBSERVED",
+      "lifecycle": "ACTIVE",
+      "material": true,
+      "source": {
+        "type": "repository",
+        "locator": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\docs\\change-requests\\CR-hermes-symphony-serving-lifecycle-20261106.md",
+        "pinnedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+        "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+        "hash": "sha256:81f0168072b4d4ae22d73d766b9a92b505a1cf3a40537eaeb32a5d3643af01e4"
+      },
+      "textHash": "sha256:64d85d231fe63d1666603e5623872eeaa108a308df5204159f9536f436de84a4"
+    },
+    {
+      "id": "preserved-21",
+      "kind": "note",
+      "text": "Подготовлено: предложение архитектуры и критерии. Реализация/проверки новой дельты — NOT_RUN. Независимый Hygiene reviewer не запускался: текущий допуск запрещает новые модели/Codex workers. Детерминированные prefilter/Context Pack находятся в `.artifacts/serving-lifecycle-cr-20261106/`. Пока нет independent report + validate-report + status READY, документ не предъявляется как готовый к ok. Требуется отдельный fresh-session/external-review в разрешённом контексте; самопроверка не заменяет gate.\n",
+      "authority": "historical-narrative",
+      "status": "STALE",
+      "lifecycle": "QUARANTINED",
+      "material": false,
+      "source": {
+        "type": "repository",
+        "locator": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\docs\\change-requests\\CR-hermes-symphony-serving-lifecycle-20261106.md",
+        "pinnedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+        "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+        "hash": "sha256:81f0168072b4d4ae22d73d766b9a92b505a1cf3a40537eaeb32a5d3643af01e4"
+      },
+      "textHash": "sha256:cf9c9e2dcc50ad703db504935f782c20f4a0c3026553a7d618c44d282245a761"
+    },
+    {
+      "id": "current-rehydration",
+      "kind": "note",
+      "text": "{\"base\": \"8169f1b66a3a7c6844e3347c89f5cfa82edd4483\", \"review_scope\": \"independent CR/context review only; no implementation or transport pilot\", \"historical_CR_unchanged\": true, \"kit_head\": \"048d446ba484d5d3ca8b052210dbeed3e18d7fb8\", \"current_revalidation\": \"10 sources and 30 historical package files hash-match; no runtime replay\", \"old_gate_narrative\": \"dated historical state, not a current independent-review assertion\"}",
+      "authority": "historical-narrative",
+      "status": "STALE",
+      "lifecycle": "QUARANTINED",
+      "source": {
+        "type": "repository",
+        "locator": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\voice-integration-20261109\\serving-current-state.json",
+        "pinnedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+        "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+        "hash": "sha256:3576514f95d8b4f2d88f9adcd3502e2d89499ecb11f70b0f2b217e8c6221bbff"
+      },
+      "textHash": "sha256:04fdcf0361dc6490f5615a85a03bb1ddeb93be17a463aacea6c081334e7130f6"
+    },
+    {
+      "id": "amend-owner-scope",
+      "kind": "scope",
+      "text": "Приоритет: этот раздел уточняет исходную ревизию `c28c4ba9bc9b3b3deb70d61469231da65f5aef3ab7bd468d340f87e55c6e49d1`. Владелец дал `ок` на CODE scope исходного serving CR, затем `да` на включение generic host binding в тот же CR и один независимый review изменённого контракта. До валидного review новой ревизии код не меняется. Исторические DRAFT/read-only/gate формулировки ниже не отменяют этих решений; они не являются текущим статусом допуска. Доказательства и ограничения исходного CR сохраняются.",
+      "authority": "accepted-decision",
+      "status": "OWNER_CONFIRMED",
+      "lifecycle": "ACTIVE",
+      "material": true,
+      "source": {
+        "type": "decision-record",
+        "locator": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\serving-lifecycle-implementation-20261109\\OWNER_DECISIONS.md",
+        "hash": "sha256:f8dcac2eb50af2a2ee7f87a1f8a2d43b0004db7312b8fdb8779cdce5cf6186f9"
+      },
+      "supersedes": "preserved-1",
+      "textHash": "sha256:a76ec41c56870599ed2e8167b4f65acfd7d091608dd11a33a2ccb9f0aceebf73"
+    },
+    {
+      "id": "amend-owner-limits",
+      "kind": "safety",
+      "text": "Граница допуска: поправка разрешает подготовить и проверить изменённый контракт. Она не выдаёт разрешения на no-model E1/E2 campaign, transport pilot, native/model sessions, микрофон, передачу речи, paid resources, production, новые ключи/доступы, установку, push или merge. Единственный writer — текущий Hermes интегратор. Bimo остаётся владельцем ASR/retrieval/GPU, kit и другие worktree не изменяются. Бюджеты parent CR, попытки и spent effects не обнуляются. Разрешён ровно один новый независимый read-only review этого изменения; корректирующие model-проходы этим не разрешаются.",
+      "authority": "owner-directive",
+      "status": "OWNER_CONFIRMED",
+      "lifecycle": "ACTIVE",
+      "material": true,
+      "source": {
+        "type": "decision-record",
+        "locator": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\serving-lifecycle-implementation-20261109\\OWNER_DECISIONS.md",
+        "hash": "sha256:f8dcac2eb50af2a2ee7f87a1f8a2d43b0004db7312b8fdb8779cdce5cf6186f9"
+      },
+      "supersedes": "owner-10-0",
+      "textHash": "sha256:5b76067e62ed1c416a0dee75de1b6df66e2e87d50d4c84b42e4a05a32c5dae8c"
+    },
+    {
+      "id": "amend-binding-1",
+      "kind": "requirement",
+      "text": "1. Разделить объявление и запуск сервиса: plugin `register(ctx)` объявляет factory без создания journal, owner lock, Job или worker. Только owning serving host запускает service после owning-profile discovery и до admission новых conversations. Diagnostic/discovery команды не запускают service. Startup failure закрывает admission соответствующего consumer и оставляет UNAVAILABLE/HOLD; logger/fail-open hook не заменяет эту гарантию.",
+      "authority": "agent-inference",
+      "status": "INFERRED",
+      "lifecycle": "PROPOSED",
+      "material": true,
+      "source": {
+        "type": "repository",
+        "locator": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\docs\\change-requests\\CR-hermes-symphony-serving-lifecycle-20261106.md",
+        "hash": "sha256:81f0168072b4d4ae22d73d766b9a92b505a1cf3a40537eaeb32a5d3643af01e4",
+        "pinnedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+        "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483"
+      },
+      "textHash": "sha256:ff3d4d3d0ccf40e088a08f4f3f7f1c06121ec1da5b5b017cac3e206e5a092366"
+    },
+    {
+      "id": "amend-binding-2",
+      "kind": "requirement",
+      "text": "2. Host передаёт immutable profile home, namespace и lifetime generation. Один service/port на profile+namespace; повторное подключение не создаёт второго owner. Явные profile scopes сохраняются в background callbacks, shutdown и thread hops. `plugins.isolation: host` не обходится; невозможность передать live in-process port означает отказ. Не добавлять daemon, IPC, queue, HTTP, scheduler или отдельный Hermes runtime.",
+      "authority": "agent-inference",
+      "status": "INFERRED",
+      "lifecycle": "PROPOSED",
+      "material": true,
+      "source": {
+        "type": "repository",
+        "locator": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\docs\\change-requests\\CR-hermes-symphony-serving-lifecycle-20261106.md",
+        "hash": "sha256:81f0168072b4d4ae22d73d766b9a92b505a1cf3a40537eaeb32a5d3643af01e4",
+        "pinnedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+        "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483"
+      },
+      "textHash": "sha256:e0eabf71d484383e10af5c448e416db17c1164619e73c24f98cd616082af0712"
+    },
+    {
+      "id": "amend-binding-3",
+      "kind": "requirement",
+      "text": "3. Request authority приходит только из host-owned проверенного источника и связывается с immutable profile/session/request identity, approved payload digest, contract и grant. Plugin получает её в ограниченном request scope; вне него, после завершения, при mismatch/expiry или отсутствии issuer — None/HOLD. Session/call IDs, cwd, текст запроса, config boolean, `confirmed: true` или согласие на разработку не создают execution grant. Partial ASR не является командой. Передача context через tool args запрещена.",
+      "authority": "agent-inference",
+      "status": "INFERRED",
+      "lifecycle": "PROPOSED",
+      "material": true,
+      "source": {
+        "type": "repository",
+        "locator": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\docs\\change-requests\\CR-hermes-symphony-serving-lifecycle-20261106.md",
+        "hash": "sha256:81f0168072b4d4ae22d73d766b9a92b505a1cf3a40537eaeb32a5d3643af01e4",
+        "pinnedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+        "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483"
+      },
+      "textHash": "sha256:9763507cc28132d870ca7db0ad150b16ac561bc1717bf00d95d35df41d044c70"
+    },
+    {
+      "id": "amend-binding-4",
+      "kind": "requirement",
+      "text": "4. До native admission необходимо определить конкретный approval source и проверить его связь с exact model/environment/attempt permit. Пока он не закреплён, native admission остаётся HOLD. Generic binding не подделывает grant, не создаёт новый доступ и не выдаёт этот недостающий источник за работающую интеграцию. Реализация generic части может оставаться inert при отсутствии источника; недостижимый placeholder нельзя предъявлять как завершённый serving transport.",
+      "authority": "agent-inference",
+      "status": "INFERRED",
+      "lifecycle": "PROPOSED",
+      "material": true,
+      "source": {
+        "type": "repository",
+        "locator": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\docs\\change-requests\\CR-hermes-symphony-serving-lifecycle-20261106.md",
+        "hash": "sha256:81f0168072b4d4ae22d73d766b9a92b505a1cf3a40537eaeb32a5d3643af01e4",
+        "pinnedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+        "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483"
+      },
+      "textHash": "sha256:f8b83bac12c30b027aff9b7b57e48b8bf99e9a0847a46917371031bf3aa415ce"
+    },
+    {
+      "id": "amend-binding-5",
+      "kind": "requirement",
+      "text": "5. При shutdown/unload/force rediscovery host первым закрывает admission, затем выполняет bounded drain и ledger cleanup в owning profile. Каждый успешно приобретённый ресурс получает cleanup до публикации service; abandoned loader не публикует live service. Ошибки cleanup не дают cancel ACK. Старое поколение service и late request callbacks не получают новый dispatch slot.",
+      "authority": "agent-inference",
+      "status": "INFERRED",
+      "lifecycle": "PROPOSED",
+      "material": true,
+      "source": {
+        "type": "repository",
+        "locator": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\docs\\change-requests\\CR-hermes-symphony-serving-lifecycle-20261106.md",
+        "hash": "sha256:81f0168072b4d4ae22d73d766b9a92b505a1cf3a40537eaeb32a5d3643af01e4",
+        "pinnedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+        "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483"
+      },
+      "textHash": "sha256:1afcd7d3e5630df9261d2c9bb902e79a84ee429bd6b76da5552a978a4aeea6f4"
+    },
+    {
+      "id": "amend-binding-6",
+      "kind": "requirement",
+      "text": "6. Единственный конкретный consumer — существующий `symphony_pm`: loaded owning-profile module → existing adapter → один Port/LifecycleOwner → существующий CodexDriver с attempt-bound runner. Factory declaration не меняет текущий prompt/tool prefix; активация поверхности — до новых conversations. Сбой service отказывает внутри уже выбранного handler, без смены toolset посреди turn.",
+      "authority": "agent-inference",
+      "status": "INFERRED",
+      "lifecycle": "PROPOSED",
+      "material": true,
+      "source": {
+        "type": "repository",
+        "locator": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\docs\\change-requests\\CR-hermes-symphony-serving-lifecycle-20261106.md",
+        "hash": "sha256:81f0168072b4d4ae22d73d766b9a92b505a1cf3a40537eaeb32a5d3643af01e4",
+        "pinnedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+        "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483"
+      },
+      "textHash": "sha256:d1b2660044834e345a5ac6f47906561cedf46612e28aae080f62a7597f6622f2"
+    },
+    {
+      "id": "amend-files",
+      "kind": "scope",
+      "text": "Разрешённая область поправки: generic plugin service/request-binding sibling modules в `hermes_cli`, узкие additive методы `PluginContext`/`PluginManager`, lifecycle call sites owning host в `tui_gateway` и `gateway`, consumer внутри существующего `plugins/symphony_pm`, соответствующие tests/docs. Новые API должны иметь первого consumer и реальную host call site. Названия `plugin_services.py` и request-binding module — варианты размещения, не утверждённые сигнатуры. Конкретные пути выбираются по area AGENTS до редактирования. Не hardcode-ить Symphony в core; не менять kit driver/frozen S2, общую adapter schema, профили или config оператора. Существующие plugins без новой регистрации сохраняют поведение.",
+      "authority": "agent-inference",
+      "status": "INFERRED",
+      "lifecycle": "PROPOSED",
+      "material": true,
+      "source": {
+        "type": "repository",
+        "locator": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\docs\\change-requests\\CR-hermes-symphony-serving-lifecycle-20261106.md",
+        "hash": "sha256:81f0168072b4d4ae22d73d766b9a92b505a1cf3a40537eaeb32a5d3643af01e4",
+        "pinnedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+        "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483"
+      },
+      "textHash": "sha256:154101133bce9ae01858c3b604c0140f373d5378db5d47c7b0e0d102efedd843"
+    },
+    {
+      "id": "amend-acceptance",
+      "kind": "acceptance",
+      "text": "Новые критерии: discovery без serving не создаёт ресурсы; повторный start не дублирует owner; профили не разделяют authority/handles; request binding не переживает окончание запроса и не даёт authority постороннему потоку или detached task; missing/expired/mismatched grant отказывает; startup/reload/shutdown закрывают admission; loader abandonment не публикует service; pinned host isolation не обходится; старые plugins совместимы; mid-session prompt/tool prefix сохраняется. Далее действуют исходные journal/launch/cancel crash criteria. Выполнение этих проверок NOT_RUN и требует отдельного допуска на bounded no-model campaign, а не нового model smoke.",
+      "authority": "agent-inference",
+      "status": "INFERRED",
+      "lifecycle": "PROPOSED",
+      "material": true,
+      "source": {
+        "type": "repository",
+        "locator": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\docs\\change-requests\\CR-hermes-symphony-serving-lifecycle-20261106.md",
+        "hash": "sha256:81f0168072b4d4ae22d73d766b9a92b505a1cf3a40537eaeb32a5d3643af01e4",
+        "pinnedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+        "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483"
+      },
+      "textHash": "sha256:fa5a9a1209681b0edcb6b652c3cad6c74192dd663a3a5c4c09bc881112c65871"
+    },
+    {
+      "id": "amend-unknown",
+      "kind": "unknown",
+      "text": "Материальное UNKNOWN: конкретный production approval source и его доставка из UI/native permit в request binding пока не закреплены. Это блокирует native admission и сквозную приёмку, но не позволяет заменять их синтетическим context. OS observer/Job lifetime/crash recovery этой поправкой не доказаны. Общий cancel/release остаётся HOLD; ASR cancel/остановка записи не доказывают остановку worker. Rollback сохраняет журнал, identity, effects и reservations; старую схему поверх spent intent не восстанавливать.",
+      "authority": "verified-evidence",
+      "status": "UNKNOWN",
+      "lifecycle": "ACTIVE",
+      "material": true,
+      "source": {
+        "type": "repository",
+        "locator": "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\docs\\change-requests\\CR-hermes-symphony-serving-lifecycle-20261106.md",
+        "hash": "sha256:81f0168072b4d4ae22d73d766b9a92b505a1cf3a40537eaeb32a5d3643af01e4",
+        "pinnedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+        "reverifiedSha": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483"
+      },
+      "textHash": "sha256:02070dfe32a94fd59053ed2f18f70e6557550c07d67b252d41cae862a721f1ec"
+    }
+  ],
+  "knownConflicts": [],
+  "references": [
+    "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\controller-restart-20261106\\REPORT.md",
+    "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\controller-restart-20261106\\verification.json",
+    "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\controller-restart-20261106\\durable-readback.json",
+    "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\controller-restart-20261106\\package-hashes.json",
+    "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\plugins\\symphony_pm\\__init__.py",
+    "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\tests\\fixtures\\symphony_pm_ingress\\owner.py",
+    "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\live-smoke-20261106\\cancel_control.py",
+    "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\live-smoke-20261106\\smoke.py",
+    "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\live-smoke-20261106\\winjob.py",
+    "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\tools\\symphony_pm_adapter.py",
+    "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\voice-integration-20261109\\serving-revalidation.json",
+    "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\voice-integration-20261109\\serving-current-state.json",
+    "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\voice-integration-20261109\\review-budget-exception.json",
+    "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\serving-lifecycle-implementation-20261109\\OWNER_DECISIONS.md",
+    "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\serving-lifecycle-implementation-20261109\\preflight.json",
+    "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\serving-lifecycle-implementation-20261109\\approved-parent-cr.md",
+    "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\hermes_cli\\plugins.py",
+    "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\hermes_cli\\plugins_loader.py",
+    "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\hermes_cli\\plugin_session.py",
+    "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\hermes_cli\\plugins_ledger.py",
+    "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\gateway\\hooks.py",
+    "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\model_tools.py",
+    "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\hermes_cli\\plugins_cmd.py"
+  ],
+  "prefilter": {
+    "revision": {
+      "exact": "sha256:071f996b26734da37e914a5008f707f5393394d9f2c5e6b5a741400eeab48234",
+      "normalized": "sha256:d408f7b5b619e13ab13fd113b428b7e5633399719d0b7732df7fa66a8d2d691d"
+    },
+    "chars": 19772,
+    "sections": [
+      {
+        "heading": "CR: Hermes → Symphony — lifecycle owner и in-process transport",
+        "line": 1,
+        "chars": 100,
+        "class": "CANONICAL_SPEC"
+      },
+      {
+        "heading": "Действующая поправка: generic host binding (2026-11-09)",
+        "line": 5,
+        "chars": 1150,
+        "class": "CANONICAL_SPEC"
+      },
+      {
+        "heading": "Требуемая generic привязка",
+        "line": 11,
+        "chars": 2636,
+        "class": "CANONICAL_SPEC"
+      },
+      {
+        "heading": "Scope файлов и совместимость",
+        "line": 20,
+        "chars": 748,
+        "class": "CANONICAL_SPEC"
+      },
+      {
+        "heading": "Критерии и неизвестное",
+        "line": 24,
+        "chars": 1202,
+        "class": "CANONICAL_SPEC"
+      },
+      {
+        "heading": "Исходная ревизия: исторический статус и сохранённая спецификация",
+        "line": 30,
+        "chars": 530,
+        "class": "HISTORICAL"
+      },
+      {
+        "heading": "Контекст и источники",
+        "line": 35,
+        "chars": 1571,
+        "class": "CANONICAL_SPEC"
+      },
+      {
+        "heading": "Цель и область",
+        "line": 45,
+        "chars": 651,
+        "class": "CANONICAL_SPEC"
+      },
+      {
+        "heading": "Что переиспользовать, что отсутствует",
+        "line": 51,
+        "chars": 2036,
+        "class": "CANONICAL_SPEC"
+      },
+      {
+        "heading": "Предлагаемый минимальный дизайн (PROPOSED)",
+        "line": 63,
+        "chars": 4689,
+        "class": "CANONICAL_SPEC"
+      },
+      {
+        "heading": "Acceptance и отдельная no-model кампания (NOT_RUN)",
+        "line": 74,
+        "chars": 2453,
+        "class": "CANONICAL_SPEC"
+      },
+      {
+        "heading": "Зависимости, риски и rollback",
+        "line": 92,
+        "chars": 1474,
+        "class": "CANONICAL_SPEC"
+      },
+      {
+        "heading": "Gate и граница утверждений",
+        "line": 100,
+        "chars": 533,
+        "class": "CANONICAL_SPEC"
+      }
+    ],
+    "stalePins": [
+      {
+        "line": 37,
+        "sha": "3feceb1f7c0b1e37a6e5a6ce00ffa6fa6aa1e02b"
+      },
+      {
+        "line": 37,
+        "sha": "fda3bda4bffece8bc3cca7e11be8dd8e72eef91d"
+      },
+      {
+        "line": 37,
+        "sha": "b766aecb8524a5c0b78197cda7a144473af4fd07"
+      },
+      {
+        "line": 37,
+        "sha": "369a012c"
+      },
+      {
+        "line": 43,
+        "sha": "048d446ba484d5d3ca8b052210dbeed3e18d7fb8"
+      }
+    ],
+    "rawBlocks": [],
+    "duplicates": [],
+    "proposalMarkers": [
+      14,
+      47,
+      63
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "argv": [
+    "C:/Program Files/Git/bin/bash.exe",
+    "scripts/run_tests.sh",
+    "-j",
+    "1",
+    "--file-retries",
+    "0",
+    "--file-timeout",
+    "60",
+    "tests/hermes_cli/test_plugin_services.py",
+    "tests/hermes_cli/test_web_server_plugin_services.py",
+    "tests/plugins/test_symphony_pm_serving.py",
+    "tests/tui_gateway/test_plugin_service_lifecycle.py",
+    "tests/tools/test_symphony_pm_adapter.py",
+    "tests/tools/test_symphony_pm_adapter_cancel_s2.py",
+    "tests/plugins/test_symphony_pm_plugin.py",
+    "tests/plugins/test_symphony_pm_ingress_offline.py"
+  ],
+  "scope": "one targeted no-model contract campaign; no native/paid/audio/production work",
+  "model": false,
+  "microphone": false,
+  "native_worker": false,
+  "exit": 0,
+  "outcome": "FINISHED",
+  "seconds": 135.703
+}

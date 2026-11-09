@@ -1,0 +1,32 @@
+{
+  "utc": "2026-11-09T15:56:54.800661+00:00",
+  "base": "8169f1b66a3a7c6844e3347c89f5cfa82edd4483",
+  "status": {
+    "status": "READY",
+    "header": "PASS rev=d408f7b5b619e13ab13fd113b428b7e5633399719d0b7732df7fa66a8d2d691d report=docs/audits/CR-hermes-symphony-serving-lifecycle-20261106/hygiene-d408f7b5b619.json",
+    "revision": {
+      "exact": "sha256:071f996b26734da37e914a5008f707f5393394d9f2c5e6b5a741400eeab48234",
+      "normalized": "sha256:d408f7b5b619e13ab13fd113b428b7e5633399719d0b7732df7fa66a8d2d691d"
+    },
+    "gate": {
+      "gate": "PASS",
+      "verdict": "PASS",
+      "independent": true,
+      "errors": [],
+      "notes": []
+    }
+  },
+  "source_code_unchanged": true,
+  "original_report_preserved": true,
+  "context_pack_preserved": true,
+  "reviewed_CR_material_revision_preserved": true,
+  "correction_fields": [
+    "removed",
+    "superseded",
+    "unsupportedClaims"
+  ],
+  "additional_corrections_authorized": 0,
+  "tests_runtime_native_not_run": true,
+  "code_extension_owner_approval": "pending; only amendment/review/report correction were authorized",
+  "operational_permits": "unchanged; native admission and general cancel HOLD"
+}
