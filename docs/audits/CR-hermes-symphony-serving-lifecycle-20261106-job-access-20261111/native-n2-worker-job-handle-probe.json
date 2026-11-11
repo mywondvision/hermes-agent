@@ -1,0 +1,9 @@
+{
+  "owner_pid": 3512,
+  "open_owner": true,
+  "duplicated": true,
+  "is_own_job": true,
+  "limits_read": true,
+  "limits_rewritten_unchanged": true,
+  "errors": {}
+}

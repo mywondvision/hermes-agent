@@ -1,0 +1,23 @@
+{
+  "argv": [
+    "C:/Program Files/Git/bin/bash.exe",
+    "scripts/run_tests.sh",
+    "-j",
+    "1",
+    "--file-retries",
+    "0",
+    "--file-timeout",
+    "300",
+    "tests/plugins/test_symphony_pm_windows_worker_probe.py",
+    "-v"
+  ],
+  "attempt": 1,
+  "model": false,
+  "microphone": false,
+  "paid_resources": false,
+  "scope": "synthetic no-model; own Python processes only",
+  "exit": 0,
+  "outcome": "FINISHED",
+  "seconds": 10.732,
+  "source_unchanged": true
+}

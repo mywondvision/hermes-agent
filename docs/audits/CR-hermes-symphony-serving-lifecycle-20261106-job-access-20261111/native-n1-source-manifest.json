@@ -1,0 +1,144 @@
+{
+  "files": [
+    {
+      "path": "hermes_platform/host/windows_boot.py",
+      "sha256": "1663a96ef8996b07928febdb457c0bf226fca412d9940b79e72e775c834f75d8"
+    },
+    {
+      "path": "plugins/symphony_pm/__init__.py",
+      "sha256": "c0ba1ad6ffa8dd66a1bcf7ea2a8b912a73e61fff590c25abee39fc71ab32a279"
+    },
+    {
+      "path": "plugins/symphony_pm/service.py",
+      "sha256": "f7de03bad36c21de87ef5a1278c9f59722910a53a42052437d61a7b9a3d0752e"
+    },
+    {
+      "path": "plugins/symphony_pm/transport/__init__.py",
+      "sha256": "17959a813ce91e6b1cbdeb783bc65ead35567d22092f4fef6f726d7a91aa918d"
+    },
+    {
+      "path": "plugins/symphony_pm/transport/approval.py",
+      "sha256": "a78226ced71e8ef46c912594f201c9f9a52a74aa5c362bcd265497d75ec9ffce"
+    },
+    {
+      "path": "plugins/symphony_pm/transport/bootstrap.py",
+      "sha256": "2fc687b823c7fa4ed2dff1c11af410ea663fff9d08c66b1e87cb541f81b89329"
+    },
+    {
+      "path": "plugins/symphony_pm/transport/codex_launcher.py",
+      "sha256": "6d91d857fc4c436b6691196ec829ee6388ee372dc35b41c277e45fe51e2b1f66"
+    },
+    {
+      "path": "plugins/symphony_pm/transport/journal.py",
+      "sha256": "a8ec6d2e06c3c2cef7d142403b8e6586b4bdecb2cace08f0cf449014d29c6675"
+    },
+    {
+      "path": "plugins/symphony_pm/transport/lifecycle.py",
+      "sha256": "844712f642ebe42b195500e7ecba740bd5f110853328b673ab30a08e3cd59a44"
+    },
+    {
+      "path": "plugins/symphony_pm/transport/port.py",
+      "sha256": "f2ec4156b03861dfc22aa4d421315ae466e97294fb605bd20a59adb1cf6c5a6b"
+    },
+    {
+      "path": "plugins/symphony_pm/transport/qualification.py",
+      "sha256": "f33301e15cc64afc4f74e32a956ce0b29528f4cd08b9ee7a111a7e8e1890b73b"
+    },
+    {
+      "path": "plugins/symphony_pm/transport/schema.py",
+      "sha256": "ce8c3390a4c7aecd748d03f37b2a97c39f9aaccdee6a854d1c2c021b90b1a49b"
+    },
+    {
+      "path": "plugins/symphony_pm/transport/types.py",
+      "sha256": "c2c717e08abe3e9538a24d5a5d011b9b8d743075608675e4e01e6f8fade7c29f"
+    },
+    {
+      "path": "plugins/symphony_pm/transport/windows_api.py",
+      "sha256": "a95c6a5b816fdce4b7dee9726f04ecb9ced7580acafd99b00cb92879c8c50a7c"
+    },
+    {
+      "path": "plugins/symphony_pm/transport/windows_bootstrap.py",
+      "sha256": "a75ad0702bb7ba71c963f47712ab5cee394be5fb3021af028929cf0d7362a4d4"
+    },
+    {
+      "path": "plugins/symphony_pm/transport/windows_observer.py",
+      "sha256": "f14e15fe08ec5531680f3d93b290a42a7b577663da34f0ad0cc14428cad9e841"
+    },
+    {
+      "path": "plugins/symphony_pm/transport/windows_ownership.py",
+      "sha256": "300ab668c55bdaea3a67c389cc364ca7ab56404117499ae8c49f5c1b862fe42f"
+    },
+    {
+      "path": "plugins/symphony_pm/transport/windows_receiver.py",
+      "sha256": "ec88cf55761a96bb331db1d08ff4f8b96b248b639a7433726156bebe726d9d04"
+    },
+    {
+      "path": "tests/plugins/symphony_native_crash_support.py",
+      "sha256": "e544e431f4b2982b9ec55ebdb1e2244644d0ee8752b22772dfa4652f80fa25fd"
+    },
+    {
+      "path": "tests/plugins/symphony_serving_support.py",
+      "sha256": "04317d9b045f2bb646525167e2430badc347c9516fbdee509619589a63fc7652"
+    },
+    {
+      "path": "tests/plugins/test_symphony_pm_create_fencing.py",
+      "sha256": "58c2f9b9a248173ac6972a16bf1b249c462d377dc42029cd9a3d51440863b4f6"
+    },
+    {
+      "path": "tests/plugins/test_symphony_pm_create_recovery.py",
+      "sha256": "15dd6d3b66d533113877e4cb238a0ad042935b79f7844f26f4c84f696d90f78b"
+    },
+    {
+      "path": "tests/plugins/test_symphony_pm_ingress_offline.py",
+      "sha256": "a5cc76f8c8ed6bf77990e9d84aa7047460d1d46baa042e72eea7df8fbc88cda9"
+    },
+    {
+      "path": "tests/plugins/test_symphony_pm_job_registry.py",
+      "sha256": "4e7c0a27f1678b66da6e9a3cf20a84110ba1404aab3657d8ce45117366c4344b"
+    },
+    {
+      "path": "tests/plugins/test_symphony_pm_journal.py",
+      "sha256": "a58a3f7ebcf0fa523b06c8cd361e9ba6ac5abb6357adf4f6ca5c81d77a74f0f1"
+    },
+    {
+      "path": "tests/plugins/test_symphony_pm_lifecycle.py",
+      "sha256": "0ec8f9562db4fe7ba99bfa891c5fb2531d951525099f4b547884634844e27972"
+    },
+    {
+      "path": "tests/plugins/test_symphony_pm_permit_source.py",
+      "sha256": "2eee5d8240c39c6ed6f2effe1131b6eba38bf701265f961b33e1b352569f1ad5"
+    },
+    {
+      "path": "tests/plugins/test_symphony_pm_plugin.py",
+      "sha256": "8fc75df0f5bc1306c0eb80b98a3e2017d306b2ad6edafca18c0635a5259e9373"
+    },
+    {
+      "path": "tests/plugins/test_symphony_pm_qualification.py",
+      "sha256": "eab987d3c5aba2b0c1c4bfdfcaae712f44f3bc46132e49d244296efc34e2fc64"
+    },
+    {
+      "path": "tests/plugins/test_symphony_pm_serving.py",
+      "sha256": "80ec11204ab8154c730f9eff2fb6653bf6a1710d003bd638b5570de0d388dbc8"
+    },
+    {
+      "path": "tests/plugins/test_symphony_pm_windows_crash.py",
+      "sha256": "23d5003c7ddde4525a238f31aab5224ca3f34df79274825fbae1faf3245e5e6c"
+    },
+    {
+      "path": "tests/plugins/test_symphony_pm_windows_native.py",
+      "sha256": "64d2a79080a6f3867899c3f2fce392f9d0803fbbf4cb6a9d5a5718f76ee51e34"
+    },
+    {
+      "path": "tests/plugins/test_symphony_pm_windows_topology_diagnostic.py",
+      "sha256": "a5616f4c97a53e7af3232439c6e40ee8661e83b1945f314d69959d2cdba394f6"
+    },
+    {
+      "path": "tests/plugins/test_symphony_smoke_cancel.py",
+      "sha256": "d2967f40a1124a6c6f94b2d85d06dac6a91df76ad7cb659192272476c123e7d5"
+    },
+    {
+      "path": "tests/plugins/test_symphony_smoke_evidence.py",
+      "sha256": "3068df08f2584f3985a76df94d71868a8df36903407517c3b43fbff6b7542b17"
+    }
+  ]
+}

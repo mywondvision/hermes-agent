@@ -108,7 +108,7 @@ profile + session + `request_id` + digest полезной нагрузки; л�
 | Конкретный production approval source, показ точного payload человеку и доставка в request binding | **UNKNOWN**, не закреплён |
 | Доверенный источник наблюдений для `get_status` | Отсутствует |
 | Точный допуск владельца: model / effort / environment / attempt | Не выдан; запрос — `docs/audits/CR-hermes-symphony-serving-lifecycle-20261106-continuation-20261111/PERMIT-REQUEST-20261111.md` |
-| Job воркера недоступен процессам из дерева воркера | Job сделан безымянным (fixture-тесты и ревью кода; native-проверка ждёт отдельного допуска). Дублирование хендла из процесса owner не закрыто: нужно решение по токену воркера. Находка сужена, не закрыта |
+| Job воркера недоступен процессам из дерева воркера | **Не выполнено.** Открытие по имени убрано и проверено native-проходом, но synthetic-воркер продублировал хендл Job из процесса owner с правом менять лимиты. Нужно решение по токену воркера |
 | Допуск на native/global cancel и настоящий stop | Не выдан; `request_cancel` не подключается |
 | Глобальная голосовая активация, живая русская речь, ASR FINAL/cancel | Отдельный контур, этим CR не затрагивается |
 | `plugins.isolation: host` | Для стороннего плагина регистрация runtime-сервиса отклоняется и serving недоступен; для bundled-плагина изоляция не применяется. Тестами не покрыто |
@@ -137,8 +137,9 @@ lifecycle его каталоги не изменяют.
 
 ## 8. Статус доказательств на 2026-11-11
 
-- Fixture: `9 files, 127 tests passed, 0 failed`.
-- Synthetic native no-model (свои Python-процессы, один проход, без повторов): `2 files, 11 tests passed, 0 failed`.
+- Fixture: `10 files, 136 tests passed, 0 failed`.
+- Synthetic native no-model (свои Python-процессы, без повторов): первый проход `2 files, 11 tests passed, 0 failed`;
+  после среза доступа к Job — `2 files, 12 tests passed, 0 failed` и диагностический зонд `1 files, 1 tests passed`.
 - Настоящий driver, модель, native/global cancel и настоящий stop не запускались и остаются **HOLD**.
 
 Известное ограничение tool: JSON-схема `symphony_pm_ingress` перечисляет в `required` только четыре общих поля,
