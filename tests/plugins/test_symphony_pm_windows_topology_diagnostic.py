@@ -30,8 +30,8 @@ class _Pids(C.Structure):
 
 
 class _BoundedApi(WindowsApi):
-    def create_job(self, name):
-        job = super().create_job(name)
+    def create_job(self, job_id):
+        job = super().create_job(job_id)
         try:
             limits = ExtendedLimit()
             limits.Basic.Flags = 0x2000 | 0x8  # KILL_ON_CLOSE | ACTIVE_PROCESS
@@ -40,7 +40,7 @@ class _BoundedApi(WindowsApi):
                 [W.HANDLE, C.c_int, C.c_void_p, W.DWORD], W.BOOL)(job, 9, C.byref(limits), C.sizeof(limits)))
             return job
         except BaseException:
-            self.close(job)
+            self.close_job(job_id)
             raise
 
 

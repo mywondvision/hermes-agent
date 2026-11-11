@@ -3,6 +3,8 @@
 Only test-owned synthetic Python processes and temporary profiles are used. These
 cases do not qualify Codex, billing, model cancellation or external effects.
 """
+import ctypes as C
+from ctypes import wintypes as W
 from pathlib import Path
 import sys
 from types import SimpleNamespace
@@ -95,10 +97,30 @@ def test_query_process_handle_survives_job_fail_safe_close(tmp_path):
     try:
         assert api.creation(query) == receiver.binding.root.creation
         receiver.close_fail_safe(0)
-        from ctypes import wintypes as W
         wait = api.fn('WaitForSingleObject', [W.HANDLE, W.DWORD], W.DWORD)
         assert wait(query, 10000) == 0
     finally:
         receiver.close_fail_safe(0)
         api.close(query)
+        r.owner.close(0)
+
+
+def test_worker_job_cannot_be_opened_by_its_identifier_and_the_owner_process_can_query_it(tmp_path):
+    r, receiver, _ = _receiver(tmp_path)
+    api = receiver.api
+    try:
+        open_by_name = api.fn('OpenJobObjectW', [W.DWORD, W.BOOL, W.LPCWSTR], W.HANDLE)
+        C.set_last_error(0)
+        named = open_by_name(4, False, receiver.binding.job_object)
+        error = C.get_last_error()
+        if named:
+            api.close(named)  # a stray handle would keep the Job, and so the suspended root, alive
+        assert not named and error == 2  # ERROR_FILE_NOT_FOUND: no name exists for any process to open
+        job = api.open_job(receiver.binding.job_object)
+        try:
+            assert api.in_job(receiver.process, job)
+        finally:
+            api.close(job)
+    finally:
+        receiver.close_fail_safe(0)
         r.owner.close(0)

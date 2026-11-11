@@ -15,7 +15,7 @@ class WindowsReceiver:
         self.api, self.ticket = api, ticket
         self.command_result, self.sanitize = command_result, sanitize
         self.lock = threading.RLock()
-        self.job = self.process = self.thread = None
+        self.job = self.process = self.thread = self.job_id = None
         self.closed = self.resumed = self.spent = False
         self.files, self.argv = [], tuple(argv)
         try:
@@ -23,12 +23,12 @@ class WindowsReceiver:
                 self.files.append(tempfile.TemporaryFile(dir=private_directory))
             self.files[0].write((stdin_text or '').encode('utf-8'))
             self.files[0].seek(0)
-            name = job_object_name(ticket)
-            self.job = api.create_job(name)
+            self.job_id = job_object_name(ticket)
+            self.job = api.create_job(self.job_id)
             self.process, self.thread, pid, _ = api.create_suspended(
                 argv, cwd, environment, self.files, self.job)
             root = ProcessIdentity(pid, api.creation(self.process))
-            self.binding = NativeBinding(ticket, name, root, (root,))
+            self.binding = NativeBinding(ticket, self.job_id, root, (root,))
             self.binding.validate()
         except BaseException:
             # The root is born inside the kill-on-close Job, so dropping the last Job handle
@@ -115,12 +115,15 @@ class WindowsReceiver:
                 return
             self.closed = True
             failures = []
-            for attr in ('job', 'thread', 'process'):
+            # The Job registry owns its handle, so only close_job may release it. A refused create
+            # leaves `job` None, so a colliding id's real owner is never closed from here.
+            for attr, release in (('job', lambda _: self.api.close_job(self.job_id)),
+                                  ('thread', self.api.close), ('process', self.api.close)):
                 handle = getattr(self, attr)
                 if handle is not None:
                     try:
-                        self.api.close(handle)
-                    except OSError as exc:
+                        release(handle)
+                    except (OSError, Refused) as exc:  # a missing registry entry must not strand the other handles
                         failures.append(exc)
                     setattr(self, attr, None)
             for stream in self.files:
@@ -148,13 +151,3 @@ class WindowsNativeProvider:
     def create_suspended(self, ticket, argv, cwd, stdin_text):
         return WindowsReceiver(self.api, ticket, argv, cwd, stdin_text,
                                environment=self.environment, **self.options)
-
-    def job_present(self, ticket):
-        try:
-            job = self.api.open_job(job_object_name(ticket))
-        except OSError as exc:
-            if exc.winerror == 2:  # ERROR_FILE_NOT_FOUND: no handle keeps that Job alive
-                return False
-            raise
-        self.api.close(job)
-        return True

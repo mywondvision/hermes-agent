@@ -384,7 +384,7 @@ class Journal:
             actual, row = self._launch(db, ticket.project, ticket.job, ticket.revision)
             if actual != ticket or row['binding'] is not None or row['state'] not in ('LAUNCH_INTENT', 'CREATE_INTENT'):
                 raise Refused('RECONCILE_TARGET')
-            # First observation wins: a later successor must not overwrite evidence of a surviving Job.
+            # First observation wins: a later successor must not overwrite what the first one recorded.
             db.execute('INSERT OR IGNORE INTO serving_readbacks VALUES(?,?,?,?,?)',
                        (reconcile_key(ticket), token.epoch, generation, now, encode(body)))
 

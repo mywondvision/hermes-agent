@@ -70,8 +70,8 @@ class BoundedApi(WindowsApi):
         super().__init__()
         self.limit = limit
 
-    def create_job(self, name):
-        job = super().create_job(name)
+    def create_job(self, job_id):
+        job = super().create_job(job_id)
         try:
             limits = ExtendedLimit()
             limits.Basic.Flags, limits.Basic.ActiveLimit = 0x2000 | 0x8, self.limit
@@ -79,7 +79,7 @@ class BoundedApi(WindowsApi):
                 [W.HANDLE, C.c_int, C.c_void_p, W.DWORD], W.BOOL)(job, 9, C.byref(limits), C.sizeof(limits)))
             return job
         except BaseException:
-            self.close(job)
+            self.close_job(job_id)
             raise
 
 
@@ -223,9 +223,9 @@ class CutApi(BoundedApi):
         self.rig, self.cut, self.receipt = rig, cut, receipt
         self.job_name = None
 
-    def create_job(self, name):
-        self.job_name = name
-        return super().create_job(name)
+    def create_job(self, job_id):
+        self.job_name = job_id
+        return super().create_job(job_id)
 
     def pause(self, process=None):
         if process is not None:

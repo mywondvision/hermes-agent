@@ -9,6 +9,11 @@ from .types import Refused
 from hermes_platform.host.facts import os_family
 
 _CREATE_LOCK = threading.Lock()
+# Process-wide, shared by every WindowsApi instance and subclass. A Job has no kernel name so that
+# nothing outside this process can open it by name; lookup by id is therefore only possible in the
+# owning process, and the lock keeps a lookup from duplicating a handle value that was just closed.
+_JOBS, _JOBS_LOCK = {}, threading.Lock()
+_JOB_QUERY = 0x0004  # JOB_OBJECT_QUERY
 _HANDLE_LIST, _JOB_LIST = 0x00020002, 0x0002000D  # PROC_THREAD_ATTRIBUTE_{HANDLE,JOB}_LIST
 # CREATE_SUSPENDED | CREATE_NO_WINDOW | EXTENDED_STARTUPINFO_PRESENT | CREATE_UNICODE_ENVIRONMENT
 _CREATE_FLAGS = 0x4 | 0x08000000 | 0x00080000 | 0x400
@@ -91,24 +96,37 @@ class WindowsApi:
         self.checked(self.fn('GetExitCodeProcess', [W.HANDLE, C.POINTER(W.DWORD)], W.BOOL)(handle, C.byref(value)))
         return value.value
 
-    def open_job(self, name):
-        return self.checked(self.fn('OpenJobObjectW', [W.DWORD, W.BOOL, W.LPCWSTR], W.HANDLE)(4, False, name))
+    def open_job(self, job_id):
+        """A short-lived query-only duplicate of the registered Job; the caller closes it."""
+        import _winapi
+        with _JOBS_LOCK:
+            if job_id not in _JOBS:
+                raise Refused('JOB_IDENTITY_UNKNOWN')
+            current = _winapi.GetCurrentProcess()
+            return _winapi.DuplicateHandle(current, _JOBS[job_id], current, _JOB_QUERY, False, 0)
 
-    def create_job(self, name):
-        C.set_last_error(0)
-        job = self.checked(self.fn('CreateJobObjectW', [C.c_void_p, W.LPCWSTR], W.HANDLE)(None, name))
-        collision = C.get_last_error() == 183
-        try:
-            if collision:
+    def create_job(self, job_id):
+        with _JOBS_LOCK:
+            if job_id in _JOBS:
                 raise Refused('JOB_NAME_COLLISION')
-            limits = ExtendedLimit()
-            limits.Basic.Flags = 0x2000
-            self.checked(self.fn('SetInformationJobObject', [W.HANDLE, C.c_int, C.c_void_p, W.DWORD], W.BOOL)(
-                job, 9, C.byref(limits), C.sizeof(limits)))
+            job = self.checked(self.fn('CreateJobObjectW', [C.c_void_p, W.LPCWSTR], W.HANDLE)(None, None))
+            try:
+                limits = ExtendedLimit()
+                limits.Basic.Flags = 0x2000
+                self.checked(self.fn('SetInformationJobObject', [W.HANDLE, C.c_int, C.c_void_p, W.DWORD], W.BOOL)(
+                    job, 9, C.byref(limits), C.sizeof(limits)))
+            except BaseException:
+                self.close(job)
+                raise
+            _JOBS[job_id] = job
             return job
-        except BaseException:
-            self.close(job)
-            raise
+
+    def close_job(self, job_id):
+        """The only way a registered Job handle is closed."""
+        with _JOBS_LOCK:
+            if job_id not in _JOBS:
+                raise Refused('JOB_IDENTITY_UNKNOWN')
+            self.close(_JOBS.pop(job_id))
 
     def in_job(self, process, job):
         value = W.BOOL()

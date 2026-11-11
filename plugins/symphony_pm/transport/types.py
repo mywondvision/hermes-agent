@@ -144,7 +144,7 @@ class LaunchTicket:
 
 
 def job_object_name(ticket: LaunchTicket) -> str:
-    """Deterministic so a successor owner can ask whether the predecessor's Job still exists."""
+    """The attempt's stable Job identifier in bindings and the journal; the kernel Job itself has no name."""
     return 'Local\\HermesSymphony-' + digest([ticket.namespace, ticket.project, ticket.job,
                                               ticket.revision, ticket.attempt, 'job'])[:32]
 

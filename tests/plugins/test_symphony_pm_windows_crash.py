@@ -186,7 +186,7 @@ def test_serving_crash_preserves_intent_and_never_recreates_sender(tmp_path, cut
     api = BoundedApi(4)
     query = process = thread = None
     member_queries = {}
-    parent_job = reconcile = None
+    parent_job = parent_job_id = reconcile = None
     environment = {k: v for k, v in os.environ.items() if k.upper() in {'SYSTEMROOT', 'WINDIR'}}
     child_home, child_temp = tmp_path/'child-home', tmp_path/'child-temp'
     for directory in (child_home, child_temp, child_home/'appdata', child_home/'local', child_home/'runtime'):
@@ -198,7 +198,8 @@ def test_serving_crash_preserves_intent_and_never_recreates_sender(tmp_path, cut
         PYTHONDONTWRITEBYTECODE='1', PYTHONUTF8='1', HERMES_E2E_ARTIFACTS=str(proofs))
     with (tmp_path/'serving.log').open('w+b') as log, tempfile.TemporaryFile(dir=tmp_path) as stdin:
         try:
-            parent_job = api.create_job('Local\\HermesTestContainment-'+uuid.uuid4().hex)
+            parent_job_id = 'HermesTestContainment-'+uuid.uuid4().hex
+            parent_job = api.create_job(parent_job_id)
             process, thread, pid, _ = api.create_suspended(
                 [*helper_command(helper), str(home), cut, str(receipt)],
                 helper.parents[2], environment, (stdin, log, log), parent_job)
@@ -264,7 +265,7 @@ def test_serving_crash_preserves_intent_and_never_recreates_sender(tmp_path, cut
                     assert recovered.creates == 0
                     record = recovered.owner.journal.reconcile_record(recovered.owner.token, binding.ticket)
                     reconcile = json.loads(record['body'])
-                    assert reconcile['outcome'] == 'CREATE_UNBOUND_JOB_ABSENT' and reconcile['job_present'] is False
+                    assert reconcile['outcome'] == 'CREATE_UNBOUND_UNOBSERVED' and 'job_present' not in reconcile
                 finally:
                     recovered.close(0)
                 # The last-resort fence has nothing left to kill: no test-side orphan cleanup exists.
@@ -286,7 +287,7 @@ def test_serving_crash_preserves_intent_and_never_recreates_sender(tmp_path, cut
             failures = []
             try:
                 if parent_job is not None:
-                    api.close(parent_job)
+                    api.close_job(parent_job_id)
             except (OSError, Refused) as exc:
                 failures.append(exc)
             finally:

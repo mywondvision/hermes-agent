@@ -76,8 +76,6 @@ class NativeProvider(Protocol):
     """
     def validate_driver_call(self, ticket, argv, cwd, timeout, stdin_text) -> None: ...
     def create_suspended(self, ticket, argv, cwd, stdin_text): ...
-    def job_present(self, ticket) -> bool:
-        """Query-only: does the deterministic Job name for this ticket still exist."""
 
 
 @dataclass(frozen=True)
@@ -126,20 +124,19 @@ class LifecycleOwner:
         self._reconcile_unbound()
 
     def _reconcile_unbound(self):
-        """Record what a dead predecessor left unbound; never relaunch, rebind or release the hold."""
+        """Record what a dead predecessor left unbound; never relaunch, rebind or release the hold.
+
+        Nothing is queried: the Job has no kernel name, so no other process can ask whether it
+        still exists. Only the predecessor's death is proven here; whether its Job closed, and so
+        whether the worker stopped, stays unobserved.
+        """
+        outcomes = {'LAUNCH_INTENT': 'NEVER_ENTERED_OS', 'CREATE_INTENT': 'CREATE_UNBOUND_UNOBSERVED'}
         for row in self.journal.unfinished(self.token):
             if row['binding'] is not None:
                 continue
-            ticket, present, outcome = ticket_from_json(json.loads(row['ticket'])), None, 'NEVER_ENTERED_OS'
-            if row['state'] == 'CREATE_INTENT':
-                try:
-                    present = self.native.job_present(ticket)
-                    outcome = 'CREATE_UNBOUND_JOB_PRESENT' if present else 'CREATE_UNBOUND_JOB_ABSENT'
-                except Exception:  # health: allow BLE001 -- an unanswerable query is UNKNOWN, never absence
-                    outcome = 'CREATE_UNBOUND_UNKNOWN'
+            ticket = ticket_from_json(json.loads(row['ticket']))
             self.journal.record_reconcile(self.token, ticket, self.generation, self.clock(), {
-                'state': row['state'], 'job_object': job_object_name(ticket),
-                'job_present': present, 'outcome': outcome})
+                'state': row['state'], 'job_object': job_object_name(ticket), 'outcome': outcomes[row['state']]})
 
     def _bindings(self):
         return tuple(binding_from_json(json.loads(row['binding']))

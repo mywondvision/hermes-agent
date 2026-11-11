@@ -88,9 +88,8 @@ class Receiver:
 
 class Native:
     def __init__(self):
-        self.created, self.job_queries = [], []
+        self.created = []
         self.timeout = False
-        self.job_state = False  # what the predecessor's Job lookup answers; an exception instance is raised
 
     def validate_driver_call(self, ticket, argv, cwd, timeout, _stdin):
         if argv != ['fixture', 'exec'] or cwd != ticket.plan.workspace or timeout != 1:
@@ -102,18 +101,11 @@ class Native:
         self.created.append(receiver)
         return receiver
 
-    def job_present(self, ticket):
-        self.job_queries.append(ticket)
-        if isinstance(self.job_state, Exception):
-            raise self.job_state
-        return self.job_state
 
-
-def rig(tmp_path, *, incarnation='incarnation-1', predecessor_dead=False, job_state=False):
+def rig(tmp_path, *, incarnation='incarnation-1', predecessor_dead=False):
     now = [1000.0]
     scope = SimpleNamespace(profile_home=canonical_home(tmp_path), namespace='symphony_pm:ingress', active=True)
     guard, observer, native = Guard(scope, incarnation, predecessor_dead), Observer(now), Native()
-    native.job_state = job_state  # must be set before the owner reconciles at construction
 
     def launch(ticket, _request, runner):
         result = runner(['fixture', 'exec'], cwd=ticket.plan.workspace, timeout=1, stdin_text='fixture')

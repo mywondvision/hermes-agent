@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "crId": "CR-hermes-symphony-serving-lifecycle-20261106-job-access-20261111",
+  "reviewedRevision": {
+    "exact": "sha256:74989684e23ca59cdd9ff85519a60d3c3e3cab510d485e99e171e73dece4b4df",
+    "normalized": "sha256:cf03a6da1febeb14f7b2f651497b740dc9feefa43f3759e6c5d7e6f2e7740a2a"
+  },
+  "verdict": "PASS",
+  "reviewer": {
+    "mode": "isolated-subagent",
+    "contextId": "hygiene-reviewer-20261111-job-access-r2",
+    "role": "context-hygiene-reviewer",
+    "runtime": "claude-code-subagent"
+  },
+  "preparer": {
+    "contextId": "preparer-job-access-20261111"
+  },
+  "inputs": [
+    "context-pack",
+    "candidate-cr",
+    "owner-directives",
+    "verified-evidence",
+    "prefilter"
+  ],
+  "protectedFacts": [
+    {
+      "id": "owner-slice",
+      "textHash": "sha256:caebbda947b2213d3043b9c72e51e9b56fa1a5eb58d38ea5d5cbcf3530d55397",
+      "outcome": "preserved",
+      "note": "Verbatim on CR line 11."
+    },
+    {
+      "id": "owner-minimal",
+      "textHash": "sha256:ae203dcca66ceece63eb76d154beacb853092c698a42c71686a5e42537a4b8c2",
+      "outcome": "preserved",
+      "note": "Verbatim on CR line 12."
+    },
+    {
+      "id": "owner-not-closed",
+      "textHash": "sha256:0d8b91161c1d7885ad6efd36266e5b4ad45235d3eb2c6af335ddd11aea1d64e7",
+      "outcome": "preserved",
+      "note": "Verbatim on CR line 13; CR calls the finding narrowed, not closed (lines 57-58, acceptance 6)."
+    },
+    {
+      "id": "owner-permit-spent",
+      "textHash": "sha256:aef128362a673c0bb04e09457f0698da9067cf408e7c06f67c768fb0d5b14acb",
+      "outcome": "preserved",
+      "note": "Verbatim on CR line 14; native tests stay NOT_RUN in Verification."
+    },
+    {
+      "id": "owner-hold",
+      "textHash": "sha256:5e64ec15efc070d35bba9a748c98d9bf5c71875a48eb4499907416f25b0413e7",
+      "outcome": "preserved",
+      "note": "Verbatim on CR line 15; mirrored in Out of scope."
+    },
+    {
+      "id": "unknown-worker-token",
+      "textHash": "sha256:0941626eb225849d0e473e811f0bca9717b08cc92e4a64f46c75cb6c8a5520a4",
+      "outcome": "preserved",
+      "note": "Verbatim on CR line 51; kept as a material unknown, not a requirement."
+    }
+  ],
+  "activeRequirements": [
+    "owner-slice",
+    "owner-minimal",
+    "owner-not-closed",
+    "owner-permit-spent",
+    "owner-hold"
+  ],
+  "removed": [],
+  "staleClaims": [],
+  "unsupportedClaims": [],
+  "conflicts": [],
+  "superseded": [],
+  "unknowns": [
+    "unknown-worker-token"
+  ],
+  "missingEvidence": [],
+  "telemetry": {
+    "hygieneRequired": true,
+    "charsBefore": 6742,
+    "charsAfter": 6742,
+    "protectedFactsChanged": false,
+    "staleCount": 0,
+    "conflictCount": 0,
+    "sourcesConsulted": [
+      "docs/change-requests/CR-hermes-symphony-serving-lifecycle-20261106-job-access-20261111.md",
+      ".artifacts/context-hygiene/CR-hermes-symphony-serving-lifecycle-20261106-job-access-20261111/context-pack.json",
+      "plugins/symphony_pm/transport/windows_api.py:94",
+      "plugins/symphony_pm/transport/windows_observer.py:38",
+      "plugins/symphony_pm/transport/lifecycle.py:128",
+      "docs/audits/CR-hermes-symphony-serving-lifecycle-20261106-continuation-20261111/RESULT-20261111.md"
+    ]
+  }
+}
