@@ -39,6 +39,18 @@ def test_unknown_unbound_intent_blocks_another_request_and_new_attempt(tmp_path)
         r.owner.close(0)
 
 
+def test_reconcile_record_is_refused_for_a_bound_launch(tmp_path):
+    r = rig(tmp_path)
+    try:
+        request, context, _ = approve(r)
+        ticket, _ = r.owner.submit(request, context)
+        with pytest.raises(Refused, match='RECONCILE_TARGET'):
+            r.owner.journal.record_reconcile(r.owner.token, ticket, r.owner.generation, r.now[0], {})
+        assert r.owner.journal.reconcile_record(r.owner.token, ticket) is None
+    finally:
+        r.owner.close(0)
+
+
 def test_controller_rotation_fences_old_token_without_lease_takeover(tmp_path):
     r = rig(tmp_path)
     try:

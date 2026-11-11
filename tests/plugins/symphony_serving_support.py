@@ -57,8 +57,10 @@ class Receiver:
         self.resumes, self.cancels, self.closes, self.waits = 0, 0, 0, 0
         self.timeout, self.fail_cancel = False, False
 
-    def resume(self, _stdin):
-        self.resumes += 1
+    def resume(self, _stdin, *, authorize):
+        def action():
+            self.resumes += 1
+        authorize(action)
 
     def wait_result(self, _argv, _timeout, **kwargs):
         self.waits += 1
@@ -70,8 +72,11 @@ class Receiver:
         if binding != self.binding:
             raise Refused('RECEIVER_IDENTITY')
 
-    def cancel_once(self, binding):
+    def cancel_once(self, binding, *, authorize):
         self.check_binding(binding)
+        return authorize(self._cancel)
+
+    def _cancel(self):
         self.cancels += 1
         if self.fail_cancel:
             raise RuntimeError('fixture lost acknowledgement')
@@ -83,24 +88,32 @@ class Receiver:
 
 class Native:
     def __init__(self):
-        self.created = []
+        self.created, self.job_queries = [], []
         self.timeout = False
+        self.job_state = False  # what the predecessor's Job lookup answers; an exception instance is raised
 
     def validate_driver_call(self, ticket, argv, cwd, timeout, _stdin):
         if argv != ['fixture', 'exec'] or cwd != ticket.plan.workspace or timeout != 1:
             raise Refused('DRIVER_CALL_BINDING')
 
-    def create_suspended(self, ticket, _argv, _cwd):
+    def create_suspended(self, ticket, _argv, _cwd, _stdin):
         receiver = Receiver(ticket)
         receiver.timeout = self.timeout
         self.created.append(receiver)
         return receiver
 
+    def job_present(self, ticket):
+        self.job_queries.append(ticket)
+        if isinstance(self.job_state, Exception):
+            raise self.job_state
+        return self.job_state
 
-def rig(tmp_path, *, incarnation='incarnation-1', predecessor_dead=False):
+
+def rig(tmp_path, *, incarnation='incarnation-1', predecessor_dead=False, job_state=False):
     now = [1000.0]
     scope = SimpleNamespace(profile_home=canonical_home(tmp_path), namespace='symphony_pm:ingress', active=True)
     guard, observer, native = Guard(scope, incarnation, predecessor_dead), Observer(now), Native()
+    native.job_state = job_state  # must be set before the owner reconciles at construction
 
     def launch(ticket, _request, runner):
         result = runner(['fixture', 'exec'], cwd=ticket.plan.workspace, timeout=1, stdin_text='fixture')

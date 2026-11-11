@@ -143,6 +143,12 @@ class LaunchTicket:
     session: str
 
 
+def job_object_name(ticket: LaunchTicket) -> str:
+    """Deterministic so a successor owner can ask whether the predecessor's Job still exists."""
+    return 'Local\\HermesSymphony-' + digest([ticket.namespace, ticket.project, ticket.job,
+                                              ticket.revision, ticket.attempt, 'job'])[:32]
+
+
 @dataclass(frozen=True)
 class NativeBinding:
     ticket: LaunchTicket

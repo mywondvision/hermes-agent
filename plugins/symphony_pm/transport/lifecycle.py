@@ -13,10 +13,10 @@ import threading
 import time
 from typing import Protocol
 
-from .journal import Journal, encode
+from .journal import Journal, encode, ticket_from_json
 from .types import (
     NativeBinding, ProcessIdentity, Refused, ServingIdentity,
-    binding_from_json, finite,
+    binding_from_json, finite, job_object_name,
 )
 
 
@@ -75,7 +75,9 @@ class NativeProvider(Protocol):
     alternate spawn is permitted in this runner path.
     """
     def validate_driver_call(self, ticket, argv, cwd, timeout, stdin_text) -> None: ...
-    def create_suspended(self, ticket, argv, cwd): ...
+    def create_suspended(self, ticket, argv, cwd, stdin_text): ...
+    def job_present(self, ticket) -> bool:
+        """Query-only: does the deterministic Job name for this ticket still exist."""
 
 
 @dataclass(frozen=True)
@@ -121,6 +123,23 @@ class LifecycleOwner:
         self.generation = self.journal.observer_state(self.token, healthy=False)
         observer.set_loss_handler(self.observer_lost)
         self._refresh_observer()
+        self._reconcile_unbound()
+
+    def _reconcile_unbound(self):
+        """Record what a dead predecessor left unbound; never relaunch, rebind or release the hold."""
+        for row in self.journal.unfinished(self.token):
+            if row['binding'] is not None:
+                continue
+            ticket, present, outcome = ticket_from_json(json.loads(row['ticket'])), None, 'NEVER_ENTERED_OS'
+            if row['state'] == 'CREATE_INTENT':
+                try:
+                    present = self.native.job_present(ticket)
+                    outcome = 'CREATE_UNBOUND_JOB_PRESENT' if present else 'CREATE_UNBOUND_JOB_ABSENT'
+                except Exception:  # health: allow BLE001 -- an unanswerable query is UNKNOWN, never absence
+                    outcome = 'CREATE_UNBOUND_UNKNOWN'
+            self.journal.record_reconcile(self.token, ticket, self.generation, self.clock(), {
+                'state': row['state'], 'job_object': job_object_name(ticket),
+                'job_present': present, 'outcome': outcome})
 
     def _bindings(self):
         return tuple(binding_from_json(json.loads(row['binding']))
@@ -216,7 +235,8 @@ class LifecycleOwner:
                 raise Refused('LAUNCH_TICKET_SPENT')
             self.journal.verify_launch_authority(token, ticket, self.clock())
             self.native.validate_driver_call(ticket, argv, cwd, timeout, stdin_text)
-            receiver = self.native.create_suspended(ticket, argv, cwd)
+            self.journal.claim_create(token, ticket)
+            receiver = self.native.create_suspended(ticket, argv, cwd, stdin_text)
             self._receivers[ticket.attempt] = receiver
             try:
                 binding = receiver.binding
@@ -229,7 +249,13 @@ class LifecycleOwner:
                 self.journal.verify_launch_authority(token, ticket, self.clock())
                 if not self._observer_available:
                     raise Refused('OBSERVER_LOST_RESUME_WITHHELD')
-                receiver.resume(stdin_text)
+                generation = self.generation
+                def authorize_resume(action):
+                    self._check(token)
+                    if not self._observer_available:
+                        raise Refused('OBSERVER_LOST_RESUME_WITHHELD')
+                    return self.journal.dispatch_resume(token, ticket, generation, self.clock(), action)
+                receiver.resume(stdin_text, authorize=authorize_resume)
             except BaseException:
                 # Close only these exact owned handles; do not mint a cancel ACK
                 # or release the durable launch reservation after an uncertain cut.
@@ -305,7 +331,13 @@ class LifecycleOwner:
                 self.journal.finish_cancel(self.token, binding, 'UNKNOWN')
                 return CancelOutcome('UNKNOWN')
             try:
-                acknowledged = receiver.cancel_once(binding)
+                token, generation = self.token, self.generation
+                def authorize(action):
+                    self.guard.assert_owned()
+                    if not self._observer_available:
+                        raise Refused('OBSERVER_LOST_NATIVE_WITHHELD')
+                    return self.journal.dispatch_cancel(token, binding, generation, action)
+                acknowledged = receiver.cancel_once(binding, authorize=authorize)
             except Exception:  # health: allow BLE001 -- an exception cannot restore the send slot
                 self.journal.finish_cancel(self.token, binding, 'UNKNOWN')
                 return CancelOutcome('UNKNOWN')

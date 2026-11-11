@@ -40,6 +40,10 @@ def ticket_from_json(value):
     return LaunchTicket(**value)
 
 
+def reconcile_key(ticket):
+    return digest([ticket.namespace, ticket.project, ticket.job, ticket.revision, ticket.attempt, 'create-reconcile'])
+
+
 class Journal:
     def __init__(self, home, namespace, *, migrate_legacy=False):
         if not identifier(namespace):
@@ -248,6 +252,41 @@ class Journal:
         with self._transaction(token) as db:
             return [dict(r) for r in db.execute('SELECT * FROM serving_launches WHERE namespace=?', (self.namespace,))]
 
+    def claim_create(self, token, ticket):
+        """Spend the create slot before OS entry, including an uncertain create failure."""
+        with self._transaction(token) as db:
+            self._healthy(db, token)
+            actual, row = self._launch(db, ticket.project, ticket.job, ticket.revision)
+            if actual != ticket or row['state'] != 'LAUNCH_INTENT' or row['binding'] is not None:
+                raise Refused('CREATE_SLOT_SPENT')
+            db.execute("UPDATE serving_launches SET state='CREATE_INTENT' WHERE namespace=? AND project=? AND job=?",
+                       (self.namespace, ticket.project, ticket.job))
+
+    def dispatch_cancel(self, token, binding, generation, action):
+        """Hold the writer transaction across native entry; no takeover can interleave."""
+        with self._transaction(token) as db:
+            if self._healthy(db, token) != generation:
+                raise Refused('STALE_OBSERVER')
+            row = db.execute('SELECT * FROM effects WHERE effect_key=?', (binding.effect_key,)).fetchone()
+            if (row is None or row['state'] != 'DISPATCH_INTENT'
+                    or row['dispatch_epoch'] != token.epoch or row['target'] != encode(asdict(binding))):
+                raise Refused('NATIVE_CANCEL_FENCED')
+            return action()
+
+    def dispatch_resume(self, token, ticket, generation, now, action):
+        """Fence resume against writer rotation as well as the durable resume intent."""
+        with self._transaction(token) as db:
+            if self._healthy(db, token) != generation:
+                raise Refused('STALE_OBSERVER')
+            actual, row = self._launch(db, ticket.project, ticket.job, ticket.revision)
+            if actual != ticket or row['state'] != 'RESUME_INTENT' or row['binding'] is None:
+                raise Refused('RESUME_WITHHELD')
+            permit_row = db.execute('SELECT body FROM serving_permits WHERE ref=?', (ticket.permit_ref,)).fetchone()
+            if permit_row is None:
+                raise Refused('PERMIT_ABSENT')
+            permit_from_json(json.loads(permit_row['body'])).validate(now)
+            return action()
+
     def bind_native(self, token, ticket, binding):
         binding.validate()
         if binding.ticket != ticket:
@@ -256,7 +295,7 @@ class Journal:
         with self._transaction(token) as db:
             self._healthy(db, token)
             actual, row = self._launch(db, ticket.project, ticket.job, ticket.revision)
-            if actual != ticket or row['state'] != 'LAUNCH_INTENT' or row['binding'] is not None:
+            if actual != ticket or row['state'] != 'CREATE_INTENT' or row['binding'] is not None:
                 raise Refused('LAUNCH_ALREADY_BOUND')
             db.execute("UPDATE serving_launches SET state='BOUND',binding=? WHERE namespace=? AND project=? AND job=?",
                        (body, self.namespace, ticket.project, ticket.job))
@@ -336,6 +375,23 @@ class Journal:
                 raise Refused('STALE_OBSERVER')
             db.execute('INSERT OR REPLACE INTO serving_readbacks VALUES(?,?,?,?,?)',
                        (binding.effect_key, token.epoch, generation, now, encode(body)))
+
+    def record_reconcile(self, token, ticket, generation, now, body):
+        """Evidence only: the launch state, permit use and effects stay exactly as the predecessor left them."""
+        if not finite(now):
+            raise Refused('RECONCILE_TIME')
+        with self._transaction(token) as db:
+            actual, row = self._launch(db, ticket.project, ticket.job, ticket.revision)
+            if actual != ticket or row['binding'] is not None or row['state'] not in ('LAUNCH_INTENT', 'CREATE_INTENT'):
+                raise Refused('RECONCILE_TARGET')
+            # First observation wins: a later successor must not overwrite evidence of a surviving Job.
+            db.execute('INSERT OR IGNORE INTO serving_readbacks VALUES(?,?,?,?,?)',
+                       (reconcile_key(ticket), token.epoch, generation, now, encode(body)))
+
+    def reconcile_record(self, token, ticket):
+        with self._transaction(token) as db:
+            row = db.execute('SELECT * FROM serving_readbacks WHERE effect_key=?', (reconcile_key(ticket),)).fetchone()
+            return dict(row) if row else None
 
     def known_members(self, token, binding):
         with self._transaction(token) as db:

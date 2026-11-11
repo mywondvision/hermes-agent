@@ -1,0 +1,427 @@
+{
+  "kind": "report-only-publication",
+  "repository": "mywondvision/hermes-agent",
+  "branch": "codex/hermes-symphony-cancel-correction-20261106",
+  "parent_sha": "16ea4b7abbb2541c61c7059f3bde6b3c784d261a",
+  "tested_source_manifest_sha256": "b3291f80f8a0d6f1de5831d295200e6c7518400b3b797c2d12e79f71ccdd70ba",
+  "runtime_and_test_source_included": false,
+  "runner_source_included": false,
+  "reproducibility": "Evidence package only; tested dirty-worktree source is not in this commit.",
+  "excluded": [
+    "runtime source",
+    "test source",
+    "runner source",
+    "temp homes/runtime/cache",
+    "SQLite databases",
+    "verbose failure stack traces containing host identity or source excerpts"
+  ],
+  "native_cancel": "HOLD",
+  "deployment": false,
+  "files_excluding_this_manifest": [
+    {
+      "path": ".artifacts/serving-windows-20261109/fixture-campaign-1/campaign-attempt.json",
+      "bytes": 64,
+      "sha256": "c0cedb5ba0b629ba8fba83ac2ba1b4371a621a2ec2f6c2225e176995ec54bec6"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/fixture-campaign-1/campaign-plan.json",
+      "bytes": 645,
+      "sha256": "8aace6f34b27f85035dff760630c59a92469dd1d3ae72a78c9b1990f2664df39"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/fixture-campaign-1/campaign-result.json",
+      "bytes": 653,
+      "sha256": "4e134c58d307aa70a7a9dca4406156516d6a2a6fe5a46cd356f2a1403dcd3698"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/fixture-campaign-1/syntax-and-source-manifest.json",
+      "bytes": 3779,
+      "sha256": "e20721b6e3bd64dca41c89a8470cbfda02793c86ca098c58b9dc21b2074c219c"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/fixture-campaign-1/verification.json",
+      "bytes": 1020,
+      "sha256": "388fdc53e483702974b59d4530cc1fe6fe32027993e7168300fa168ccabf110a"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/fixture-elevated-attempt-2/campaign-attempt.json",
+      "bytes": 65,
+      "sha256": "3c334a2ea81faa5baf2f499257a78499cf5820cc9103c43775ca6f4e9e229ef1"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/fixture-elevated-attempt-2/campaign-plan.json",
+      "bytes": 753,
+      "sha256": "6cd3b88bd24523ce0666f0a8bdd76435a8f5108d34bb45c807c7d3f57960353c"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/fixture-elevated-attempt-2/campaign-result.json",
+      "bytes": 652,
+      "sha256": "2cb76bb75b59dc8736a9d60c832b3efebf3239b0dfb864dec6c8ea52596ebcf0"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/fixture-elevated-attempt-2/campaign.log",
+      "bytes": 1801,
+      "sha256": "9903f0eacef97bff0ee825bd6783ecdb103baffb3f4f4a03e0785c6f9f537507"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/fixture-elevated-attempt-2/syntax-and-source-manifest.json",
+      "bytes": 3779,
+      "sha256": "e20721b6e3bd64dca41c89a8470cbfda02793c86ca098c58b9dc21b2074c219c"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/fixture-elevated-attempt-2/verification.json",
+      "bytes": 1068,
+      "sha256": "d8ec9ead44bf4473dc977111bcdc1de0177b5064063296248ef16c5b5840b156"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-campaign-1/campaign-attempt.json",
+      "bytes": 65,
+      "sha256": "db60b8411c41ef4b5021d01af43e7d4e91ced8239cbde68000b52961805825e3"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-campaign-1/campaign-plan.json",
+      "bytes": 721,
+      "sha256": "cc594547e90dd0bf0af197d581851f47d92cbaaa6ad22bbe97e54e69ce542932"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-campaign-1/campaign-result.json",
+      "bytes": 502,
+      "sha256": "9637f89dae005219b9143ec69089cd84511bb74298e22015dc2ab026f38729cb"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-campaign-1/campaign.log",
+      "bytes": 972,
+      "sha256": "b4d41606ab08a0b70594f9af606deb69db63f6b25189fde675e402ba181e82e1"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-campaign-1/syntax-and-source-manifest.json",
+      "bytes": 3779,
+      "sha256": "e20721b6e3bd64dca41c89a8470cbfda02793c86ca098c58b9dc21b2074c219c"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-campaign-1/verification.json",
+      "bytes": 802,
+      "sha256": "85d143f85b7b2c8163f9a12fd791bb43e4c6f2aa59ab3ff8571ee08a7fca172c"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-calibrated/campaign-attempt.json",
+      "bytes": 65,
+      "sha256": "d4f6ffe0e164b5a3a1a082f2ac441a3e49d4d1f125d3fa4a27a42bba655dd100"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-calibrated/campaign-plan.json",
+      "bytes": 1096,
+      "sha256": "5e2332ff722e23b7489f88da5609f170491c4a87a975c3e49e99cad6ae124663"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-calibrated/campaign-result.json",
+      "bytes": 636,
+      "sha256": "ce4fa4d3d860e3612d3279c4a8cec9e004b9db1806a8737b117aa448ee9d09be"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-calibrated/campaign.log",
+      "bytes": 969,
+      "sha256": "f925bd51699ca14c1b1d829e707afad0ac32645d9d6a6ddd92e7b9b1982afac9"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-calibrated/plan-before-approval.json",
+      "bytes": 958,
+      "sha256": "de28fb89f96ae745e1da8b55c5642ab77d831468f64402884b13888c099bca54"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-calibrated/post-run-review-receipt.json",
+      "bytes": 818,
+      "sha256": "d584b036281714b6d21720050e73f8cf1f4dd6e4792b972e451b13f5e1e807f5"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-calibrated/proof-index.json",
+      "bytes": 9999,
+      "sha256": "7c4a3a6699b8f1c246b04ed9bd968a1205561a2b76a1639cb1ffc7f78efe20e9"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-calibrated/proofs/parent-roster-after_effect.json",
+      "bytes": 247,
+      "sha256": "82bdb594a15276818dfcb4ccbd7c6433568409bc7cbea2d8c4e7adc993344b45"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-calibrated/proofs/parent-roster-before_assign.json",
+      "bytes": 335,
+      "sha256": "887b51b4953098d223909dd48df277e834636a0ed26a16d23ce0f5be7d0e81a8"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-calibrated/proofs/parent-roster-before_resume.json",
+      "bytes": 337,
+      "sha256": "81c1751cfca60e2f562e283f498b2343d4bdc1434d5c3785dd1abfa4a5eceb02"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-calibrated/proofs/parent-terminal-after_effect.json",
+      "bytes": 445,
+      "sha256": "1d6cb132b07b213f3a0f53f6c71192898d7cdd34d5bd9393688e7da0f49d248b"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-calibrated/proofs/parent-terminal-before_assign.json",
+      "bytes": 344,
+      "sha256": "7f77ff9c0cbab1d49952bc180c2bd86eb3d51cd0457fd826632ed1d985898492"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-calibrated/proofs/parent-terminal-before_resume.json",
+      "bytes": 345,
+      "sha256": "746e6ec5217138049cd35cf928d93ed6276613fe43a4161b20d5f19a07c86da7"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-calibrated/proofs/readback-after_effect.json",
+      "bytes": 1334,
+      "sha256": "2641e5ef83946ccb004d694cd2290a12921d2519da9b0bf4948293dc744e17f9"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-calibrated/proofs/readback-before_assign.json",
+      "bytes": 1389,
+      "sha256": "74a2fb9b473afc0bcb06350bcfc7bb28ffac19fb292ad2378592c23d3a5e3608"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-calibrated/proofs/readback-before_resume.json",
+      "bytes": 1394,
+      "sha256": "8229147272df41333420891f6a4e6c03265e0e3a22945eedc978254545f7f6f5"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-calibrated/proofs/serving-after_effect.json",
+      "bytes": 1689,
+      "sha256": "1c87c3709dcb009ef14df17dbf9691a10d0f866accce040652985093071701f9"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-calibrated/proofs/serving-before_assign.json",
+      "bytes": 1531,
+      "sha256": "bced7eb41e3dc5c0c5b3d088da9cc7bbd65c652e638eb49bb06d03af55a606df"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-calibrated/proofs/serving-before_resume.json",
+      "bytes": 1533,
+      "sha256": "6c1a3b0277316b588468a1b5266bda569c4efb987842a375e440f51b42e9d7d0"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-calibrated/proofs/worker-attempt-51d113c806154697b3ad7b7700b91981.json",
+      "bytes": 247,
+      "sha256": "17ef28c242cdc926c6484e1529fde3607e242b7b87cea5f4d17f0a4ad6a97df0"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-calibrated/proofs/worker-attempt-6ed4f020387e42f489c19ab2764aaa33.json",
+      "bytes": 249,
+      "sha256": "b58c74c3ba55bb9c66f404958e42f4c37b3bbbea6fc155e6f9bb621ac11d5dae"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-calibrated/proofs/worker-attempt-d2e98b93839f435da250a6656af5a199.json",
+      "bytes": 247,
+      "sha256": "cf481448a028aafe9f150c83a7d51c05193d76cb501a3ab6100fee381d79deee"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-calibrated/proofs/worker-before-cut-after_effect.json",
+      "bytes": 284,
+      "sha256": "034ea25bf5b8205177d75549b29b2353ab8454448d946aca89f73e9ba4f9adae"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-calibrated/proofs/worker-terminal-attempt-51d113c806154697b3ad7b7700b91981.json",
+      "bytes": 243,
+      "sha256": "8f953d75798d19deef11fa4b03e333b872335e9c9f78aaf015af31e71c494401"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-calibrated/proofs/worker-terminal-attempt-d2e98b93839f435da250a6656af5a199.json",
+      "bytes": 243,
+      "sha256": "16e365bf19e692ff442807a903c14f35fa9c3481bab91bc06385d3ab2bbd3e93"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-calibrated/static-review-receipt.json",
+      "bytes": 644,
+      "sha256": "c09b920f3d1b6b6ed52eb151eb50851d9bb1bd90c224504a5b5891cd5c624cae"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-calibrated/syntax-and-source-manifest.json",
+      "bytes": 4287,
+      "sha256": "b3291f80f8a0d6f1de5831d295200e6c7518400b3b797c2d12e79f71ccdd70ba"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-calibrated/verification.json",
+      "bytes": 1177,
+      "sha256": "af725d00713c916d4c2bc8dca641d56223d1a40d4c7301c93ad27b0055182fd4"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-candidate/campaign-attempt.json",
+      "bytes": 65,
+      "sha256": "084a7e3ffba0fabb4f81c5d3272353b3ef84c44c29c931f48108cd412a7c9a5c"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-candidate/campaign-plan.json",
+      "bytes": 808,
+      "sha256": "03309b5c73e946385d5b7950eec5955bc7f21946f0e48913555a43e2f0251035"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-candidate/campaign-result.json",
+      "bytes": 531,
+      "sha256": "d2eacbf86c81d9eea8147b2d516a228c02af61381927020ab234922c754cb645"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-candidate/plan-before-approval.json",
+      "bytes": 673,
+      "sha256": "f2c444ac202b4e34f87ee17cc9d4b91fb70fa14896525ba96d3fe387b77fb0a7"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-candidate/static-review-receipt.json",
+      "bytes": 575,
+      "sha256": "6c7c58e3c8988385098eb7d2ddbbe5126deb62857e58d571e41a028f8c8f44cd"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-candidate/syntax-and-source-manifest.json",
+      "bytes": 4108,
+      "sha256": "ebcbaf0421a643c67b6a78b4090cac6428563c2910f85f8ca22375fd40625d8a"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-candidate/verification.json",
+      "bytes": 1391,
+      "sha256": "ddf3c593ee03447eee8f3feec688ec963ed2010aa43431a9e194d7f904d8f025"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-correction/campaign-attempt.json",
+      "bytes": 64,
+      "sha256": "a63b795a15c0c1f6e256f9317982390720c43e325eaaec954910ccd25a82eaa4"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-correction/campaign-plan.json",
+      "bytes": 953,
+      "sha256": "46cb0addaa15a0e69d3413afc76989dd743a5463d6b27f7348cb8fb6fbe9e859"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-correction/campaign-result.json",
+      "bytes": 595,
+      "sha256": "b7cee1e28a8eea63a3c7803f6c2c56b8da861dfe380fd80eb4d404d9d19d97c0"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-correction/plan-before-approval.json",
+      "bytes": 792,
+      "sha256": "8f6e2506e770dfc5158bc2945dc083567465ad45b270486a9ec5909537245ef9"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-correction/post-run-known-identities.json",
+      "bytes": 471,
+      "sha256": "cfc995b7cf00569c61e1acf708707f42978d9d9c4bc9ee516e2b49e0b84572fe"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-correction/proofs/serving-before_assign.json",
+      "bytes": 1509,
+      "sha256": "7d06db8cd4eadf921d25e2bf1eaa47e63d133a2783b753c02d7b94e982fe6fa0"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-correction/proofs/serving-before_resume.json",
+      "bytes": 1510,
+      "sha256": "a87add97c7792ebbc87a1d68c178642ffac414a823a1b47557cadb513976c27f"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-correction/static-review-receipt.json",
+      "bytes": 519,
+      "sha256": "64a4e84e1860a2ddd5e9a1b1d3352feab11df34e17a31f5eec475abc10632641"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-correction/syntax-and-source-manifest.json",
+      "bytes": 4108,
+      "sha256": "1f21064d524fe475f4dedf3d098fdd640999e5ecc25df6195f00de644a02ebde"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/native-crash-correction/verification.json",
+      "bytes": 1111,
+      "sha256": "0fa628eca8c7a35ff5a3a72ad017dc24002a41d4f86b95797983bf0f5df3f856"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/source-manifest.json",
+      "bytes": 3616,
+      "sha256": "d0b78da071061c10920466a5d9ac527111b30092e69a9ae125f7578f0a299534"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/topology-diagnostic-candidate/campaign-attempt.json",
+      "bytes": 65,
+      "sha256": "0f49a21785bf52cfa288bcba31cbb32aafd56ae0b9c6fa88512c9a998f997bcf"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/topology-diagnostic-candidate/campaign-plan.json",
+      "bytes": 944,
+      "sha256": "ed10de6c39f6d94c49cd91b176910b972800c82ed1d14784f2231090b400e645"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/topology-diagnostic-candidate/campaign-result.json",
+      "bytes": 576,
+      "sha256": "cba3cea134bbe68a4bc8a93572dcbc92d6e94d7867ff152afd31ae72e605529c"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/topology-diagnostic-candidate/campaign.log",
+      "bytes": 1011,
+      "sha256": "ee32833c938688bc5a6d162d15c9f55f93cee242c2ef347e19549c9b0a9efdd5"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/topology-diagnostic-candidate/plan-before-approval.json",
+      "bytes": 772,
+      "sha256": "902491e799382834dce058c4c6cf5f1101c3d8a23d500ac6cc37c67f620dc0be"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/topology-diagnostic-candidate/proofs/topology.json",
+      "bytes": 3094,
+      "sha256": "8dee98e0bb60f20e6dbd2766b6b2493f785a51107f66da0fa95b84c92f9a9048"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/topology-diagnostic-candidate/static-review-receipt.json",
+      "bytes": 538,
+      "sha256": "35f2aa91bef16f2500ecd40ffd46efc6b54a86978a317a67708a21f821c5729b"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/topology-diagnostic-candidate/syntax-and-source-manifest.json",
+      "bytes": 4287,
+      "sha256": "8942a561e4813409f63d700ee4dd419e2580aa671e76c367ddbb9235ba443991"
+    },
+    {
+      "path": ".artifacts/serving-windows-20261109/topology-diagnostic-candidate/verification.json",
+      "bytes": 1202,
+      "sha256": "6fbe5dcbef1f3e8c25f32f0dfca5295af38761dee857c9c6419b0976cdeb14f2"
+    },
+    {
+      "path": "docs/audits/CR-hermes-symphony-serving-lifecycle-20261106/FIXTURE-CAMPAIGN-1-20261109.md",
+      "bytes": 3121,
+      "sha256": "b254677042f7cc16ee317f7058bafdeae168b82ed801882dc70ef3b97ee08a6c"
+    },
+    {
+      "path": "docs/audits/CR-hermes-symphony-serving-lifecycle-20261106/FIXTURE-ELEVATED-RESULT-20261109.md",
+      "bytes": 5222,
+      "sha256": "8d2f0533eb8a2b0050e78fffd99ec2b596ba223d6ebbcfcf9c61b7abc40005b6"
+    },
+    {
+      "path": "docs/audits/CR-hermes-symphony-serving-lifecycle-20261106/NATIVE-CALIBRATED-RESULT-20261110.md",
+      "bytes": 8312,
+      "sha256": "f5755aa2d5ca1c73c196001ab2cbc01e0d13dde1b49aafb01b4b748039e66031"
+    },
+    {
+      "path": "docs/audits/CR-hermes-symphony-serving-lifecycle-20261106/NATIVE-COMPONENT-RESULT-20261109.md",
+      "bytes": 9053,
+      "sha256": "7e0d7de3966936dd660eafa19f10ba726aa44308563e956bd71632058cc86c0a"
+    },
+    {
+      "path": "docs/audits/CR-hermes-symphony-serving-lifecycle-20261106/NATIVE-CORRECTION-RESULT-20261109.md",
+      "bytes": 9254,
+      "sha256": "10e5dfb774122131204246f010d21741e94fa51c1f8710a040ec97eb844cf051"
+    },
+    {
+      "path": "docs/audits/CR-hermes-symphony-serving-lifecycle-20261106/NATIVE-CRASH-RESULT-20261109.md",
+      "bytes": 9880,
+      "sha256": "79aabb0732a5f56a9ee5f60d7a2f277542afa7ebe6a1ac23af1b4ee8f69bbb5d"
+    },
+    {
+      "path": "docs/audits/CR-hermes-symphony-serving-lifecycle-20261106/REPORT-20261110.md",
+      "bytes": 8544,
+      "sha256": "33517fc7f5084e56eb51edf7acd506041f4fe53b4f70ac11e34354382c4030df"
+    },
+    {
+      "path": "docs/audits/CR-hermes-symphony-serving-lifecycle-20261106/TOPOLOGY-DIAGNOSTIC-RESULT-20261109.md",
+      "bytes": 8091,
+      "sha256": "3fcdd81c2573b34450767c4ead062d826bcd7e7d33dae4daa03e9e6250c2fb4e"
+    },
+    {
+      "path": "docs/audits/CR-hermes-symphony-serving-lifecycle-20261106/WINDOWS-CANDIDATE-20261109.md",
+      "bytes": 12594,
+      "sha256": "e36bb919dad9318dac9f5731541192f3d07c92ca954c52a112915dce6fc22961"
+    }
+  ]
+}

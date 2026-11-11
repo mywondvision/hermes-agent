@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "crId": "CR-hermes-symphony-serving-lifecycle-20261106-continuation-20261111",
+  "reviewedRevision": {
+    "exact": "sha256:4e5c3e067b347e2f3ec48b1a22a7cf4f77a594a1be86881268702cc98366b4fe",
+    "normalized": "sha256:7c316c89f571e51cb5b74d8806142e2c14ae0e16daf74b50fc022094378981bc"
+  },
+  "verdict": "PASS",
+  "reviewer": {
+    "mode": "isolated-subagent",
+    "contextId": "hygiene-reviewer-20261111-d",
+    "role": "context-hygiene-reviewer",
+    "runtime": "claude-code"
+  },
+  "preparer": {"contextId": "preparer"},
+  "inputs": ["context-pack", "candidate-cr", "owner-directives", "accepted-decisions", "verified-evidence", "prefilter"],
+  "protectedFacts": [
+    {"id": "owner-20261111-continue", "textHash": "sha256:6517f24a6971b712bc68807998d6368a853e8c53bde3ef8a8745257b7a1a3c66", "outcome": "preserved", "note": "Verbatim at CR line 37. Preflight section covers session, worktree, writer, HEAD, index and preservation."},
+    {"id": "owner-20261111-no-single-copy", "textHash": "sha256:8df12e6fb8beac16fd7b7433c6682806e32515fc2f6aeb69bedf6fe3cb64d7e3", "outcome": "preserved", "note": "Verbatim at line 38. Scope 5 commits preserved local sources on top of fetched f0d20a8d; scope 4 limits reruns to one native pass. Not weakened."},
+    {"id": "owner-20261111-gaps", "textHash": "sha256:f77c8c192c618a3bf4879035f90210c97d6b7784a0cfec49456c155ccb9aa4f2", "outcome": "preserved", "note": "Verbatim at line 39. Scope 1-3 map to it; the technical design is explicitly labelled an executor proposal until owner ok (line 59)."},
+    {"id": "owner-20261111-hold", "textHash": "sha256:8c56832dc656a1f08a9bd925206a793a92d4d4fa425ae70dce8e732e6eb71b05", "outcome": "preserved", "note": "Verbatim at line 40. Scope 4 native pass uses synthetic processes only and needs a separate owner permit (decision 2); owner should confirm it stays inside HOLD."},
+    {"id": "owner-20261111-package", "textHash": "sha256:404580d12a3fbcc3e9b2cd3c49c250adcf739d41dfa976c2b326db4a9eee4079", "outcome": "preserved", "note": "Verbatim at line 41. Scope 5-7 cover it. Push to the public fork is kept as a separate owner decision, not assumed."},
+    {"id": "owner-20261111-cli-path", "textHash": "sha256:7007116cb7a353879833824d01cb2e1c438cd3498f20b2c112733a3288269bc7", "outcome": "preserved", "note": "Verbatim at line 42. Lines 29-31 call the observed run_cli.py process the voice direct CLI path; the pack only says another session. Inference, on the cautious side."},
+    {"id": "owner-20261111-delegation", "textHash": "sha256:a30b5894c61e53277c5e0770a0b81884a53335700d887a37d1b4c9b8b7d80040", "outcome": "preserved", "note": "Verbatim at line 43. Lines 96-98 add single writer and read-only reviewers; consistent with the directive."},
+    {"id": "decision-20261109-serving-code-ok", "textHash": "sha256:9bcfa2b5965f830d1a00119015c9da9ca581139a2dddc60103f9778cabb0bf3c", "outcome": "preserved", "note": "Verbatim at line 47; matches OWNER_DECISIONS.md lines 5 and 8. CR claims no new permit from it and asks separately for the native pass."},
+    {"id": "parent-cr-rollback", "textHash": "sha256:5b0bb162623f5da0a954ff1cc7772b9993dc66e452be26b7ae4d7814ce00f42a", "outcome": "preserved", "note": "Verbatim at line 48; repeated in Out of scope and Rollback without change. Parent CR lines 14 and 94 support the no-daemon and kit/S2 limits."},
+    {"id": "unknown-approval-source", "textHash": "sha256:cfb2ad3800c1bcbb457c2eb44a9651379ce004b732b6b9bb9c4516b097c1229a", "outcome": "preserved", "note": "Verbatim at line 49 and restated as UNKNOWN at lines 108-109. Scope 3 execution pack is stated to be a request, not a permit."}
+  ],
+  "activeRequirements": [
+    "owner-20261111-continue", "owner-20261111-no-single-copy", "owner-20261111-gaps", "owner-20261111-hold",
+    "owner-20261111-package", "owner-20261111-cli-path", "owner-20261111-delegation",
+    "decision-20261109-serving-code-ok", "parent-cr-rollback"
+  ],
+  "removed": [],
+  "staleClaims": [],
+  "unsupportedClaims": [],
+  "conflicts": [],
+  "superseded": [],
+  "unknowns": ["unknown-approval-source"],
+  "missingEvidence": [],
+  "telemetry": {
+    "hygieneRequired": true,
+    "charsBefore": 11089,
+    "charsAfter": 11089,
+    "protectedFactsChanged": false,
+    "staleCount": 0,
+    "conflictCount": 0,
+    "sourcesConsulted": [
+      "<local>/claude-kit/plugins/b24-kit/skills/context-hygiene/references/contract.md",
+      "<local>/claude-kit/plugins/b24-kit/skills/context-hygiene/schemas/hygiene-report.schema.json",
+      "<worktree>/.artifacts/context-hygiene/CR-hermes-symphony-serving-lifecycle-20261106-continuation-20261111/context-pack.json",
+      "<worktree>/docs/change-requests/CR-hermes-symphony-serving-lifecycle-20261106-continuation-20261111.md",
+      "<worktree>/plugins/symphony_pm/transport/windows_receiver.py:28-33",
+      "<worktree>/docs/change-requests/CR-hermes-symphony-serving-lifecycle-20261106.md:1-12",
+      "<worktree>/docs/audits/CR-hermes-symphony-serving-lifecycle-20261106/REPORT-20261110.md:43-60",
+      "<worktree>/.artifacts/serving-lifecycle-implementation-20261109/OWNER_DECISIONS.md:5-8",
+      "<local>/claude-kit/plugins/b24-kit/skills/domain-knowledge-gate/SKILL.md:58-66"
+    ]
+  }
+}
