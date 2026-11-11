@@ -65,6 +65,50 @@ def save_proof(name, body):
     temporary.replace(path)
 
 
+def allow_low_writes(directory):
+    """Label one test-owned directory low so the low-integrity worker can write its own copy.
+
+    A user may lower the label of an object they own without any privilege; nothing outside
+    `directory` and no system setting changes.
+    """
+    api = WindowsApi()
+    descriptor, present, sacl, defaulted = C.c_void_p(), W.BOOL(), C.c_void_p(), W.BOOL()
+    api.checked(api.adv('ConvertStringSecurityDescriptorToSecurityDescriptorW',
+        [W.LPCWSTR, W.DWORD, C.POINTER(C.c_void_p), C.c_void_p], W.BOOL)(
+        'S:(ML;OICI;NW;;;LW)', 1, C.byref(descriptor), None))
+    try:
+        api.checked(api.adv('GetSecurityDescriptorSacl',
+            [C.c_void_p, C.POINTER(W.BOOL), C.POINTER(C.c_void_p), C.POINTER(W.BOOL)], W.BOOL)(
+            descriptor, C.byref(present), C.byref(sacl), C.byref(defaulted)))
+        code = api.adv('SetNamedSecurityInfoW', [W.LPCWSTR, C.c_int, W.DWORD] + [C.c_void_p]*4, W.DWORD)(
+            str(directory), 1, 0x10, None, None, None, sacl)  # SE_FILE_OBJECT, LABEL_SECURITY_INFORMATION
+        if code:
+            raise C.WinError(code)
+    finally:
+        api.fn('LocalFree', [C.c_void_p], C.c_void_p)(descriptor)
+
+
+def owner_environment(tmp_path, home, proofs):
+    """The explicit environment of a test-owned serving process; nothing ambient but the system root."""
+    environment = {k: v for k, v in os.environ.items() if k.upper() in {'SYSTEMROOT', 'WINDIR'}}
+    child_home, child_temp = tmp_path/'child-home', tmp_path/'child-temp'
+    for directory in (child_home, child_temp, child_home/'appdata', child_home/'local', child_home/'runtime'):
+        directory.mkdir(parents=True, exist_ok=True)
+    environment.update(HOME=str(child_home), USERPROFILE=str(child_home), HERMES_HOME=str(home),
+        APPDATA=str(child_home/'appdata'), LOCALAPPDATA=str(child_home/'local'),
+        TEMP=str(child_temp), TMP=str(child_temp), HERMES_RUNTIME_DIR=str(child_home/'runtime'),
+        HERMES_DISABLE_LAZY_INSTALLS='1', UV_OFFLINE='1', PIP_CONFIG_FILE=os.devnull,
+        PYTHONDONTWRITEBYTECODE='1', PYTHONUTF8='1', HERMES_E2E_ARTIFACTS=str(proofs))
+    return environment
+
+
+WAITING_WORKER = ('from pathlib import Path; import sys,threading; '
+    'Path(sys.argv[1]).write_text("ready",encoding="utf-8"); threading.Event().wait(90)')
+WORKER_WITH_DESCENDANT = ('from pathlib import Path; import subprocess,sys,threading; '
+    'child=subprocess.Popen([sys.executable,"-I","-B","-c","import threading; threading.Event().wait(90)"]); '
+    'Path(sys.argv[1]).write_text(str(child.pid),encoding="utf-8"); threading.Event().wait(90)')
+
+
 class BoundedApi(WindowsApi):
     def __init__(self, limit=2):
         super().__init__()
@@ -138,22 +182,25 @@ def close_queries(api, handles):
 
 class NativeRig:
     """Actual providers, explicit synthetic command; no CodexDriver qualification claim."""
-    def __init__(self, home):
+    def __init__(self, home, *, descendant=False):
         self.scope = SimpleNamespace(profile_home=canonical_home(home), namespace='symphony_pm:ingress', active=True)
         self.now = [time.time()]
-        self.marker = Path(home)/'worker-ready'
+        # The worker is low-integrity: the only place it can write is this one labelled directory.
+        self.work = Path(home)/'worker-copy'
+        self.work.mkdir(parents=True, exist_ok=True)
+        allow_low_writes(self.work)
+        self.marker = self.work/'worker-ready'
+        self.members = 3 if descendant else 2  # root + console host (+ one descendant)
         capture = Path(home)/'capture'
         make_user_dir(capture, mode=0o700, parents=True, exist_ok=True)
         self.argv = [base_python(), '-I', '-B', '-c',
-            'from pathlib import Path; import sys,threading; '
-            'Path(sys.argv[1]).write_text("ready",encoding="utf-8"); threading.Event().wait(90)',
-            str(self.marker)]
+                     WORKER_WITH_DESCENDANT if descendant else WAITING_WORKER, str(self.marker)]
         self.observer = WindowsQueryObserver(self.scope)
         self.native = WindowsNativeProvider(validate_call=self.validate,
             environment={k: v for k, v in os.environ.items() if k.upper() in {'SYSTEMROOT', 'WINDIR'}},
             command_result=lambda argv, code, **kw: SimpleNamespace(argv=argv, returncode=code, **kw),
             sanitize=lambda text: text, private_directory=capture)
-        self.native.api = BoundedApi(2)
+        self.native.api = BoundedApi(self.members)
         self.query_handles, self.roster, self.closed = {}, None, False
         self.creates = 0
         create = self.native.create_suspended
@@ -180,7 +227,8 @@ class NativeRig:
 
     def launch(self, ticket, request, runner):
         result = runner(self.argv, cwd=ticket.plan.workspace, timeout=30, stdin_text='')
-        return {'returncode': result.returncode, 'timed_out': result.timed_out}
+        self.outcome = {'returncode': result.returncode, 'timed_out': result.timed_out}
+        return self.outcome
 
     def start(self, pool):
         request, context, _ = approve(self)
@@ -192,10 +240,10 @@ class NativeRig:
     def ready(self):
         wait_until(self.marker.exists, timeout=15, what='own synthetic worker marker')
         receiver = self.receiver()
-        self.roster = capture_members(self.native.api, receiver.job, active_count=2,
+        self.roster = capture_members(self.native.api, receiver.job, active_count=self.members,
             required_pids=(receiver.binding.root.pid,), handles=self.query_handles,
             name='worker-'+receiver.ticket.attempt)
-        if self.roster['total'] != 2:
+        if self.roster['total'] != self.members:
             raise Refused('WORKER_TOTAL_PROCESS_BUDGET')
         return receiver
 
@@ -219,7 +267,7 @@ class NativeRig:
 
 class CutApi(BoundedApi):
     def __init__(self, rig, cut, receipt):
-        super().__init__()
+        super().__init__(rig.members)
         self.rig, self.cut, self.receipt = rig, cut, receipt
         self.job_name = None
 
@@ -229,7 +277,6 @@ class CutApi(BoundedApi):
 
     def pause(self, process=None):
         if process is not None:
-            from ctypes import wintypes as W
             pid = self.fn('GetProcessId', [W.HANDLE], W.DWORD)(process)
             root = ProcessIdentity(pid, self.creation(process))
             binding = NativeBinding(self.rig.ticket, self.job_name, root, (root,))
@@ -250,8 +297,8 @@ class CutApi(BoundedApi):
             raise Refused('PARENT_CUT_BARRIER_LOST')
         os._exit(71)  # deliberate serving crash; no Python cleanup or cancel ACK
 
-    def create_suspended(self, argv, cwd, env, streams, job):
-        created = super().create_suspended(argv, cwd, env, streams, job)
+    def create_suspended(self, argv, cwd, env, streams, job, token):
+        created = super().create_suspended(argv, cwd, env, streams, job, token)
         if self.cut == 'after_create':
             self.pause(created[0])  # root exists inside its Job; binding is not yet durable
         return created
@@ -269,9 +316,9 @@ class CutApi(BoundedApi):
 
 
 def child_main(home, cut, receipt):
-    if cut not in ('after_create', 'before_resume', 'after_effect'):
+    if cut not in ('after_create', 'before_resume', 'after_effect', 'during_observer_read'):
         raise Refused('UNKNOWN_TEST_CUT')
-    rig = NativeRig(home)
+    rig = NativeRig(home, descendant=cut == 'during_observer_read')
     rig.native.api = CutApi(rig, cut, Path(receipt))
     try:
         with ThreadPoolExecutor(max_workers=1) as pool:
@@ -279,6 +326,11 @@ def child_main(home, cut, receipt):
             if cut == 'after_effect':
                 receiver = rig.ready()
                 rig.owner.cancel_internal(receiver.binding, 'PM_CANCEL')
+            if cut == 'during_observer_read':
+                receiver = rig.ready()
+                # The crash lands inside the observer's query, while its Job duplicate is open.
+                rig.observer.api.snapshot = lambda job: rig.native.api.pause()
+                rig.owner.status(receiver.binding)
             future.result(timeout=45)
     finally:
         rig.close(time.monotonic()+10)

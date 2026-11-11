@@ -1,0 +1,160 @@
+{
+  "schemaVersion": 1,
+  "crId": "CR-hermes-symphony-serving-lifecycle-20261106-worker-boundary-20261112",
+  "reviewedRevision": {
+    "exact": "sha256:b66635df3541ac84d4c4d05b79559804aafa902bd086685dea90facf575ad437",
+    "normalized": "sha256:8b3b511ea94c06ef4f8edc92b56ded57c8b1d637b69eda5b3036b27b08285e32"
+  },
+  "verdict": "PASS",
+  "reviewer": {
+    "mode": "isolated-subagent",
+    "contextId": "hygiene-reviewer-20261112-worker-boundary-r3",
+    "role": "context-hygiene-reviewer",
+    "runtime": "claude-code-subagent"
+  },
+  "preparer": {
+    "contextId": "preparer-worker-boundary-20261112"
+  },
+  "inputs": [
+    "context-pack",
+    "candidate-cr",
+    "owner-directives",
+    "verified-evidence",
+    "prefilter"
+  ],
+  "protectedFacts": [
+    {
+      "id": "owner-n2-not-defence",
+      "textHash": "sha256:8eb126b724698362ec9abe78ff2994a4a8c5357f8d3dc3c4fc2a5f366db43019",
+      "outcome": "flagged",
+      "note": "Дословно, CR стр. 11. Ячейка таблицы «A: закрывает дублирование — да» (стр. 31) — проектное ожидание: A3 не запускался, N2 не закрыта. Не переносить как факт защиты."
+    },
+    {
+      "id": "owner-hold",
+      "textHash": "sha256:ef9b11ef56ebe933aba8d40e8652dbfab2cbd0efd6e207f454201937da1eca47",
+      "outcome": "preserved",
+      "note": "Дословно, CR стр. 12; Out of scope и этап 3 согласованы с HOLD."
+    },
+    {
+      "id": "owner-no-default-risk",
+      "textHash": "sha256:f0ee8c81ec0ddd17adf1cb009bbad6bd1e88205e0687e329d7c200567b953dd2",
+      "outcome": "preserved",
+      "note": "Дословно, CR стр. 13."
+    },
+    {
+      "id": "owner-fail-closed",
+      "textHash": "sha256:5123c465bc8b98f20858a1d57dbd3151b14483e848a48693f881e42769c03c2c",
+      "outcome": "preserved",
+      "note": "Дословно, CR стр. 14; решение п. 2-3 и риск на стр. 144 согласованы."
+    },
+    {
+      "id": "owner-no-extra-secrets",
+      "textHash": "sha256:19e0428c85e8ed63c1b07f2fd7eced87fab3eff59a5c7b05b39cb1fa76f71ec0",
+      "outcome": "preserved",
+      "note": "Дословно, CR стр. 15; чтение секретов воркером Low явно оставлено неизвестным и вне среза."
+    },
+    {
+      "id": "owner-billing",
+      "textHash": "sha256:360804acd449ab28aec437d2d0ee43077ad0052a79052a81a5179fa6fea91a4b",
+      "outcome": "preserved",
+      "note": "Дословно, CR стр. 16."
+    },
+    {
+      "id": "owner-no-per-test-approval",
+      "textHash": "sha256:845793ec324444078918d4713dc8b0aad3593826378a28fcf4e6c92dbbc21763",
+      "outcome": "flagged",
+      "note": "Дословно, CR стр. 17. Напряжение с owner-permit-spent-20261111: CR не выбирает, а выносит допуск этапа 2 на подтверждение владельца (стр. 112-129). Нужен явный ответ владельца."
+    },
+    {
+      "id": "owner-no-release",
+      "textHash": "sha256:52a1820341e72203e5e4960afd9a448c8f210868fb5b02a63484c76e2beb839b",
+      "outcome": "preserved",
+      "note": "Дословно, CR стр. 18."
+    },
+    {
+      "id": "owner-permit-spent-20261111",
+      "textHash": "sha256:aef128362a673c0bb04e09457f0698da9067cf408e7c06f67c768fb0d5b14acb",
+      "outcome": "flagged",
+      "note": "Дословно, CR стр. 19. Объём допуска неточен: стр. 100-102 «шести файлов (кроме topology diagnostic)», в репозитории 6 файлов windows_* вместе с diagnostic, запускаются 5 (RESULT-20261112 стр. 41)."
+    },
+    {
+      "id": "unknown-driver-low",
+      "textHash": "sha256:3d1327af08e1834f332fc4b96f9907d8d8068223af56185d2dccd3dd86f1df48",
+      "outcome": "preserved",
+      "note": "Дословно, одной строкой, CR стр. 133."
+    },
+    {
+      "id": "unknown-brokers",
+      "textHash": "sha256:bb7eb688573c64f1988be68e3c5d8dbfb4567aa3c75cb945aa703d8816b6d97f",
+      "outcome": "preserved",
+      "note": "Дословно, одной строкой, CR стр. 134."
+    },
+    {
+      "id": "unknown-secret-read",
+      "textHash": "sha256:af9a039b7342c2ebc0502cc5baa62502f5d69ba634ebf886a6a02d83fe11d6f8",
+      "outcome": "preserved",
+      "note": "Дословно, одной строкой, CR стр. 135."
+    },
+    {
+      "id": "unknown-medium-siblings",
+      "textHash": "sha256:29cdee399ae0ee7ddb6053efb20122ba652b4cbbcacfccd5d25a8d4d02dd3273",
+      "outcome": "preserved",
+      "note": "Дословно, одной строкой, CR стр. 136."
+    },
+    {
+      "id": "unknown-low-siblings",
+      "textHash": "sha256:ad978585c8df482172fb46a1306c6f7ee2b1f5eea8e95f5a6509a09c70c30bf5",
+      "outcome": "preserved",
+      "note": "Дословно, одной строкой, CR стр. 137."
+    },
+    {
+      "id": "unknown-terminate-owner",
+      "textHash": "sha256:8d2b622ec467bd028a6fd72c414843484840c7739d356c2fc5607e97e23b792b",
+      "outcome": "preserved",
+      "note": "Дословно, одной строкой, CR стр. 138; A3 только фиксирует PROCESS_TERMINATE, не утверждает."
+    },
+    {
+      "id": "unknown-loopback",
+      "textHash": "sha256:4863643c3c353e35a45512b51ffca6b4f4ffd8e483e8de9de0840b23b9b40a88",
+      "outcome": "preserved",
+      "note": "Дословно, одной строкой, CR стр. 139."
+    }
+  ],
+  "activeRequirements": [
+    "owner-n2-not-defence",
+    "owner-hold",
+    "owner-no-default-risk",
+    "owner-fail-closed",
+    "owner-no-extra-secrets",
+    "owner-billing",
+    "owner-no-per-test-approval",
+    "owner-no-release",
+    "owner-permit-spent-20261111"
+  ],
+  "removed": [],
+  "staleClaims": [],
+  "unsupportedClaims": [
+    "proposal-low-il",
+    "inferred-native-grant"
+  ],
+  "conflicts": [],
+  "superseded": [],
+  "unknowns": [
+    "unknown-driver-low",
+    "unknown-brokers",
+    "unknown-secret-read",
+    "unknown-medium-siblings",
+    "unknown-low-siblings",
+    "unknown-terminate-owner",
+    "unknown-loopback"
+  ],
+  "missingEvidence": [],
+  "telemetry": {
+    "hygieneRequired": true,
+    "charsBefore": 10560,
+    "charsAfter": 10560,
+    "protectedFactsChanged": false,
+    "staleCount": 0,
+    "conflictCount": 0
+  }
+}

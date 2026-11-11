@@ -6,6 +6,7 @@ import subprocess
 import threading
 
 from .types import Refused
+from .windows_token import TokenBoundary
 from hermes_platform.host.facts import os_family
 
 _CREATE_LOCK = threading.Lock()
@@ -56,7 +57,9 @@ class ProcessInformation(C.Structure):
     _fields_ = [('hProcess', W.HANDLE), ('hThread', W.HANDLE), ('dwProcessId', W.DWORD), ('dwThreadId', W.DWORD)]
 
 
-class WindowsApi:
+class WindowsApi(TokenBoundary):
+    A = None  # advapi32, loaded on first token call
+
     def __init__(self):
         if os_family() != 'win32':
             raise Refused('WINDOWS_HOST_REQUIRED')
@@ -179,7 +182,7 @@ class WindowsApi:
         finally:
             self.fn('DeleteProcThreadAttributeList', [C.c_void_p], None)(buffer)
 
-    def _create_process(self, argv, cwd, env, handles, job):
+    def _create_process(self, argv, cwd, env, handles, job, token):
         env = dict(env)
         if any('\0' in part for part in (*argv, str(cwd), *env, *env.values())):
             raise Refused('CREATE_EMBEDDED_NUL')  # the kernel would silently truncate at the NUL
@@ -190,10 +193,15 @@ class WindowsApi:
         basic.hStdInput, basic.hStdOutput, basic.hStdError = handles
         with self.attribute_list(handles, job) as attributes:
             startup.lpAttributeList = C.addressof(attributes)
-            self.checked(self.fn('CreateProcessW', [W.LPCWSTR, W.LPWSTR, C.c_void_p, C.c_void_p, W.BOOL,
-                W.DWORD, C.c_void_p, W.LPCWSTR, C.c_void_p, C.c_void_p], W.BOOL)(
-                argv[0], C.create_unicode_buffer(subprocess.list2cmdline(argv)), None, None, True,
-                _CREATE_FLAGS, C.create_unicode_buffer(block+'\0'), str(cwd), C.byref(startup), C.byref(info)))
+            signature = [W.LPCWSTR, W.LPWSTR, C.c_void_p, C.c_void_p, W.BOOL, W.DWORD, C.c_void_p,
+                         W.LPCWSTR, C.c_void_p, C.c_void_p]
+            arguments = (argv[0], C.create_unicode_buffer(subprocess.list2cmdline(argv)), None, None, True,
+                         _CREATE_FLAGS, C.create_unicode_buffer(block+'\0'), str(cwd), C.byref(startup),
+                         C.byref(info))
+            if token is None:
+                self.checked(self.fn('CreateProcessW', signature, W.BOOL)(*arguments))
+            else:
+                self.checked(self.adv('CreateProcessAsUserW', [W.HANDLE, *signature], W.BOOL)(token, *arguments))
         return info.hProcess, info.hThread, info.dwProcessId, info.dwThreadId
 
     def _discard(self, created):
@@ -210,8 +218,12 @@ class WindowsApi:
                 failures.append(exc)
         return failures
 
-    def create_suspended(self, argv, cwd, env, streams, job):
-        """The root is born inside `job`: no window exists between creation and Job membership."""
+    def create_suspended(self, argv, cwd, env, streams, job, token):
+        """The root is born inside `job`: no window exists between creation and Job membership.
+
+        `token` is the primary token the root is born with. None keeps the caller's own, which is
+        only right for a process that is itself an owner; a worker always gets `worker_token()`.
+        """
         import _winapi
         import msvcrt
         duplicates, created, contained = [], None, False
@@ -221,7 +233,7 @@ class WindowsApi:
                     duplicates.append(_winapi.DuplicateHandle(_winapi.GetCurrentProcess(),
                         msvcrt.get_osfhandle(stream.fileno()), _winapi.GetCurrentProcess(), 0, True,
                         _winapi.DUPLICATE_SAME_ACCESS))
-                created = self._create_process(argv, cwd, env, duplicates, job)
+                created = self._create_process(argv, cwd, env, duplicates, job, token)
                 if not self.in_job(created[0], job):
                     raise Refused('CREATE_OUTSIDE_JOB')
                 contained = True

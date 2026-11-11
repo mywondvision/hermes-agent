@@ -202,7 +202,7 @@ def test_serving_crash_preserves_intent_and_never_recreates_sender(tmp_path, cut
             parent_job = api.create_job(parent_job_id)
             process, thread, pid, _ = api.create_suspended(
                 [*helper_command(helper), str(home), cut, str(receipt)],
-                helper.parents[2], environment, (stdin, log, log), parent_job)
+                helper.parents[2], environment, (stdin, log, log), parent_job, None)
             api.resume(thread)
             api.close(thread)
             thread = None

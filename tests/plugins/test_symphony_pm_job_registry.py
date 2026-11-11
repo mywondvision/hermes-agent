@@ -17,9 +17,17 @@ from plugins.symphony_pm.transport.windows_receiver import WindowsReceiver
 pytestmark = pytest.mark.platforms('windows')
 
 
+OWNER_PROCESS, WORKER_TOKEN = 0x5000, 0x7001  # fake handle values; no OS object stands behind either
+
+
 class FakeKernel(WindowsApi):
+    """Fakes kernel32 (`fn`), advapi32 (`adv`) and the token boundary, so no real handle is touched."""
+
     def __init__(self, failing=()):
         self.calls, self.failing, self.next_handle = [], set(failing), 0x1000
+        # process handle -> mandatory integrity RID (the owner is a medium-integrity user process);
+        # a handle a test never listed raises KeyError instead of silently passing the boundary
+        self.integrities = {OWNER_PROCESS: 0x2000}
 
     def fn(self, name, _args, _result):
         def call(*values):
@@ -31,6 +39,22 @@ class FakeKernel(WindowsApi):
                 return self.next_handle
             return 1
         return call
+
+    def adv(self, name, _args, _result):
+        def call(*values):
+            self.calls.append((name, values))
+            return 0 if name in self.failing else 1
+        return call
+
+    def worker_token(self):
+        self.calls.append(('worker_token', ()))
+        return WORKER_TOKEN
+
+    def _current_process(self):
+        return OWNER_PROCESS
+
+    def integrity(self, process):
+        return self.integrities[process]
 
     def of(self, name):
         return [values for called, values in self.calls if called == name]
@@ -168,7 +192,8 @@ def test_receiver_that_fails_after_create_releases_its_registered_job(tmp_path):
     ticket, build = _receiver(api, tmp_path)
     with pytest.raises(Refused, match='FIXTURE_CREATE_FAILED'):
         build()
-    assert api.closed == [0x1001] and job_object_name(ticket) not in windows_api._JOBS
+    # the token is closed as soon as create returns or fails; the Job last, via the registry
+    assert api.closed == [WORKER_TOKEN, 0x1001] and job_object_name(ticket) not in windows_api._JOBS
 
 
 def test_receiver_whose_job_cannot_be_set_up_leaves_no_entry_and_no_open_handle(tmp_path):
