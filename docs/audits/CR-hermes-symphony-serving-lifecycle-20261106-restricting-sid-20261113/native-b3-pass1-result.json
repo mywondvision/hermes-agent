@@ -1,0 +1,29 @@
+{
+  "argv": [
+    "C:/Program Files/Git/bin/bash.exe",
+    "scripts/run_tests.sh",
+    "-j",
+    "1",
+    "--file-retries",
+    "0",
+    "--file-timeout",
+    "300",
+    "tests/plugins/test_symphony_pm_windows_native.py",
+    "tests/plugins/test_symphony_pm_windows_crash.py",
+    "tests/plugins/test_symphony_pm_windows_worker_probe.py",
+    "tests/plugins/test_symphony_pm_windows_worker_task.py",
+    "tests/plugins/test_symphony_pm_windows_observer_crash.py",
+    "tests/plugins/test_symphony_pm_windows_journal_guard.py",
+    "tests/plugins/test_symphony_pm_windows_escape_probe.py",
+    "-v"
+  ],
+  "attempt": 1,
+  "model": false,
+  "microphone": false,
+  "paid_resources": false,
+  "scope": "synthetic no-model; own Python processes only",
+  "exit": 1,
+  "outcome": "FINISHED",
+  "seconds": 187.305,
+  "source_unchanged": true
+}

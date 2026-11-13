@@ -26,6 +26,7 @@ from plugins.symphony_pm.transport.windows_api import Accounting, WindowsApi
 from plugins.symphony_pm.transport.windows_observer import WindowsQueryObserver
 from plugins.symphony_pm.transport.windows_ownership import WindowsOwnershipGuard
 from plugins.symphony_pm.transport.windows_receiver import WindowsNativeProvider
+from plugins.symphony_pm.transport.windows_token import SidAndAttributes, attempt_sid
 from tests.plugins.symphony_serving_support import approve
 from tests.waiting import wait_until
 
@@ -82,6 +83,53 @@ def allow_low_writes(directory):
             descriptor, C.byref(present), C.byref(sacl), C.byref(defaulted)))
         code = api.adv('SetNamedSecurityInfoW', [W.LPCWSTR, C.c_int, W.DWORD] + [C.c_void_p]*4, W.DWORD)(
             str(directory), 1, 0x10, None, None, None, sacl)  # SE_FILE_OBJECT, LABEL_SECURITY_INFORMATION
+        if code:
+            raise C.WinError(code)
+    finally:
+        api.fn('LocalFree', [C.c_void_p], C.c_void_p)(descriptor)
+
+
+def current_user_sid():
+    api = WindowsApi()
+    token = api._process_token(api._current_process(), 0x0008)  # TOKEN_QUERY
+    try:
+        buffer = api._token_information(token, 1)  # TokenUser
+        return api._sid_text(C.cast(buffer, C.POINTER(SidAndAttributes)).contents.Sid)
+    finally:
+        api.close(token)
+
+
+def admit_attempt(path, attempt, *, write=False, inherit=False):
+    """Let one attempt's worker into one test-owned path: read and traverse, or modify with `write`.
+
+    A restricted token is checked twice and must pass both times. A test directory admits its
+    owner only through the owner-rights entry, and the kernel does not treat a restricted token as
+    the owner, so the ordinary check needs the user's SID spelled out; the second check needs the
+    attempt's SID. Only the DACL of `path` changes (and of what inherits from it with `inherit`);
+    production has no such directory to hand out.
+    """
+    for sid in (attempt_sid(attempt), current_user_sid()):
+        admit(path, sid, write=write, inherit=inherit)
+
+
+def admit(path, sid, *, write=False, inherit=False):
+    api = WindowsApi()
+    dacl, descriptor = C.c_void_p(), C.c_void_p()
+    code = api.adv('GetNamedSecurityInfoW', [W.LPCWSTR, C.c_int, W.DWORD, C.c_void_p, C.c_void_p,
+        C.POINTER(C.c_void_p), C.c_void_p, C.POINTER(C.c_void_p)], W.DWORD)(
+        str(path), 1, 4, None, None, C.byref(dacl), None, C.byref(descriptor))  # SE_FILE_OBJECT, DACL
+    if code:
+        raise C.WinError(code)
+    try:
+        control, revision = W.WORD(), W.DWORD()
+        api.checked(api.adv('GetSecurityDescriptorControl',
+            [C.c_void_p, C.POINTER(W.WORD), C.POINTER(W.DWORD)], W.BOOL)(
+            descriptor, C.byref(control), C.byref(revision)))
+        protected = 0x80000000 if control.value & 0x1000 else 0  # a DACL that inherits nothing stays that way
+        with api.with_grant(dacl.value, sid, 0x1301BF if write else 0x1200A9,
+                            3 if inherit else 0) as merged:  # modify or read-execute; object and container inherit
+            code = api.adv('SetNamedSecurityInfoW', [W.LPCWSTR, C.c_int, W.DWORD] + [C.c_void_p]*4, W.DWORD)(
+                str(path), 1, 4 | protected, None, None, merged, None)
         if code:
             raise C.WinError(code)
     finally:
@@ -183,6 +231,8 @@ class NativeRig:
         self.scope = SimpleNamespace(profile_home=canonical_home(home), namespace='symphony_pm:ingress', active=True)
         self.now = [time.time()]
         # The worker is low-integrity: the only place it can write is this one labelled directory.
+        # `validate` admits the attempt's SID to it, to the current directory and to `readable`.
+        self.readable = []
         self.work = Path(home)/'worker-copy'
         self.work.mkdir(parents=True, exist_ok=True)
         allow_low_writes(self.work)
@@ -222,10 +272,15 @@ class NativeRig:
         if (argv != tuple(self.argv) or cwd != ticket.plan.workspace or timeout != 30 or stdin_text != ''):
             raise Refused('SYNTHETIC_COMMAND_BINDING')
         self.ticket = ticket
+        admit_attempt(cwd, ticket.attempt)
+        admit_attempt(self.work, ticket.attempt, write=True, inherit=True)
+        for path in self.readable:
+            admit_attempt(path, ticket.attempt, inherit=True)
 
     def launch(self, ticket, request, runner):
         result = runner(self.argv, cwd=ticket.plan.workspace, timeout=30, stdin_text='')
         self.outcome = {'returncode': result.returncode, 'timed_out': result.timed_out}
+        self.stderr = result.stderr[-2000:]  # a worker that could not start says why only here
         return self.outcome
 
     def start(self, pool):
@@ -258,7 +313,8 @@ class NativeRig:
             records, errors = close_queries(self.native.api, self.query_handles)
             failures.extend(errors)
             if hasattr(self, 'ticket'):
-                save_proof('worker-terminal-'+self.ticket.attempt, {'terminal': records, 'errors': failures})
+                save_proof('worker-terminal-'+self.ticket.attempt, {'terminal': records, 'errors': failures,
+                    'outcome': getattr(self, 'outcome', None), 'stderr': getattr(self, 'stderr', None)})
         if failures:
             raise Refused('TEST_RIG_CLEANUP_UNKNOWN')
 

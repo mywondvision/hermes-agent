@@ -1,0 +1,65 @@
+[
+ {
+  "outcome": {
+   "returncode": 1,
+   "timed_out": false
+  },
+  "last_stderr_line": "PermissionError: [Errno 13] Permission denied: <...>\\worker-copy\\worker-ready"
+ },
+ {
+  "outcome": {
+   "returncode": 1,
+   "timed_out": false
+  },
+  "last_stderr_line": "PermissionError: [Errno 13] Permission denied: <...>\\worker-copy\\worker-ready"
+ },
+ {
+  "outcome": {
+   "returncode": 1,
+   "timed_out": false
+  },
+  "last_stderr_line": "PermissionError: [WinError 5] \ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd \ufffd \ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd: <...>\\worker-copy\\worker-ready"
+ },
+ {
+  "outcome": {
+   "returncode": 1,
+   "timed_out": false
+  },
+  "last_stderr_line": "PermissionError: [Errno 13] Permission denied: <...>\\worker-copy\\worker-ready"
+ },
+ {
+  "outcome": {
+   "returncode": 1,
+   "timed_out": false
+  },
+  "last_stderr_line": "PermissionError: [Errno 13] Permission denied: <...>\\worker-copy\\worker-ready"
+ },
+ {
+  "outcome": {
+   "returncode": 1,
+   "timed_out": false
+  },
+  "last_stderr_line": "PermissionError: [Errno 13] Permission denied: <...>\\worker-copy\\worker-ready"
+ },
+ {
+  "outcome": {
+   "returncode": 1,
+   "timed_out": false
+  },
+  "last_stderr_line": "PermissionError: [Errno 13] Permission denied: <...>\\worker-copy\\worker-ready"
+ },
+ {
+  "outcome": {
+   "returncode": 1,
+   "timed_out": false
+  },
+  "last_stderr_line": "PermissionError: [Errno 13] Permission denied: <...>\\worker-copy\\worker-ready"
+ },
+ {
+  "outcome": {
+   "returncode": 1,
+   "timed_out": false
+  },
+  "last_stderr_line": "PermissionError: [Errno 13] Permission denied: <...>\\worker-copy\\worker-ready"
+ }
+]

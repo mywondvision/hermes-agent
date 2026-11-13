@@ -29,13 +29,13 @@ class WindowsReceiver:
             self.job = api.create_job(self.job_id)
             # No route creates a worker with the owner's own token: a host that cannot build or
             # verify the boundary refuses here, and the claimed create slot stays spent.
-            token = api.worker_token()
+            token = api.worker_token(ticket.attempt)
             try:
                 self.process, self.thread, pid, _ = api.create_suspended(
                     argv, cwd, environment, self.files, self.job, token)
             finally:
                 api.close(token)
-            api.require_boundary(self.process)
+            api.require_boundary(self.process, ticket.attempt)
             root = ProcessIdentity(pid, api.creation(self.process))
             self.binding = NativeBinding(ticket, self.job_id, root, (root,))
             self.binding.validate()

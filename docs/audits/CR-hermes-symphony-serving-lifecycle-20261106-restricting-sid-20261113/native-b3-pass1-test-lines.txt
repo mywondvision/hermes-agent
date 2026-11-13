@@ -1,0 +1,8 @@
+[ 28.6% |     4/~14 | ✓3 | ✗4] ✗ tests\plugins\test_symphony_pm_windows_crash.py (3✓ 4✗, 72.3s)
+[ 35.7% |     5/~14 | ✓3 | ✗5] ✗ tests\plugins\test_symphony_pm_windows_escape_probe.py (1✗, 22.9s)
+[ 42.9% |     6/~14 | ✓3 | ✗6] ✗ tests\plugins\test_symphony_pm_windows_journal_guard.py (1✗, 21.8s)
+[ 78.6% |    11/~14 | ✓ 8 | ✗ 6] ✓ tests\plugins\test_symphony_pm_windows_native.py (5✓, 7.4s)
+[ 85.7% |    12/~14 | ✓ 8 | ✗ 7] ✗ tests\plugins\test_symphony_pm_windows_observer_crash.py (1✗, 24.0s)
+[ 92.9% |    13/~14 | ✓ 8 | ✗ 8] ✗ tests\plugins\test_symphony_pm_windows_worker_probe.py (1✗, 22.4s)
+[100.0% |    14/~14 | ✓ 8 | ✗ 9] ✗ tests\plugins\test_symphony_pm_windows_worker_task.py (1✗, 13.0s)
+=== Summary: 7 files, 8 tests passed, 9 failed; FAILED: 6 of 7 files (100% complete) in 184.0s (1 workers) ===

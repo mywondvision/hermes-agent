@@ -1,0 +1,57 @@
+{
+  "probe": {
+    "owner_pid": 26244,
+    "opened": {
+      "dup_handle": false,
+      "inject": false,
+      "terminate": false,
+      "vm_read": false,
+      "suspend_resume": false,
+      "create_process": false,
+      "query_limited": false,
+      "synchronize": false,
+      "thread_terminate": false,
+      "thread_suspend_resume": false,
+      "thread_query_limited": false
+    },
+    "errors": {
+      "dup_handle": 5,
+      "inject": 5,
+      "terminate": 5,
+      "vm_read": 5,
+      "suspend_resume": 5,
+      "create_process": 5,
+      "query_limited": 5,
+      "synchronize": 5,
+      "thread_terminate": 5,
+      "thread_suspend_resume": 5,
+      "thread_query_limited": 5,
+      "outside": [
+        13,
+        null
+      ]
+    },
+    "duplicated": false,
+    "reads": {
+      "user_only_file": {
+        "done": false,
+        "winerror": null
+      },
+      "authenticated_users_file": {
+        "done": true,
+        "winerror": 0
+      }
+    },
+    "wrote_outside": false
+  },
+  "worker": {
+    "returncode": 0,
+    "timed_out": false
+  },
+  "worker_integrity": 4096,
+  "worker_restricting_sids": 5,
+  "owner_label": [
+    8192,
+    7
+  ]
+}

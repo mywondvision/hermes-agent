@@ -1,8 +1,8 @@
 """A worker is never born with the owner's own token, and a boundary that cannot be verified refuses.
 
 Fixture-only: every kernel and advapi32 call is answered by `FakeKernel`, so no token, Job or
-process exists. The real `TokenBoundary.require_boundary` runs against faked integrity levels, so
-the decision itself is what is exercised. Windows-only because `WindowsApi` is built on the real
+process exists. The real `TokenBoundary.require_boundary` runs against faked integrity levels and
+faked restricting SIDs, so the decision itself is what is exercised. Windows-only because `WindowsApi` is built on the real
 Windows module types.
 """
 import sqlite3
@@ -10,6 +10,7 @@ import sqlite3
 import pytest
 
 from plugins.symphony_pm.transport import windows_api
+from plugins.symphony_pm.transport import windows_token
 from plugins.symphony_pm.transport.lifecycle import AttemptRunner
 from plugins.symphony_pm.transport.types import Refused, job_object_name
 from plugins.symphony_pm.transport.windows_token import LOW, MEDIUM
@@ -64,7 +65,7 @@ def test_failed_create_still_closes_the_token_once_and_releases_the_job(tmp_path
 
 def test_token_that_cannot_be_built_refuses_without_creating_a_worker(tmp_path):
     class NoToken(LaunchingKernel):
-        def worker_token(self):
+        def worker_token(self, attempt):
             raise OSError('fixture: token cannot be restricted')
 
     api = NoToken()
@@ -121,7 +122,48 @@ def test_plugin_data_that_cannot_be_labelled_is_refused_before_any_worker_exists
 
 
 def test_low_worker_whose_token_forbids_writing_up_passes_the_boundary():
-    LaunchingKernel(worker_integrity=LOW).require_boundary(WORKER_PROCESS)
+    api = LaunchingKernel(worker_integrity=LOW)
+    api.restricting = windows_token.restricting_sids('attempt-1')
+    api.require_boundary(WORKER_PROCESS, 'attempt-1')
+
+
+def test_worker_token_is_built_for_exactly_this_attempt(tmp_path):
+    api = LaunchingKernel()
+    ticket, build = _receiver(api, tmp_path)
+    receiver = build()
+    try:
+        assert api.of('worker_token') == [(ticket.attempt,)]
+    finally:
+        receiver.close_fail_safe(0)
+
+
+def test_each_attempt_has_its_own_stable_sid_outside_the_user_and_logon_authorities():
+    first, second = windows_token.attempt_sid('attempt-1'), windows_token.attempt_sid('attempt-2')
+    assert first == windows_token.attempt_sid('attempt-1') != second
+    for sid in (first, second):
+        assert sid.startswith('S-1-9-') and len(sid.split('-')) == 7
+    listed = windows_token.restricting_sids('attempt-1')
+    assert listed[0] == first and second not in listed
+    # neither a user account (S-1-5-21-...) nor a logon session (S-1-5-5-...) is ever listed
+    assert not [sid for sid in listed if sid.startswith(('S-1-5-21-', 'S-1-5-5-'))]
+
+
+@pytest.mark.parametrize('reported', [
+    lambda attempt: (),  # an ordinary token: no restricting check at all
+    lambda attempt: windows_token.SHARED_SIDS,  # restricted, but not to this attempt
+    lambda attempt: windows_token.restricting_sids('another-attempt'),
+    lambda attempt: (*windows_token.restricting_sids(attempt), 'S-1-5-21-1-2-3-1001'),  # the user is listed
+    lambda attempt: (*windows_token.restricting_sids(attempt), 'S-1-5-5-0-4242'),  # the logon session is listed
+], ids=['unrestricted', 'no-attempt-sid', 'other-attempt', 'user-sid', 'logon-sid'])
+def test_worker_whose_restricting_sids_are_not_exactly_this_attempts_is_refused(tmp_path, reported):
+    api = LaunchingKernel()
+    ticket, build = _receiver(api, tmp_path)
+    api.restricting = reported(ticket.attempt)
+    with pytest.raises(Refused, match='WORKER_BOUNDARY_UNENFORCED'):
+        build()
+    assert sorted(api.closed) == sorted([WORKER_TOKEN, 0x1001, WORKER_THREAD, WORKER_PROCESS])
+    assert job_object_name(ticket) not in windows_api._JOBS
+    assert api.of('ResumeThread') == []
 
 
 def test_low_worker_whose_token_allows_writing_up_is_refused(tmp_path):

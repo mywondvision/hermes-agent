@@ -3,6 +3,10 @@
 Requires an explicitly approved native campaign. The worker is this repository's own Python
 script. It is handed the owner's real Job handle value, so a refusal here is the kernel's, not
 ignorance of the value; finding that value by system handle enumeration is not exercised.
+
+Two reads are diagnostics, recorded and not asserted: a file of this test that admits the user
+by name, as a file in a real profile does, and a file of this repository that admits Authenticated Users, a group the worker's
+restricting list keeps so that the interpreter can load at all.
 """
 from concurrent.futures import ThreadPoolExecutor
 import json
@@ -13,8 +17,10 @@ import time
 import pytest
 
 from plugins.symphony_pm.transport.windows_labels import PROCESS_POLICY
-from plugins.symphony_pm.transport.windows_token import LOW, MEDIUM
-from tests.plugins.symphony_native_crash_support import NativeRig, base_python, save_proof
+from plugins.symphony_pm.transport.windows_token import LOW, MEDIUM, restricting_sids
+from tests.plugins.symphony_native_crash_support import (
+    NativeRig, admit, base_python, current_user_sid, save_proof,
+)
 from tests.waiting import wait_until
 
 pytestmark = pytest.mark.platforms('windows')
@@ -31,7 +37,7 @@ import ctypes as C, json, os, sys, time
 from ctypes import wintypes as W
 from pathlib import Path
 ready, target, result, outside = (Path(p) for p in sys.argv[1:5])
-process_rights, thread_rights = json.loads(sys.argv[5]), json.loads(sys.argv[6])
+process_rights, thread_rights, reads = (json.loads(value) for value in sys.argv[5:8])
 k = C.WinDLL('kernel32', use_last_error=True)
 k.OpenProcess.argtypes, k.OpenProcess.restype = [W.DWORD, W.BOOL, W.DWORD], W.HANDLE
 k.OpenThread.argtypes, k.OpenThread.restype = [W.DWORD, W.BOOL, W.DWORD], W.HANDLE
@@ -39,7 +45,7 @@ k.GetCurrentProcess.restype = W.HANDLE
 k.DuplicateHandle.argtypes = [W.HANDLE, W.HANDLE, W.HANDLE, C.POINTER(W.HANDLE), W.DWORD, W.BOOL, W.DWORD]
 k.DuplicateHandle.restype = W.BOOL
 k.CloseHandle.argtypes = [W.HANDLE]
-out = {'owner_pid': os.getppid(), 'opened': {}, 'errors': {}, 'duplicated': False}
+out = {'owner_pid': os.getppid(), 'opened': {}, 'errors': {}, 'duplicated': False, 'reads': {}}
 ready.write_text('ready', encoding='utf-8')
 end = time.monotonic() + 20
 while not target.exists() and time.monotonic() < end:
@@ -64,6 +70,13 @@ for name, access in thread_rights.items():
         k.CloseHandle(handle)
     else:
         out['errors'][name] = C.get_last_error()
+for name, path in reads.items():
+    try:
+        with open(path, 'rb') as stream:
+            stream.read(1)
+        out['reads'][name] = {'done': True, 'winerror': 0}
+    except OSError as exc:
+        out['reads'][name] = {'done': False, 'winerror': exc.winerror}
 try:
     outside.write_text('worker was here', encoding='utf-8')
     out['wrote_outside'] = True
@@ -80,23 +93,33 @@ def test_low_integrity_worker_cannot_open_the_owner_or_write_outside_its_copy(tm
     home.mkdir()
     rig = NativeRig(home)
     target, outside, result = rig.work/'job-handle', tmp_path/'owner-side-file', rig.work/'probe.json'
+    private = tmp_path/'user-only-file'
+    private.write_text('user only', encoding='utf-8')
+    admit(private, current_user_sid())  # beside the owner, the system and administrators it already admits
+    reads = {'user_only_file': str(private), 'authenticated_users_file': __file__}
     rig.argv = [base_python(), '-I', '-B', '-c', PROBE, str(rig.marker), str(target), str(result), str(outside),
-                json.dumps(PROCESS_RIGHTS), json.dumps(THREAD_RIGHTS)]
+                json.dumps(PROCESS_RIGHTS), json.dumps(THREAD_RIGHTS), json.dumps(reads)]
     try:
         with ThreadPoolExecutor(max_workers=1) as pool:
             future = rig.start(pool)
             wait_until(rig.marker.exists, timeout=15, what='probe worker start')
             receiver = rig.receiver()
             worker_integrity = rig.native.api.integrity(receiver.process)
-            target.write_text(f'{int(receiver.job)} {threading.main_thread().native_id}', encoding='utf-8')
+            worker_restricting = len(rig.native.api.restricting_sids(receiver.process))
+            temporary = target.with_suffix('.tmp')  # the worker never sees a half-written file
+            temporary.write_text(f'{int(receiver.job)} {threading.main_thread().native_id}', encoding='utf-8')
+            temporary.replace(target)
             wait_until(result.exists, timeout=25, what='probe result')
             future.result(timeout=45)
         observed = json.loads(result.read_text(encoding='utf-8'))
         owner_label = rig.native.api.process_label()
         save_proof('worker-boundary-probe', {'probe': observed, 'worker': rig.outcome,
-            'worker_integrity': worker_integrity, 'owner_label': owner_label})
+            'worker_integrity': worker_integrity, 'worker_restricting_sids': worker_restricting,
+            'owner_label': owner_label})
         assert rig.outcome == {'returncode': 0, 'timed_out': False}
         assert worker_integrity == LOW and owner_label == (MEDIUM, PROCESS_POLICY)
+        assert worker_restricting == len(restricting_sids(rig.ticket.attempt))
+        assert set(observed['reads']) == set(reads)  # recorded either way; neither outcome is a contract
         assert observed['owner_pid'] == os.getpid()  # the refusals below are about this process
         for name in PROCESS_RIGHTS:
             assert observed['opened'][name] is False and observed['errors'][name] == 5, name

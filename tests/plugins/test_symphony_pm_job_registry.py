@@ -9,7 +9,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from plugins.symphony_pm.transport import windows_api
+from plugins.symphony_pm.transport import windows_api, windows_token
 from plugins.symphony_pm.transport.types import ExecutionPlan, LaunchTicket, Refused, job_object_name
 from plugins.symphony_pm.transport.windows_api import WindowsApi
 from plugins.symphony_pm.transport.windows_receiver import WindowsReceiver
@@ -29,6 +29,9 @@ class FakeKernel(WindowsApi):
         # a handle a test never listed raises KeyError instead of silently passing the boundary
         self.integrities = {OWNER_PROCESS: 0x2000}
         self.policies = {}  # process handle -> token mandatory policy; unlisted means no-write-up
+        # what the kernel reports as the worker token's restricting SIDs; None means exactly the
+        # list `worker_token` was asked to build
+        self.restricting, self.attempt = None, None
         self.process_protected = self.directory_protected = True
 
     def fn(self, name, _args, _result):
@@ -48,9 +51,13 @@ class FakeKernel(WindowsApi):
             return 0 if name in self.failing else 1
         return call
 
-    def worker_token(self):
-        self.calls.append(('worker_token', ()))
+    def worker_token(self, attempt):
+        self.calls.append(('worker_token', (attempt,)))
+        self.attempt = attempt
         return WORKER_TOKEN
+
+    def restricting_sids(self, _process):
+        return windows_token.restricting_sids(self.attempt) if self.restricting is None else self.restricting
 
     def _current_process(self):
         return OWNER_PROCESS

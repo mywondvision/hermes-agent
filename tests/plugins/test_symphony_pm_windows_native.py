@@ -18,6 +18,7 @@ from plugins.symphony_pm.transport.windows_api import WindowsApi
 from plugins.symphony_pm.transport.windows_observer import WindowsQueryObserver
 from plugins.symphony_pm.transport.windows_ownership import WindowsOwnershipGuard
 from plugins.symphony_pm.transport.windows_receiver import WindowsReceiver
+from tests.plugins.symphony_native_crash_support import admit_attempt
 from tests.plugins.symphony_serving_support import approve, rig
 from tests.waiting import wait_until
 
@@ -43,6 +44,7 @@ def _receiver(tmp_path):
     ticket, _, _ = r.owner.journal.reserve_launch(r.owner.token, request, context, r.now[0])
     capture = tmp_path/'capture'
     capture.mkdir()
+    admit_attempt(tmp_path, ticket.attempt)  # the worker's current directory
     argv = [str(Path(sys.executable).resolve()), '-I', '-B', '-c',
             'import sys; sys.stdin.buffer.read(); sys.stdout.write("synthetic-only")']
     receiver = WindowsReceiver(WindowsApi(), ticket, argv, tmp_path, '', environment={},

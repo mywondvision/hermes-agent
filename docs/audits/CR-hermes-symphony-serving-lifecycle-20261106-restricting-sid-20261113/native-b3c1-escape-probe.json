@@ -1,0 +1,100 @@
+{
+  "children": {},
+  "neighbours": {
+    "low": {
+      "integrity": 4096,
+      "restricted": false
+    },
+    "untrusted": {
+      "integrity": 0,
+      "restricted": false
+    },
+    "other_attempt": {
+      "integrity": 4096,
+      "restricted": true
+    },
+    "medium": {
+      "integrity": 8192,
+      "restricted": false
+    }
+  },
+  "worker": {
+    "integrity": 4096,
+    "restricting_sids": 5
+  },
+  "attempt": {
+    "targets": {
+      "low": {
+        "opened": {
+          "inject": false,
+          "create_process": false,
+          "terminate": false
+        },
+        "errors": {
+          "inject": 5,
+          "create_process": 5,
+          "terminate": 5
+        },
+        "child": {
+          "created": false,
+          "stage": "not-attempted"
+        }
+      },
+      "untrusted": {
+        "opened": {
+          "inject": false,
+          "create_process": false,
+          "terminate": false
+        },
+        "errors": {
+          "inject": 5,
+          "create_process": 5,
+          "terminate": 5
+        },
+        "child": {
+          "created": false,
+          "stage": "not-attempted"
+        }
+      },
+      "other_attempt": {
+        "opened": {
+          "inject": false,
+          "create_process": false,
+          "terminate": false
+        },
+        "errors": {
+          "inject": 5,
+          "create_process": 5,
+          "terminate": 5
+        },
+        "child": {
+          "created": false,
+          "stage": "not-attempted"
+        }
+      },
+      "medium": {
+        "opened": {
+          "terminate": false
+        },
+        "errors": {
+          "terminate": 5
+        },
+        "child": {
+          "created": false,
+          "stage": "not-attempted"
+        }
+      }
+    }
+  },
+  "outcome": {
+    "returncode": 0,
+    "timed_out": false
+  },
+  "stopped": {
+    "low": true,
+    "untrusted": true,
+    "other_attempt": true,
+    "medium": true
+  },
+  "cleanup_failures": []
+}

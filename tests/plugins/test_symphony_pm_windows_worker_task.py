@@ -55,6 +55,7 @@ def test_low_integrity_worker_fixes_a_defect_in_its_own_copy_without_touching_th
     (source/'module.py').write_text(BROKEN, encoding='utf-8', newline='\n')
     (source/'check.py').write_text(CHECK, encoding='utf-8', newline='\n')
     rig = NativeRig(home)
+    rig.readable.append(source)  # context the worker may read and must not change
     rig.native.api = BoundedApi(4)  # root, console host, one tool child at a time, one spare
     result = rig.work/'result.json'
     rig.argv = [base_python(), '-I', '-B', '-c', TASK, str(source), str(rig.work), str(result)]

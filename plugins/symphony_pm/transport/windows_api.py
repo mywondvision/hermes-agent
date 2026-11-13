@@ -231,7 +231,7 @@ class WindowsApi(TokenBoundary, LabelBoundary):
     def create_suspended(self, argv, cwd, env, streams, job, token):
         """The root is born inside `job`: no window exists between creation and Job membership.
 
-        `token` is the primary token the root is born with; a worker always gets `worker_token()`.
+        `token` is the primary token the root is born with; a worker always gets `worker_token(attempt)`.
         There is no route here to the caller's own token.
         """
         import _winapi
