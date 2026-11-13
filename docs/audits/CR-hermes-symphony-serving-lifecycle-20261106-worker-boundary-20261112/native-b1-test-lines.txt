@@ -1,0 +1,7 @@
+Discovered 5 test files (~12 tests) under ['tests\\plugins\\test_symphony_pm_windows_native.py', 'tests\\plugins\\test_symphony_pm_windows_crash.py', 'tests\\plugins\\test_symphony_pm_windows_worker_probe.py', 'tests\\plugins\\test_symphony_pm_windows_worker_task.py', 'tests\\plugins\\test_symphony_pm_windows_observer_crash.py']; running with -j 1
+[ 33.3% |     4/~12 | ✓7 | ✗0] ✓ tests\plugins\test_symphony_pm_windows_crash.py (7✓, 25.7s)
+[ 75.0% |     9/~12 | ✓12 | ✗ 0] ✓ tests\plugins\test_symphony_pm_windows_native.py (5✓, 12.4s)
+[ 83.3% |    10/~12 | ✓13 | ✗ 0] ✓ tests\plugins\test_symphony_pm_windows_observer_crash.py (1✓, 13.5s)
+[ 91.7% |    11/~12 | ✓14 | ✗ 0] ✓ tests\plugins\test_symphony_pm_windows_worker_probe.py (1✓, 11.5s)
+[100.0% |    12/~12 | ✓15 | ✗ 0] ✓ tests\plugins\test_symphony_pm_windows_worker_task.py (1✓, 11.2s)
+=== Summary: 5 files, 15 tests passed, 0 failed (100% complete) in 74.7s (1 workers) ===

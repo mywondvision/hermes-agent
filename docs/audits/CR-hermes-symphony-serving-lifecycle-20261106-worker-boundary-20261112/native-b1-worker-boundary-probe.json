@@ -1,0 +1,23 @@
+{
+  "probe": {
+    "owner_pid": 21328,
+    "opened": {
+      "dup_handle": false,
+      "inject": false,
+      "query_limited": true,
+      "terminate": true
+    },
+    "errors": {
+      "dup_handle": 5,
+      "inject": 5,
+      "outside": null
+    },
+    "duplicated": false,
+    "wrote_outside": false
+  },
+  "worker": {
+    "returncode": 0,
+    "timed_out": false
+  },
+  "worker_integrity": 4096
+}

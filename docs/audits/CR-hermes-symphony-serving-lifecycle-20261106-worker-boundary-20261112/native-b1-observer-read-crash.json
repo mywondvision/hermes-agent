@@ -1,0 +1,22 @@
+{
+  "terminal": [
+    {
+      "pid": 316,
+      "creation": "134390575302388051",
+      "signaled": true
+    },
+    {
+      "pid": 6468,
+      "creation": "134390575302908959",
+      "signaled": true
+    },
+    {
+      "pid": 1776,
+      "creation": "134390575305720821",
+      "signaled": true
+    }
+  ],
+  "parent_containment_open": true,
+  "orphan_cleanup": false,
+  "cancel": "HOLD"
+}
