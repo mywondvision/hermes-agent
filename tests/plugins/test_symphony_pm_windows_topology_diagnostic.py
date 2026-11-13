@@ -19,7 +19,7 @@ from hermes_platform.host.facts import os_family, process_arch
 from plugins.symphony_pm.transport.types import ExecutionPlan, LaunchTicket, Refused
 from plugins.symphony_pm.transport.windows_api import Accounting, ExtendedLimit, WindowsApi
 from plugins.symphony_pm.transport.windows_receiver import WindowsReceiver
-from tests.plugins.symphony_native_crash_support import base_python
+from tests.plugins.symphony_native_crash_support import base_python, decoy_protected
 from tests.waiting import wait_until
 
 pytestmark = pytest.mark.platforms('windows')
@@ -135,6 +135,7 @@ def test_capture_exact_job_topology_without_cancel_or_crash(tmp_path):
     try:
         receiver = WindowsReceiver(api, ticket, argv, tmp_path, '', environment={
             k: v for k, v in os.environ.items() if k.upper() in {'SYSTEMROOT', 'WINDIR'}},
+            protected=decoy_protected(tmp_path),
             command_result=lambda *args, **kw: SimpleNamespace(), sanitize=lambda value: value,
             private_directory=capture, data_directory=capture)
         report['binding'] = {'job': receiver.binding.job_object, 'pid': receiver.binding.root.pid,

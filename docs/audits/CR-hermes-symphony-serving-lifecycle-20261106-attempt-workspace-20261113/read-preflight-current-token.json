@@ -1,0 +1,62 @@
+[
+ {
+  "target": "secret: Claude credentials",
+  "read": "granted",
+  "write": "denied"
+ },
+ {
+  "target": "secret: another copy .env",
+  "read": "granted",
+  "write": "denied"
+ },
+ {
+  "target": "private packages dir",
+  "read": "granted",
+  "write": "denied"
+ },
+ {
+  "target": "profile .ssh",
+  "read": "denied",
+  "write": "denied"
+ },
+ {
+  "target": "profile .codex",
+  "read": "denied",
+  "write": "denied"
+ },
+ {
+  "target": "this repo .git/config",
+  "read": "granted",
+  "write": "denied"
+ },
+ {
+  "target": "this worktree file",
+  "read": "granted",
+  "write": "denied"
+ },
+ {
+  "target": "another copy file",
+  "read": "granted",
+  "write": "denied"
+ },
+ {
+  "target": "interpreter",
+  "read": "granted",
+  "write": "denied"
+ },
+ {
+  "target": "system dll",
+  "read": "granted",
+  "write": "denied"
+ },
+ {
+  "target": "HKCU Environment (user env vars)",
+  "read": "granted",
+  "write": "denied"
+ },
+ {
+  "target": "HKCU Software",
+  "read": "granted",
+  "write": "denied"
+ }
+]

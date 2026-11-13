@@ -7,6 +7,7 @@ import threading
 
 from .types import Refused
 from .windows_labels import LabelBoundary
+from .windows_read_boundary import ReadBoundary
 from .windows_token import TokenBoundary
 from hermes_platform.host.facts import os_family
 
@@ -58,7 +59,7 @@ class ProcessInformation(C.Structure):
     _fields_ = [('hProcess', W.HANDLE), ('hThread', W.HANDLE), ('dwProcessId', W.DWORD), ('dwThreadId', W.DWORD)]
 
 
-class WindowsApi(TokenBoundary, LabelBoundary):
+class WindowsApi(TokenBoundary, LabelBoundary, ReadBoundary):
     A = None  # advapi32, loaded on first token call
     # Upper bounds on one worker tree. They fit the synthetic worker; what a real driver needs is
     # not measured, and a tree that exceeds them is stopped by the kernel rather than let through.

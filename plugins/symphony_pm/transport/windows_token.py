@@ -12,6 +12,12 @@ token twice, against its ordinary SIDs and against the restricting list, and gra
 both checks grant. The list holds a SID unique to the attempt and the shared groups a process
 needs to load at all; it holds neither the user nor the logon session, so an object that admits
 only those is closed to the worker whatever its integrity.
+
+The shared groups still read most of a disk whose root admits Users. The list therefore also
+holds one SID common to every worker and to nothing else: a deny entry for it on a directory
+closes that directory to workers only. Such an entry is not inherited, so it closes the subtree
+only because the worker token holds no privilege at all, in particular not the one that bypasses
+traverse checking.
 """
 from contextlib import contextmanager
 import ctypes as C
@@ -33,16 +39,26 @@ _LOW_SID = 'S-1-16-4096'
 # is what this session's window station and desktop admit besides the logon session itself, and a
 # process that cannot open them does not start.
 SHARED_SIDS = ('S-1-1-0', 'S-1-5-32-545', 'S-1-5-11', 'S-1-5-12')
+_PRIVILEGES = 3  # TokenPrivileges
 
 
-def attempt_sid(attempt):
-    """The SID that stands for one attempt: resource-manager authority, four words of its digest."""
-    words = struct.unpack('<4I', hashlib.sha256(('symphony_pm:attempt:'+attempt).encode('utf-8')).digest()[:16])
+def _resource_sid(text):
+    """Resource-manager authority, four words of the digest of `text`."""
+    words = struct.unpack('<4I', hashlib.sha256(text.encode('utf-8')).digest()[:16])
     return 'S-1-9-'+'-'.join(str(word) for word in words)
 
 
+def attempt_sid(attempt):
+    """The SID that stands for one attempt."""
+    return _resource_sid('symphony_pm:attempt:'+attempt)
+
+
+#: The SID every worker carries and nothing else does; a deny entry for it closes an object to workers.
+WORKER_CLASS_SID = _resource_sid('symphony_pm:worker-class')
+
+
 def restricting_sids(attempt):
-    return (attempt_sid(attempt), *SHARED_SIDS)
+    return (attempt_sid(attempt), WORKER_CLASS_SID, *SHARED_SIDS)
 
 
 class SidAndAttributes(C.Structure):
@@ -165,17 +181,34 @@ class TokenBoundary:
         finally:
             self.close(token)
 
-    def derived_token(self, restricting, integrity_sid):
-        """A copy of this process's token with every removable privilege dropped, the given
-        restricting SIDs and the given mandatory level. The caller closes it."""
+    def privilege_count(self, process):
+        """How many privileges a process's primary token holds, enabled or not."""
+        token = self._process_token(process, _TOKEN_QUERY)
+        try:
+            return W.DWORD.from_buffer(self._token_information(token, _PRIVILEGES)).value
+        finally:
+            self.close(token)
+
+    def derived_token(self, restricting, integrity_sid, *, no_privileges=False):
+        """A copy of this process's token with the given restricting SIDs and mandatory level. The
+        caller closes it.
+
+        By default every removable privilege is dropped, which keeps the one that bypasses traverse
+        checking. With `no_privileges` every privilege the source holds is deleted, that one too.
+        """
         source = self._process_token(self._current_process(), _TOKEN_SOURCE)
         try:
             token = W.HANDLE()
+            flags, deleted, count = _DISABLE_MAX_PRIVILEGE, None, 0
+            if no_privileges:
+                held = self._token_information(source, _PRIVILEGES)  # TOKEN_PRIVILEGES: count, LUID_AND_ATTRIBUTES[]
+                flags, count = 0, W.DWORD.from_buffer(held).value
+                deleted = C.addressof(held)+C.sizeof(W.DWORD) if count else None
             with self._sids(restricting) as sids:
                 listed = (SidAndAttributes*len(sids))(*((sid, 0) for sid in sids))
                 self.checked(self.adv('CreateRestrictedToken', [W.HANDLE, W.DWORD, W.DWORD, C.c_void_p, W.DWORD,
                     C.c_void_p, W.DWORD, C.c_void_p, C.POINTER(W.HANDLE)], W.BOOL)(
-                    source, _DISABLE_MAX_PRIVILEGE, 0, None, 0, None, len(sids), listed if sids else None,
+                    source, flags, 0, None, count, deleted, len(sids), listed if sids else None,
                     C.byref(token)))
         finally:
             self.close(source)
@@ -208,7 +241,7 @@ class TokenBoundary:
         It is a restricted version of the caller's own primary token, so creating a process with
         it needs no privilege, no other account and no system setting. The caller closes it.
         """
-        token = self.derived_token(restricting_sids(attempt), _LOW_SID)
+        token = self.derived_token(restricting_sids(attempt), _LOW_SID, no_privileges=True)
         try:
             self._admit_to_own_objects(token, attempt_sid(attempt))
         except BaseException:
@@ -217,11 +250,13 @@ class TokenBoundary:
         return token
 
     def require_boundary(self, process, attempt):
-        """Refuse unless the still-suspended worker is low, its token forbids writing up and its
-        restricting SIDs are exactly this attempt's: no user, no logon session, no other attempt.
+        """Refuse unless the still-suspended worker is low, its token forbids writing up, holds no
+        privilege and its restricting SIDs are exactly this attempt's: no user, no logon session,
+        no other attempt.
 
         The owner's side of the boundary is `guard_owner`, which runs before any worker exists.
         """
         if (self.integrity(process) != LOW or not self.mandatory_policy(process) & _NO_WRITE_UP
+                or self.privilege_count(process)
                 or sorted(self.restricting_sids(process)) != sorted(restricting_sids(attempt))):
             raise Refused('WORKER_BOUNDARY_UNENFORCED')

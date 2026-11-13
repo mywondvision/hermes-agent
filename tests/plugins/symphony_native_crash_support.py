@@ -26,7 +26,9 @@ from plugins.symphony_pm.transport.windows_api import Accounting, WindowsApi
 from plugins.symphony_pm.transport.windows_observer import WindowsQueryObserver
 from plugins.symphony_pm.transport.windows_ownership import WindowsOwnershipGuard
 from plugins.symphony_pm.transport.windows_receiver import WindowsNativeProvider
-from plugins.symphony_pm.transport.windows_token import SidAndAttributes, attempt_sid
+from plugins.symphony_pm.transport.attempt_workspace import grant, user_sid
+from plugins.symphony_pm.transport.windows_read_boundary import FILE, DenyEntries, _split
+from plugins.symphony_pm.transport.windows_token import attempt_sid
 from tests.plugins.symphony_serving_support import approve
 from tests.waiting import wait_until
 
@@ -90,13 +92,10 @@ def allow_low_writes(directory):
 
 
 def current_user_sid():
-    api = WindowsApi()
-    token = api._process_token(api._current_process(), 0x0008)  # TOKEN_QUERY
-    try:
-        buffer = api._token_information(token, 1)  # TokenUser
-        return api._sid_text(C.cast(buffer, C.POINTER(SidAndAttributes)).contents.Sid)
-    finally:
-        api.close(token)
+    return user_sid(WindowsApi())
+
+
+_TRAVERSE = 0x1000A0  # FILE_TRAVERSE | FILE_READ_ATTRIBUTES | SYNCHRONIZE
 
 
 def admit_attempt(path, attempt, *, write=False, inherit=False):
@@ -105,35 +104,79 @@ def admit_attempt(path, attempt, *, write=False, inherit=False):
     A restricted token is checked twice and must pass both times. A test directory admits its
     owner only through the owner-rights entry, and the kernel does not treat a restricted token as
     the owner, so the ordinary check needs the user's SID spelled out; the second check needs the
-    attempt's SID. Only the DACL of `path` changes (and of what inherits from it with `inherit`);
-    production has no such directory to hand out.
+    attempt's SID. The worker token holds no privilege, so traversal is checked too: every test
+    directory between the run's TEMP root and `path` gets a traverse-only entry for both SIDs.
+    Only DACLs of test-owned directories under that root change; production has no such directory.
     """
-    for sid in (attempt_sid(attempt), current_user_sid()):
+    sids = (attempt_sid(attempt), current_user_sid())
+    admit_ancestors([path], sids)
+    for sid in sids:
         admit(path, sid, write=write, inherit=inherit)
 
 
+_SHARED_ALIASES = {'BU', 'AU', 'WD', 'RC', 'S-1-5-32-545', 'S-1-5-11', 'S-1-1-0', 'S-1-5-12'}
+
+
+def _shared_traverse(sddl):
+    """Whether a directory already admits one of the worker's shared groups (so it is not test-private)."""
+    return any(ace.split(';')[0] == 'A' and 'IO' not in ace.split(';')[1] and ace.split(';')[5] in _SHARED_ALIASES
+               for ace in _split(sddl)[1])
+
+
+def admit_ancestors(paths, sids):
+    """Traverse-only entries for `sids` on the test-private directories above `paths`.
+
+    Walking up from each target, every directory that admits none of the worker's shared groups
+    (a pytest directory made owner-only) gets the entry; the walk stops at the first directory that
+    admits them, which is where test-owned space ends, and never goes past TEMP. A child serving
+    process has its own TEMP, so TEMP alone cannot bound the walk. Each entry is written to that
+    one directory without propagation, once per (directory, SID).
+    """
+    raw = os.environ.get('TEMP')
+    root, api, ancestors = Path(raw).resolve() if raw else None, WindowsApi(), {}
+    for path in paths:
+        for ancestor in Path(path).resolve().parents:
+            if ancestor == root or ancestor.parent == ancestor:
+                break
+            if ancestor not in ancestors:
+                ancestors[ancestor] = api.object_sddl(FILE, ancestor)
+            if _shared_traverse(ancestors[ancestor]):
+                break
+    for ancestor, current in sorted(ancestors.items()):
+        if _shared_traverse(current):
+            continue
+        updated = current
+        for sid in sids:
+            updated = with_allow(updated, sid, _TRAVERSE)
+        if updated != current:
+            api.write_dacl(FILE, ancestor, updated)
+
+
+def with_allow(sddl, sid, mask):
+    """The DACL with one explicit allow entry added after the explicit denies (canonical order)."""
+    head, aces, tail = _split(sddl)
+    entry = f'A;;0x{mask:x};;;{sid}'
+    if entry.upper() in (ace.upper() for ace in aces):
+        return sddl
+    at = 0
+    while at < len(aces) and aces[at].startswith('D;') and 'ID' not in aces[at].split(';')[1]:
+        at += 1
+    return head+''.join(f'({ace})' for ace in [*aces[:at], entry, *aces[at:]])+tail
+
+
 def admit(path, sid, *, write=False, inherit=False):
-    api = WindowsApi()
-    dacl, descriptor = C.c_void_p(), C.c_void_p()
-    code = api.adv('GetNamedSecurityInfoW', [W.LPCWSTR, C.c_int, W.DWORD, C.c_void_p, C.c_void_p,
-        C.POINTER(C.c_void_p), C.c_void_p, C.POINTER(C.c_void_p)], W.DWORD)(
-        str(path), 1, 4, None, None, C.byref(dacl), None, C.byref(descriptor))  # SE_FILE_OBJECT, DACL
-    if code:
-        raise C.WinError(code)
-    try:
-        control, revision = W.WORD(), W.DWORD()
-        api.checked(api.adv('GetSecurityDescriptorControl',
-            [C.c_void_p, C.POINTER(W.WORD), C.POINTER(W.DWORD)], W.BOOL)(
-            descriptor, C.byref(control), C.byref(revision)))
-        protected = 0x80000000 if control.value & 0x1000 else 0  # a DACL that inherits nothing stays that way
-        with api.with_grant(dacl.value, sid, 0x1301BF if write else 0x1200A9,
-                            3 if inherit else 0) as merged:  # modify or read-execute; object and container inherit
-            code = api.adv('SetNamedSecurityInfoW', [W.LPCWSTR, C.c_int, W.DWORD] + [C.c_void_p]*4, W.DWORD)(
-                str(path), 1, 4 | protected, None, None, merged, None)
-        if code:
-            raise C.WinError(code)
-    finally:
-        api.fn('LocalFree', [C.c_void_p], C.c_void_p)(descriptor)
+    grant(WindowsApi(), path, sid, write=write, inherit=inherit)
+
+
+def decoy_protected(directory):
+    """One test-owned object every worker of this rig must not read: what `protected` lists.
+
+    It carries the worker-class deny entry; the journal sits next to it and is the test's only record.
+    """
+    decoy = Path(directory)/'protected-decoy'
+    decoy.mkdir(parents=True, exist_ok=True)
+    DenyEntries(WindowsApi(), Path(directory)/'protected-decoy.journal.json').apply([(FILE, str(decoy))])
+    return ((FILE, str(decoy)),)
 
 
 def owner_environment(tmp_path, home, proofs):
@@ -245,6 +288,7 @@ class NativeRig:
         self.observer = WindowsQueryObserver(self.scope)
         self.native = WindowsNativeProvider(validate_call=self.validate,
             environment={k: v for k, v in os.environ.items() if k.upper() in {'SYSTEMROOT', 'WINDIR'}},
+            protected=decoy_protected(home),
             command_result=lambda argv, code, **kw: SimpleNamespace(argv=argv, returncode=code, **kw),
             sanitize=lambda text: text, private_directory=capture,
             data_directory=Path(home)/'plugin-data'/'symphony_pm')

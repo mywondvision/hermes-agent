@@ -18,7 +18,7 @@ from plugins.symphony_pm.transport.windows_api import WindowsApi
 from plugins.symphony_pm.transport.windows_observer import WindowsQueryObserver
 from plugins.symphony_pm.transport.windows_ownership import WindowsOwnershipGuard
 from plugins.symphony_pm.transport.windows_receiver import WindowsReceiver
-from tests.plugins.symphony_native_crash_support import admit_attempt
+from tests.plugins.symphony_native_crash_support import admit_attempt, decoy_protected
 from tests.plugins.symphony_serving_support import approve, rig
 from tests.waiting import wait_until
 
@@ -48,6 +48,7 @@ def _receiver(tmp_path):
     argv = [str(Path(sys.executable).resolve()), '-I', '-B', '-c',
             'import sys; sys.stdin.buffer.read(); sys.stdout.write("synthetic-only")']
     receiver = WindowsReceiver(WindowsApi(), ticket, argv, tmp_path, '', environment={},
+        protected=decoy_protected(tmp_path),
         command_result=lambda argv, code, **kw: SimpleNamespace(argv=argv, returncode=code, **kw),
         sanitize=lambda text: text, private_directory=capture,
         data_directory=Path(r.owner.journal.path).parents[1])

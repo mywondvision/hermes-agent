@@ -18,6 +18,7 @@ pytestmark = pytest.mark.platforms('windows')
 
 
 OWNER_PROCESS, WORKER_TOKEN = 0x5000, 0x7001  # fake handle values; no OS object stands behind either
+PROTECTED = (('file', 'fixture-protected'),)  # what `object_sddl` and `token_reads` answer for
 
 
 class FakeKernel(WindowsApi):
@@ -33,6 +34,8 @@ class FakeKernel(WindowsApi):
         # list `worker_token` was asked to build
         self.restricting, self.attempt = None, None
         self.process_protected = self.directory_protected = True
+        # per protected object: its DACL carries the worker-class deny, and the worker token is refused read
+        self.class_deny, self.worker_reads, self.privileges = True, False, 0
 
     def fn(self, name, _args, _result):
         def call(*values):
@@ -77,6 +80,18 @@ class FakeKernel(WindowsApi):
     def protect_directory(self, directory):
         self.calls.append(('protect_directory', (directory,)))
         return self.directory_protected
+
+    def object_sddl(self, kind, target):
+        self.calls.append(('object_sddl', (kind, target)))
+        deny = f'(D;;0x1200a9;;;{windows_token.WORKER_CLASS_SID})' if self.class_deny else ''
+        return 'O:BAG:BAD:'+deny+'(A;;FA;;;BA)'
+
+    def token_reads(self, token, kind, target):
+        self.calls.append(('token_reads', (token, kind, target)))
+        return self.worker_reads
+
+    def privilege_count(self, _process):
+        return self.privileges
 
     def of(self, name):
         return [values for called, values in self.calls if called == name]
@@ -201,7 +216,7 @@ def _receiver(api, tmp_path):
     ticket = LaunchTicket('fixture', 'project', 'job', '0'*64, 'attempt-'+uuid.uuid4().hex,
                           '0'*64, 'permit', plan, 'session')
     return ticket, lambda: WindowsReceiver(
-        api, ticket, ['fixture'], tmp_path, '', environment={},
+        api, ticket, ['fixture'], tmp_path, '', environment={}, protected=PROTECTED,
         command_result=lambda *args, **kw: SimpleNamespace(), sanitize=lambda text: text,
         private_directory=tmp_path, data_directory=tmp_path/'plugin-data')
 

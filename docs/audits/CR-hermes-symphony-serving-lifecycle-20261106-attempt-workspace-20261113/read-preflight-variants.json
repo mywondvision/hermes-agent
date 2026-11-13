@@ -1,0 +1,34 @@
+{
+ "current(att,Everyone,Users,AU,RESTRICTED)": {
+  "secret: Claude credentials": "R",
+  "secret: another copy .env": "R",
+  "this worktree file": "R",
+  "interpreter": "R",
+  "system dll": "R",
+  "HKCU Environment (user env vars)": "R"
+ },
+ "drop AU": {
+  "secret: Claude credentials": "R",
+  "secret: another copy .env": "R",
+  "this worktree file": "R",
+  "interpreter": "R",
+  "system dll": "R",
+  "HKCU Environment (user env vars)": "R"
+ },
+ "drop AU+Users": {
+  "secret: Claude credentials": "-",
+  "secret: another copy .env": "-",
+  "this worktree file": "-",
+  "interpreter": "-",
+  "system dll": "-",
+  "HKCU Environment (user env vars)": "R"
+ },
+ "att+RESTRICTED only": {
+  "secret: Claude credentials": "-",
+  "secret: another copy .env": "-",
+  "this worktree file": "-",
+  "interpreter": "-",
+  "system dll": "-",
+  "HKCU Environment (user env vars)": "R"
+ }
+}

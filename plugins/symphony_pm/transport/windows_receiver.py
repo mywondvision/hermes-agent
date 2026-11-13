@@ -1,6 +1,7 @@
 """Exact owned native handles; no terminate-handle recovery or retry route."""
 from ctypes import wintypes as W
 import os
+import re
 import tempfile
 import threading
 import time
@@ -9,8 +10,17 @@ from .types import NativeBinding, ProcessIdentity, Refused, finite, job_object_n
 from .windows_api import WindowsApi
 
 
+_SECRET_NAME = re.compile(r'KEY|TOKEN|SECRET|PASS|CREDENTIAL|AUTH|COOKIE|SESSION', re.IGNORECASE)
+
+
+def require_plain_environment(environment):
+    """The worker's environment is explicit; a name that looks like it carries a secret is refused."""
+    if any(_SECRET_NAME.search(name) for name in environment):
+        raise Refused('WORKER_ENVIRONMENT_SECRET')
+
+
 class WindowsReceiver:
-    def __init__(self, api, ticket, argv, cwd, stdin_text, *, environment,
+    def __init__(self, api, ticket, argv, cwd, stdin_text, *, environment, protected,
                  command_result, sanitize, private_directory, data_directory):
         self.api, self.ticket = api, ticket
         self.command_result, self.sanitize = command_result, sanitize
@@ -18,6 +28,7 @@ class WindowsReceiver:
         self.job = self.process = self.thread = self.job_id = None
         self.closed = self.resumed = self.spent = False
         self.files, self.argv = [], tuple(argv)
+        require_plain_environment(environment)
         try:
             # The owner's side of the boundary is settled before anything is created for the worker.
             api.guard_owner(data_directory)
@@ -31,6 +42,8 @@ class WindowsReceiver:
             # verify the boundary refuses here, and the claimed create slot stays spent.
             token = api.worker_token(ticket.attempt)
             try:
+                # What the worker must not read is checked with its own token before it exists.
+                api.require_read_boundary(token, protected)
                 self.process, self.thread, pid, _ = api.create_suspended(
                     argv, cwd, environment, self.files, self.job, token)
             finally:
@@ -145,12 +158,13 @@ class WindowsReceiver:
 
 
 class WindowsNativeProvider:
-    def __init__(self, *, validate_call, environment, command_result, sanitize, private_directory,
+    def __init__(self, *, validate_call, environment, protected, command_result, sanitize, private_directory,
                  data_directory):
-        # All inputs are host-owned objects bound to the qualified kit attempt.
+        # All inputs are host-owned objects bound to the qualified kit attempt. `protected` lists
+        # the (kind, target) objects a worker must not read; empty means no worker is started.
         self.validate_call = validate_call
         self.environment = dict(environment)
-        self.options = dict(command_result=command_result, sanitize=sanitize,
+        self.options = dict(protected=tuple(protected), command_result=command_result, sanitize=sanitize,
                             private_directory=private_directory, data_directory=data_directory)
         self.api = WindowsApi()
 

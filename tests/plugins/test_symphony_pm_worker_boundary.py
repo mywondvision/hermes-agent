@@ -225,3 +225,59 @@ def test_boundary_failure_in_the_serving_lifecycle_spends_the_slot_and_holds_the
         assert used['permit-'+other.request_id] == 0
     finally:
         r.owner.close(0)
+
+
+def test_worker_token_lists_the_worker_class_once_and_never_for_another_purpose():
+    listed = windows_token.restricting_sids('attempt-1')
+    assert listed.count(windows_token.WORKER_CLASS_SID) == 1
+    assert windows_token.WORKER_CLASS_SID != windows_token.attempt_sid('attempt-1')
+    assert windows_token.WORKER_CLASS_SID == windows_token.restricting_sids('attempt-2')[1]
+
+
+def test_worker_that_holds_any_privilege_is_refused(tmp_path):
+    # with the traverse-bypass privilege, a deny on a directory would not close what is below it
+    api = LaunchingKernel()
+    api.privileges = 1
+    ticket, build = _receiver(api, tmp_path)
+    with pytest.raises(Refused, match='WORKER_BOUNDARY_UNENFORCED'):
+        build()
+    assert api.of('ResumeThread') == [] and job_object_name(ticket) not in windows_api._JOBS
+
+
+@pytest.mark.parametrize('setup', [
+    lambda api: setattr(api, 'class_deny', False),  # the object lacks the worker-class deny entry
+    lambda api: setattr(api, 'worker_reads', True),  # the entry is there, yet the token would read
+], ids=['no-deny-entry', 'token-reads'])
+def test_unprotected_object_is_refused_before_any_worker_exists(tmp_path, setup):
+    api = LaunchingKernel()
+    setup(api)
+    ticket, build = _receiver(api, tmp_path)
+    with pytest.raises(Refused, match='READ_BOUNDARY_UNENFORCED'):
+        build()
+    assert api.created == [] and api.closed == [WORKER_TOKEN, 0x1001]
+    assert job_object_name(ticket) not in windows_api._JOBS
+
+
+def test_empty_protected_list_is_a_refusal_not_an_open_default(tmp_path):
+    from plugins.symphony_pm.transport.windows_receiver import WindowsReceiver
+    from types import SimpleNamespace
+    api = LaunchingKernel()
+    ticket, _ = _receiver(api, tmp_path)
+    with pytest.raises(Refused, match='READ_BOUNDARY_UNENFORCED'):
+        WindowsReceiver(api, ticket, ['fixture'], tmp_path, '', environment={}, protected=(),
+                        command_result=lambda *a, **k: SimpleNamespace(), sanitize=lambda text: text,
+                        private_directory=tmp_path, data_directory=tmp_path/'plugin-data')
+    assert api.created == []
+
+
+def test_secret_looking_environment_is_refused_before_the_owner_side_runs(tmp_path):
+    from plugins.symphony_pm.transport.windows_receiver import WindowsReceiver
+    from types import SimpleNamespace
+    api = LaunchingKernel()
+    ticket, _ = _receiver(api, tmp_path)
+    with pytest.raises(Refused, match='WORKER_ENVIRONMENT_SECRET'):
+        WindowsReceiver(api, ticket, ['fixture'], tmp_path, '', environment={'OPENAI_API_KEY': 'x'},
+                        protected=(('file', 'fixture-protected'),),
+                        command_result=lambda *a, **k: SimpleNamespace(), sanitize=lambda text: text,
+                        private_directory=tmp_path, data_directory=tmp_path/'plugin-data')
+    assert api.calls == []

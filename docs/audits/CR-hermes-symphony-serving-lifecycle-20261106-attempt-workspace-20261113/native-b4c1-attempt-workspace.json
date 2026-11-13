@@ -1,0 +1,264 @@
+{
+ "source": "0a46b77117ca21b3a7123afb8a650604fb7365ce",
+ "run": "7e591b6008e4",
+ "controls": {
+  "write": {
+   "primary_file": true,
+   "primary_git_config": true,
+   "neighbour_file": true,
+   "plugin_data": true
+  },
+  "list_neighbour": true,
+  "read_closed_canary": true,
+  "by_id_closed": true,
+  "by_id_open": true,
+  "key_closed": true,
+  "deny_present": true,
+  "hard_link": true
+ },
+ "workers": {
+  "A": {
+   "token": {
+    "integrity": 4096,
+    "privileges": 0,
+    "restricting_exact": true,
+    "write_up_forbidden": true
+   },
+   "returncode": 0,
+   "stdout": "P2-python: child-ok\r\nP2-git: \r\n",
+   "stderr": "Failed to find real location of D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\test-appdata\\uv\\python\\cpython-3.14.9-windows-x86_64-none\\python.exe\n",
+   "report": {
+    "steps": [
+     {
+      "seq": 1,
+      "name": "env",
+      "ok": true
+     },
+     {
+      "seq": 2,
+      "name": "p1-modify",
+      "ok": true
+     },
+     {
+      "seq": 3,
+      "name": "p1-create",
+      "ok": true
+     },
+     {
+      "seq": 4,
+      "name": "p1-delete",
+      "ok": true
+     },
+     {
+      "seq": 5,
+      "name": "p1-home",
+      "ok": true
+     },
+     {
+      "seq": 6,
+      "name": "p1-temp",
+      "ok": true
+     },
+     {
+      "seq": 7,
+      "name": "p2-python",
+      "ok": true,
+      "rc": 0
+     },
+     {
+      "seq": 8,
+      "name": "p2-git",
+      "ok": false,
+      "rc": 128
+     },
+     {
+      "seq": 9,
+      "name": "n1-primary_file",
+      "ok": false,
+      "winerror": null,
+      "errno": 13
+     },
+     {
+      "seq": 10,
+      "name": "n1-primary_git_config",
+      "ok": false,
+      "winerror": null,
+      "errno": 13
+     },
+     {
+      "seq": 11,
+      "name": "n1-neighbour_file",
+      "ok": false,
+      "winerror": null,
+      "errno": 13
+     },
+     {
+      "seq": 12,
+      "name": "n1-plugin_data",
+      "ok": false,
+      "winerror": null,
+      "errno": 13
+     },
+     {
+      "seq": 13,
+      "name": "n2-read-closed-canary",
+      "ok": false,
+      "winerror": null,
+      "errno": 13
+     },
+     {
+      "seq": 14,
+      "name": "n2-read-open-canary",
+      "sha256": "0d4b4627e825bd7a72f1093495f375a0051a9cd9a1019c6c967e9e5ab4898c1f",
+      "ok": true
+     },
+     {
+      "seq": 15,
+      "name": "n2-list-closed-root",
+      "ok": false,
+      "winerror": 5,
+      "errno": 13
+     },
+     {
+      "seq": 16,
+      "name": "n2-list-open-root",
+      "count": 1,
+      "ok": true
+     },
+     {
+      "seq": 17,
+      "name": "n2-key-closed",
+      "ok": false,
+      "winerror": 5,
+      "errno": 13
+     },
+     {
+      "seq": 18,
+      "name": "n2-key-open",
+      "sha256": "e48ea0877479c6daf3565d4e938f9a508c3fbd16b72fa8fe4877ad1af727072c",
+      "ok": true
+     },
+     {
+      "seq": 19,
+      "name": "n2-list-neighbour",
+      "ok": false,
+      "winerror": 5,
+      "errno": 13
+     },
+     {
+      "seq": 20,
+      "name": "n3-id-closed-canary",
+      "ok": true
+     },
+     {
+      "seq": 21,
+      "name": "n3-id-open-canary",
+      "ok": true
+     },
+     {
+      "seq": 22,
+      "name": "n4-link-closed-canary",
+      "ok": false,
+      "winerror": 5,
+      "errno": 13
+     },
+     {
+      "seq": 23,
+      "name": "n4-link-open-canary",
+      "ok": false,
+      "winerror": 5,
+      "errno": 13
+     }
+    ]
+   }
+  },
+  "B": {
+   "token": {
+    "integrity": 4096,
+    "privileges": 0,
+    "restricting_exact": true,
+    "write_up_forbidden": true
+   },
+   "returncode": 0,
+   "stdout": "",
+   "stderr": "Failed to find real location of D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\test-appdata\\uv\\python\\cpython-3.14.9-windows-x86_64-none\\python.exe\n",
+   "report": {
+    "steps": [
+     {
+      "seq": 1,
+      "name": "env",
+      "ok": true
+     },
+     {
+      "seq": 2,
+      "name": "b-junction",
+      "ok": false,
+      "winerror": 5,
+      "errno": 13
+     },
+     {
+      "seq": 3,
+      "name": "b-read-through",
+      "ok": false,
+      "winerror": null,
+      "errno": 2
+     },
+     {
+      "seq": 4,
+      "name": "b-junction-open",
+      "ok": false,
+      "winerror": 5,
+      "errno": 13
+     },
+     {
+      "seq": 5,
+      "name": "b-read-through-open",
+      "ok": false,
+      "winerror": null,
+      "errno": 2
+     }
+    ]
+   }
+  },
+  "C": {
+   "token": {
+    "integrity": 4096,
+    "privileges": 0,
+    "restricting_exact": true,
+    "write_up_forbidden": true
+   },
+   "returncode": 3,
+   "stdout": "",
+   "stderr": "Failed to find real location of D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\test-appdata\\uv\\python\\cpython-3.14.9-windows-x86_64-none\\python.exe\n",
+   "report": {
+    "steps": [
+     {
+      "seq": 1,
+      "name": "env",
+      "ok": true
+     },
+     {
+      "seq": 2,
+      "name": "c-hook",
+      "ok": true
+     },
+     {
+      "seq": 3,
+      "name": "c-edit",
+      "ok": true
+     }
+    ]
+   }
+  }
+ },
+ "captures": {},
+ "export_seconds": 132.9,
+ "restore": {
+  "sddl_restored": {
+   "file:D:\\AI\\tmp\\sb4c1-20261114-003914\\test-temp\\hermes-pytest\\r-8d095fj6\\pytest-of-unknown\\pytest-0\\test_attempt_workspace_on_deco0\\decoy-closed": true,
+   "key:CURRENT_USER\\Software\\SymphonySmoke-7e591b6008e4\\Closed": true
+  },
+  "keys_removed": true
+ },
+ "primary_status_unchanged": true
+}
