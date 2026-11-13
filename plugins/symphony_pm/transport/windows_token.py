@@ -14,6 +14,7 @@ LOW, MEDIUM = 0x1000, 0x2000  # mandatory integrity RIDs
 _TOKEN_QUERY = 0x0008
 _TOKEN_SOURCE = 0x0001 | 0x0002 | 0x0008 | 0x0080  # ASSIGN_PRIMARY | DUPLICATE | QUERY | ADJUST_DEFAULT
 _DISABLE_MAX_PRIVILEGE, _INTEGRITY_LEVEL, _SE_GROUP_INTEGRITY = 0x1, 25, 0x20
+_MANDATORY_POLICY, _NO_WRITE_UP = 27, 0x1  # TokenMandatoryPolicy, TOKEN_MANDATORY_POLICY_NO_WRITE_UP
 
 
 class SidAndAttributes(C.Structure):
@@ -57,6 +58,18 @@ class TokenBoundary:
         finally:
             self.close(token)
 
+    def mandatory_policy(self, process):
+        """The mandatory policy bits of a process's primary token."""
+        token = self._process_token(process, _TOKEN_QUERY)
+        try:
+            policy, size = W.DWORD(), W.DWORD()
+            self.checked(self.adv('GetTokenInformation',
+                [W.HANDLE, C.c_int, C.c_void_p, W.DWORD, C.POINTER(W.DWORD)], W.BOOL)(
+                token, _MANDATORY_POLICY, C.byref(policy), C.sizeof(policy), C.byref(size)))
+            return policy.value
+        finally:
+            self.close(token)
+
     def worker_token(self):
         """A low-integrity copy of this process's token with every removable privilege dropped.
 
@@ -88,10 +101,9 @@ class TokenBoundary:
         return token.value
 
     def require_boundary(self, process):
-        """Refuse unless the still-suspended worker is low and this process is exactly medium.
+        """Refuse unless the still-suspended worker is low and its token forbids writing up.
 
-        An elevated owner is refused too: dropping privileges leaves its administrator group
-        enabled in the worker's token, which this boundary does not remove.
+        The owner's side of the boundary is `guard_owner`, which runs before any worker exists.
         """
-        if self.integrity(process) != LOW or self.integrity(self._current_process()) != MEDIUM:
+        if self.integrity(process) != LOW or not self.mandatory_policy(process) & _NO_WRITE_UP:
             raise Refused('WORKER_BOUNDARY_UNENFORCED')

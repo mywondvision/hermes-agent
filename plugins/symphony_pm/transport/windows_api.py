@@ -6,6 +6,7 @@ import subprocess
 import threading
 
 from .types import Refused
+from .windows_labels import LabelBoundary
 from .windows_token import TokenBoundary
 from hermes_platform.host.facts import os_family
 
@@ -57,8 +58,11 @@ class ProcessInformation(C.Structure):
     _fields_ = [('hProcess', W.HANDLE), ('hThread', W.HANDLE), ('dwProcessId', W.DWORD), ('dwThreadId', W.DWORD)]
 
 
-class WindowsApi(TokenBoundary):
+class WindowsApi(TokenBoundary, LabelBoundary):
     A = None  # advapi32, loaded on first token call
+    # Upper bounds on one worker tree. They fit the synthetic worker; what a real driver needs is
+    # not measured, and a tree that exceeds them is stopped by the kernel rather than let through.
+    process_limit, memory_limit = 64, 4 << 30
 
     def __init__(self):
         if os_family() != 'win32':
@@ -115,7 +119,10 @@ class WindowsApi(TokenBoundary):
             job = self.checked(self.fn('CreateJobObjectW', [C.c_void_p, W.LPCWSTR], W.HANDLE)(None, None))
             try:
                 limits = ExtendedLimit()
-                limits.Basic.Flags = 0x2000
+                # KILL_ON_JOB_CLOSE | ACTIVE_PROCESS | JOB_MEMORY. UI restrictions are deliberately
+                # absent: a Job that sets them cannot nest, and the owner may itself run inside a Job.
+                limits.Basic.Flags, limits.Basic.ActiveLimit = 0x2000 | 0x8 | 0x200, self.process_limit
+                limits.JobMemory = self.memory_limit
                 self.checked(self.fn('SetInformationJobObject', [W.HANDLE, C.c_int, C.c_void_p, W.DWORD], W.BOOL)(
                     job, 9, C.byref(limits), C.sizeof(limits)))
             except BaseException:
@@ -198,11 +205,14 @@ class WindowsApi(TokenBoundary):
             arguments = (argv[0], C.create_unicode_buffer(subprocess.list2cmdline(argv)), None, None, True,
                          _CREATE_FLAGS, C.create_unicode_buffer(block+'\0'), str(cwd), C.byref(startup),
                          C.byref(info))
-            if token is None:
-                self.checked(self.fn('CreateProcessW', signature, W.BOOL)(*arguments))
-            else:
-                self.checked(self.adv('CreateProcessAsUserW', [W.HANDLE, *signature], W.BOOL)(token, *arguments))
+            self._spawn(token, signature, arguments)
         return info.hProcess, info.hThread, info.dwProcessId, info.dwThreadId
+
+    def _spawn(self, token, signature, arguments):
+        """Production creates a process only with an explicit primary token, never the caller's own."""
+        if token is None:
+            raise Refused('WORKER_TOKEN_REQUIRED')
+        self.checked(self.adv('CreateProcessAsUserW', [W.HANDLE, *signature], W.BOOL)(token, *arguments))
 
     def _discard(self, created):
         """Terminate and close exactly this just-created, still-suspended process."""
@@ -221,8 +231,8 @@ class WindowsApi(TokenBoundary):
     def create_suspended(self, argv, cwd, env, streams, job, token):
         """The root is born inside `job`: no window exists between creation and Job membership.
 
-        `token` is the primary token the root is born with. None keeps the caller's own, which is
-        only right for a process that is itself an owner; a worker always gets `worker_token()`.
+        `token` is the primary token the root is born with; a worker always gets `worker_token()`.
+        There is no route here to the caller's own token.
         """
         import _winapi
         import msvcrt

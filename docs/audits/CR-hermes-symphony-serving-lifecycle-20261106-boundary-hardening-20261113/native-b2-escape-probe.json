@@ -1,0 +1,27 @@
+{
+  "escaped_worker_job": true,
+  "neighbour_integrity": 4096,
+  "attempt": {
+    "opened": {
+      "inject": true,
+      "create_process": true
+    },
+    "errors": {},
+    "child": {
+      "created": true,
+      "pid": 7248
+    }
+  },
+  "child": {
+    "in_worker_job": false,
+    "in_neighbour_job": true,
+    "integrity": 4096
+  },
+  "worker": {
+    "returncode": 0,
+    "timed_out": false
+  },
+  "neighbour_stopped": true,
+  "child_stopped": true,
+  "cleanup_failures": []
+}

@@ -40,7 +40,7 @@ receipt = {'argv':argv,'scope':'one targeted no-model contract campaign; no nati
            'model':False,'microphone':False,'native_worker':False}
 with (OUT/'contract-campaign.log').open('w',encoding='utf-8') as log:
     try:
-        process = subprocess.run(argv,cwd=ROOT,env=env,stdout=log,stderr=subprocess.STDOUT,timeout=600)
+        process = subprocess.run(argv,cwd=ROOT,env=env,stdout=log,stderr=subprocess.STDOUT,timeout=600,check=False)
         receipt.update(exit=process.returncode,outcome='FINISHED')
     except subprocess.TimeoutExpired:
         receipt.update(exit=None,outcome='TIMEOUT',child_quiescence='UNKNOWN; do not retry')

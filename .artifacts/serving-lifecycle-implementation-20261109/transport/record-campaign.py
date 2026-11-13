@@ -1,5 +1,5 @@
 """Record completed evidence only; never starts tests, runtime or native processes."""
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 import hashlib
 import json
 from pathlib import Path
@@ -26,7 +26,7 @@ for path in plan['files']:
     per_file.append({'path': path, 'passed': int(row[1]), 'seconds': float(row[2])})
 valid = result['exit'] == 0 and files == len(plan['files']) and failed == 0 and not mismatches
 proof = {
-    'utc': datetime.now(timezone.utc).isoformat(),
+    'utc': datetime.now(UTC).isoformat(),
     'status': 'FIXTURE_CONTRACT_PASS_NATIVE_HOLD' if valid else 'HOLD',
     'head': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip(),
     'files': files, 'passed': passed, 'failed': failed,

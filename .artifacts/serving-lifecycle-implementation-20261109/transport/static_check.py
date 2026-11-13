@@ -37,10 +37,10 @@ for path in paths:
     rows.append({'path': path.relative_to(ROOT).as_posix(), 'sha256': hashlib.sha256(raw).hexdigest(),
                  'syntax': 'VALID', 'lines': len(source.splitlines()), 'functions': units,
                  'test_functions': sum(node.name.startswith('test_') for node in functions)})
-global_diff = subprocess.run(['git', 'diff', '--check'], cwd=ROOT, capture_output=True, text=True)
+global_diff = subprocess.run(['git', 'diff', '--check'], cwd=ROOT, capture_output=True, text=True, check=False)
 (OUT/'worktree-diff-check.txt').write_text(global_diff.stdout+global_diff.stderr, encoding='utf-8')
 diff = subprocess.run(['git', 'diff', '--check', '--', *[str(p.relative_to(ROOT)) for p in paths]],
-                      cwd=ROOT, capture_output=True, text=True)
+                      cwd=ROOT, capture_output=True, text=True, check=False)
 if diff.returncode:
     raise SystemExit(diff.stdout+diff.stderr)
 old = json.loads((OUT.parent/'code/syntax-and-source-manifest.json').read_text(encoding='utf-8'))

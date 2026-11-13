@@ -25,11 +25,12 @@ class WindowsNativeFactory:
     def __call__(self, scope):
         if canonical_home(scope.profile_home) != self.profile_home or scope.namespace != self.namespace:
             raise Refused('NATIVE_PROFILE_BINDING')
-        directory = Path(scope.profile_home)/'plugin-data'/'symphony_pm'/digest(scope.namespace)[:32]/'capture'
+        data = Path(scope.profile_home)/'plugin-data'/'symphony_pm'
+        directory = data/digest(scope.namespace)[:32]/'capture'
         make_user_dir(directory, mode=0o700, parents=True, exist_ok=True)
         return WindowsNativeProvider(validate_call=self.launcher.validate_call,
             environment=self.environment, command_result=self.command_result,
-            sanitize=self.sanitize, private_directory=directory)
+            sanitize=self.sanitize, private_directory=directory, data_directory=data)
 
 
 def windows_transport(*, profile_home, namespace, launcher, environment, command_result, sanitize,

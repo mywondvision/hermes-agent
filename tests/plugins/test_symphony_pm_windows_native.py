@@ -47,7 +47,8 @@ def _receiver(tmp_path):
             'import sys; sys.stdin.buffer.read(); sys.stdout.write("synthetic-only")']
     receiver = WindowsReceiver(WindowsApi(), ticket, argv, tmp_path, '', environment={},
         command_result=lambda argv, code, **kw: SimpleNamespace(argv=argv, returncode=code, **kw),
-        sanitize=lambda text: text, private_directory=capture)
+        sanitize=lambda text: text, private_directory=capture,
+        data_directory=Path(r.owner.journal.path).parents[1])
     return r, receiver, argv
 
 

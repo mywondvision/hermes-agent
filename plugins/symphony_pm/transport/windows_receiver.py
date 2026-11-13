@@ -11,7 +11,7 @@ from .windows_api import WindowsApi
 
 class WindowsReceiver:
     def __init__(self, api, ticket, argv, cwd, stdin_text, *, environment,
-                 command_result, sanitize, private_directory):
+                 command_result, sanitize, private_directory, data_directory):
         self.api, self.ticket = api, ticket
         self.command_result, self.sanitize = command_result, sanitize
         self.lock = threading.RLock()
@@ -19,6 +19,8 @@ class WindowsReceiver:
         self.closed = self.resumed = self.spent = False
         self.files, self.argv = [], tuple(argv)
         try:
+            # The owner's side of the boundary is settled before anything is created for the worker.
+            api.guard_owner(data_directory)
             for _ in range(3):
                 self.files.append(tempfile.TemporaryFile(dir=private_directory))
             self.files[0].write((stdin_text or '').encode('utf-8'))
@@ -143,11 +145,13 @@ class WindowsReceiver:
 
 
 class WindowsNativeProvider:
-    def __init__(self, *, validate_call, environment, command_result, sanitize, private_directory):
+    def __init__(self, *, validate_call, environment, command_result, sanitize, private_directory,
+                 data_directory):
         # All inputs are host-owned objects bound to the qualified kit attempt.
         self.validate_call = validate_call
         self.environment = dict(environment)
-        self.options = dict(command_result=command_result, sanitize=sanitize, private_directory=private_directory)
+        self.options = dict(command_result=command_result, sanitize=sanitize,
+                            private_directory=private_directory, data_directory=data_directory)
         self.api = WindowsApi()
 
     def validate_driver_call(self, ticket, argv, cwd, timeout, stdin_text):

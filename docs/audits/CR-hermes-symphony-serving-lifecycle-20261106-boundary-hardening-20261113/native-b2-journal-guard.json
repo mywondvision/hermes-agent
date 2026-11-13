@@ -1,0 +1,82 @@
+{
+  "attempts": {
+    "files": {
+      "d:\\ai\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\serving-windows-20261111\\native-pass-boundary-hardening-b2\\test-temp\\hermes-pytest\\r-p7c0o3oa\\pytest-of-unknown\\pytest-0\\test_low_integrity_worker_cann0\\profile\\plugin-data\\symphony_pm\\b1fb38160dff6e754b91af5adfb0c1e0\\journal.sqlite3": {
+        "read": {
+          "done": false,
+          "winerror": 5
+        },
+        "lock": {
+          "done": false,
+          "winerror": 5
+        },
+        "overwrite": {
+          "done": false,
+          "winerror": 5
+        },
+        "rename": {
+          "done": false,
+          "winerror": 5
+        },
+        "delete": {
+          "done": false,
+          "winerror": 5
+        }
+      },
+      "d:\\ai\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\serving-windows-20261111\\native-pass-boundary-hardening-b2\\test-temp\\hermes-pytest\\r-p7c0o3oa\\pytest-of-unknown\\pytest-0\\test_low_integrity_worker_cann0\\profile\\plugin-data\\symphony_pm\\b1fb38160dff6e754b91af5adfb0c1e0\\owner.lock": {
+        "read": {
+          "done": false,
+          "winerror": 5
+        },
+        "lock": {
+          "done": false,
+          "winerror": 5
+        },
+        "overwrite": {
+          "done": false,
+          "winerror": 5
+        },
+        "rename": {
+          "done": false,
+          "winerror": 5
+        },
+        "delete": {
+          "done": false,
+          "winerror": 5
+        }
+      }
+    },
+    "listing": {
+      "d:\\ai\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\serving-windows-20261111\\native-pass-boundary-hardening-b2\\test-temp\\hermes-pytest\\r-p7c0o3oa\\pytest-of-unknown\\pytest-0\\test_low_integrity_worker_cann0\\profile\\plugin-data\\symphony_pm": {
+        "done": false,
+        "winerror": 5
+      },
+      "d:\\ai\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\serving-windows-20261111\\native-pass-boundary-hardening-b2\\test-temp\\hermes-pytest\\r-p7c0o3oa\\pytest-of-unknown\\pytest-0\\test_low_integrity_worker_cann0\\profile\\plugin-data\\symphony_pm\\b1fb38160dff6e754b91af5adfb0c1e0": {
+        "done": false,
+        "winerror": 5
+      }
+    }
+  },
+  "labels": {
+    "d:\\ai\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\serving-windows-20261111\\native-pass-boundary-hardening-b2\\test-temp\\hermes-pytest\\r-p7c0o3oa\\pytest-of-unknown\\pytest-0\\test_low_integrity_worker_cann0\\profile\\plugin-data\\symphony_pm": [
+      8192,
+      3
+    ],
+    "d:\\ai\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\serving-windows-20261111\\native-pass-boundary-hardening-b2\\test-temp\\hermes-pytest\\r-p7c0o3oa\\pytest-of-unknown\\pytest-0\\test_low_integrity_worker_cann0\\profile\\plugin-data\\symphony_pm\\b1fb38160dff6e754b91af5adfb0c1e0": [
+      8192,
+      3
+    ],
+    "d:\\ai\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\serving-windows-20261111\\native-pass-boundary-hardening-b2\\test-temp\\hermes-pytest\\r-p7c0o3oa\\pytest-of-unknown\\pytest-0\\test_low_integrity_worker_cann0\\profile\\plugin-data\\symphony_pm\\b1fb38160dff6e754b91af5adfb0c1e0\\journal.sqlite3": [
+      8192,
+      3
+    ],
+    "d:\\ai\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\serving-windows-20261111\\native-pass-boundary-hardening-b2\\test-temp\\hermes-pytest\\r-p7c0o3oa\\pytest-of-unknown\\pytest-0\\test_low_integrity_worker_cann0\\profile\\plugin-data\\symphony_pm\\b1fb38160dff6e754b91af5adfb0c1e0\\owner.lock": [
+      8192,
+      3
+    ]
+  },
+  "worker": {
+    "returncode": 0,
+    "timed_out": false
+  }
+}

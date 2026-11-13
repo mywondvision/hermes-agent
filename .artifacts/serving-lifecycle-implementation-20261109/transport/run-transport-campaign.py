@@ -38,7 +38,7 @@ receipt = {'argv': argv, 'attempt': 1, 'native_worker': False, 'model': False,
 started = time.monotonic()
 with (OUT/'campaign.log').open('x', encoding='utf-8') as log:
     try:
-        completed = subprocess.run(argv, cwd=ROOT, env=env, stdout=log, stderr=subprocess.STDOUT,
+        completed = subprocess.run(argv, cwd=ROOT, env=env, stdout=log, stderr=subprocess.STDOUT, check=False,
                                    timeout=PLAN['max_seconds'])
         receipt.update(exit=completed.returncode, outcome='FINISHED')
     except subprocess.TimeoutExpired:

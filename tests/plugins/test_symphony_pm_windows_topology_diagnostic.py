@@ -136,7 +136,7 @@ def test_capture_exact_job_topology_without_cancel_or_crash(tmp_path):
         receiver = WindowsReceiver(api, ticket, argv, tmp_path, '', environment={
             k: v for k, v in os.environ.items() if k.upper() in {'SYSTEMROOT', 'WINDIR'}},
             command_result=lambda *args, **kw: SimpleNamespace(), sanitize=lambda value: value,
-            private_directory=capture)
+            private_directory=capture, data_directory=capture)
         report['binding'] = {'job': receiver.binding.job_object, 'pid': receiver.binding.root.pid,
                              'creation': receiver.binding.root.creation}
         root = receiver.binding.root

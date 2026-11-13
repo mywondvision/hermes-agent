@@ -85,23 +85,70 @@ def test_worker_at_the_owners_integrity_is_refused_and_everything_is_released(tm
     assert api.of('ResumeThread') == []
 
 
-def test_low_integrity_owner_gives_the_worker_no_boundary(tmp_path):
-    api = LaunchingKernel(worker_integrity=LOW, owner_integrity=LOW)
+def _refused_before_any_worker(api, tmp_path):
     ticket, build = _receiver(api, tmp_path)
     with pytest.raises(Refused, match='WORKER_BOUNDARY_UNENFORCED'):
         build()
+    # the owner's side fails before a Job, a token or a process exists for the worker
+    assert api.created == [] and api.closed == [] and api.of('worker_token') == []
+    assert api.of('CreateJobObjectW') == [] and job_object_name(ticket) not in windows_api._JOBS
+
+
+@pytest.mark.parametrize('owner_integrity', [LOW, HIGH])
+def test_owner_that_is_not_exactly_medium_is_refused_before_any_worker_exists(tmp_path, owner_integrity):
+    # a low owner gives no boundary; an elevated one would leave the administrator group in the worker
+    _refused_before_any_worker(LaunchingKernel(owner_integrity=owner_integrity), tmp_path)
+
+
+def test_owner_process_that_cannot_be_labelled_is_refused_before_any_worker_exists(tmp_path):
+    api = LaunchingKernel()
+    api.process_protected = False
+    _refused_before_any_worker(api, tmp_path)
+    assert api.of('protect_directory') == []
+
+
+def test_operating_system_error_while_labelling_is_a_refusal_not_a_crash(tmp_path):
+    api = LaunchingKernel()
+    api.process_protected = OSError('fixture: label cannot be set')
+    _refused_before_any_worker(api, tmp_path)
+
+
+def test_plugin_data_that_cannot_be_labelled_is_refused_before_any_worker_exists(tmp_path):
+    api = LaunchingKernel()
+    api.directory_protected = False
+    _refused_before_any_worker(api, tmp_path)
+    assert api.of('protect_directory') == [(tmp_path/'plugin-data',)]
+
+
+def test_low_worker_whose_token_forbids_writing_up_passes_the_boundary():
+    LaunchingKernel(worker_integrity=LOW).require_boundary(WORKER_PROCESS)
+
+
+def test_low_worker_whose_token_allows_writing_up_is_refused(tmp_path):
+    api = LaunchingKernel()
+    api.policies[WORKER_PROCESS] = 0x2  # new-process-min only: integrity alone would not stop a write
+    _, build = _receiver(api, tmp_path)
+    with pytest.raises(Refused, match='WORKER_BOUNDARY_UNENFORCED'):
+        build()
     assert sorted(api.closed) == sorted([WORKER_TOKEN, 0x1001, WORKER_THREAD, WORKER_PROCESS])
-    assert job_object_name(ticket) not in windows_api._JOBS
     assert api.of('ResumeThread') == []
 
 
-def test_low_worker_below_a_medium_owner_passes_the_boundary():
-    LaunchingKernel(worker_integrity=LOW, owner_integrity=MEDIUM).require_boundary(WORKER_PROCESS)
+def test_production_job_bounds_the_process_count_and_memory_of_one_worker_tree():
+    api = LaunchingKernel()
+    api.create_job('fixture-limits')
+    try:
+        (_, kind, limits, _), = api.of('SetInformationJobObject')
+        basic = limits._obj.Basic
+        assert kind == 9 and basic.Flags & 0x2000 and basic.Flags & 0x8 and basic.Flags & 0x200
+        assert basic.ActiveLimit == api.process_limit > 0 and limits._obj.JobMemory == api.memory_limit > 0
+    finally:
+        api.close_job('fixture-limits')
 
 
-def test_elevated_owner_is_refused_because_its_worker_would_keep_the_administrator_group():
-    with pytest.raises(Refused, match='WORKER_BOUNDARY_UNENFORCED'):
-        LaunchingKernel(worker_integrity=LOW, owner_integrity=HIGH).require_boundary(WORKER_PROCESS)
+def test_production_never_creates_a_process_with_the_callers_own_token():
+    with pytest.raises(Refused, match='WORKER_TOKEN_REQUIRED'):
+        windows_api.WindowsApi._spawn(LaunchingKernel(), None, [], ())
 
 
 def test_boundary_failure_in_the_serving_lifecycle_spends_the_slot_and_holds_the_namespace(

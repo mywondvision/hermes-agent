@@ -22,7 +22,7 @@ from hermes_dir_acl import make_user_dir
 from hermes_platform.resolver import locate_command
 from plugins.symphony_pm.transport.lifecycle import LifecycleOwner
 from plugins.symphony_pm.transport.types import NativeBinding, ProcessIdentity, Refused
-from plugins.symphony_pm.transport.windows_api import Accounting, ExtendedLimit, WindowsApi
+from plugins.symphony_pm.transport.windows_api import Accounting, WindowsApi
 from plugins.symphony_pm.transport.windows_observer import WindowsQueryObserver
 from plugins.symphony_pm.transport.windows_ownership import WindowsOwnershipGuard
 from plugins.symphony_pm.transport.windows_receiver import WindowsNativeProvider
@@ -110,21 +110,18 @@ WORKER_WITH_DESCENDANT = ('from pathlib import Path; import subprocess,sys,threa
 
 
 class BoundedApi(WindowsApi):
+    """The production Job with a test-sized process limit, plus the one thing production refuses:
+    a test-owned owner process (token None) is created with this test's own token."""
+
     def __init__(self, limit=2):
         super().__init__()
-        self.limit = limit
+        self.process_limit = limit
 
-    def create_job(self, job_id):
-        job = super().create_job(job_id)
-        try:
-            limits = ExtendedLimit()
-            limits.Basic.Flags, limits.Basic.ActiveLimit = 0x2000 | 0x8, self.limit
-            self.checked(self.fn('SetInformationJobObject',
-                [W.HANDLE, C.c_int, C.c_void_p, W.DWORD], W.BOOL)(job, 9, C.byref(limits), C.sizeof(limits)))
-            return job
-        except BaseException:
-            self.close_job(job_id)
-            raise
+    def _spawn(self, token, signature, arguments):
+        if token is None:
+            self.checked(self.fn('CreateProcessW', signature, W.BOOL)(*arguments))
+        else:
+            super()._spawn(token, signature, arguments)
 
 
 def capture_members(api, job, *, active_count, required_pids, handles, name):
@@ -199,7 +196,8 @@ class NativeRig:
         self.native = WindowsNativeProvider(validate_call=self.validate,
             environment={k: v for k, v in os.environ.items() if k.upper() in {'SYSTEMROOT', 'WINDIR'}},
             command_result=lambda argv, code, **kw: SimpleNamespace(argv=argv, returncode=code, **kw),
-            sanitize=lambda text: text, private_directory=capture)
+            sanitize=lambda text: text, private_directory=capture,
+            data_directory=Path(home)/'plugin-data'/'symphony_pm')
         self.native.api = BoundedApi(self.members)
         self.query_handles, self.roster, self.closed = {}, None, False
         self.creates = 0

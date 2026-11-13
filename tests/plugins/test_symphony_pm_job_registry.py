@@ -28,6 +28,8 @@ class FakeKernel(WindowsApi):
         # process handle -> mandatory integrity RID (the owner is a medium-integrity user process);
         # a handle a test never listed raises KeyError instead of silently passing the boundary
         self.integrities = {OWNER_PROCESS: 0x2000}
+        self.policies = {}  # process handle -> token mandatory policy; unlisted means no-write-up
+        self.process_protected = self.directory_protected = True
 
     def fn(self, name, _args, _result):
         def call(*values):
@@ -55,6 +57,19 @@ class FakeKernel(WindowsApi):
 
     def integrity(self, process):
         return self.integrities[process]
+
+    def mandatory_policy(self, process):
+        return self.policies.get(process, 0x1)
+
+    def protect_process(self):
+        self.calls.append(('protect_process', ()))
+        if isinstance(self.process_protected, BaseException):
+            raise self.process_protected
+        return self.process_protected
+
+    def protect_directory(self, directory):
+        self.calls.append(('protect_directory', (directory,)))
+        return self.directory_protected
 
     def of(self, name):
         return [values for called, values in self.calls if called == name]
@@ -102,7 +117,8 @@ def test_create_passes_no_kernel_name_and_registers_the_handle():
         assert api.of('CreateJobObjectW') == [(None, None)]
         assert [values[1] for values in api.of('SetInformationJobObject')] == [9]
         limits = api.of('SetInformationJobObject')[0][2]._obj
-        assert limits.Basic.Flags == 0x2000  # kill-on-close and nothing else: no breakaway is granted
+        # kill-on-close plus the process and memory bounds, and no breakaway bit (0x800, 0x1000)
+        assert limits.Basic.Flags == 0x2000 | 0x8 | 0x200 and not limits.Basic.Flags & 0x1800
         assert windows_api._JOBS[job_id] == job
     finally:
         api.close_job(job_id)
@@ -180,7 +196,7 @@ def _receiver(api, tmp_path):
     return ticket, lambda: WindowsReceiver(
         api, ticket, ['fixture'], tmp_path, '', environment={},
         command_result=lambda *args, **kw: SimpleNamespace(), sanitize=lambda text: text,
-        private_directory=tmp_path)
+        private_directory=tmp_path, data_directory=tmp_path/'plugin-data')
 
 
 def test_receiver_that_fails_after_create_releases_its_registered_job(tmp_path):
