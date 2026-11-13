@@ -1,0 +1,192 @@
+{
+ "schemaVersion": 1,
+ "crId": "CR-hermes-symphony-serving-lifecycle-20261106-boundary-hardening-20261113",
+ "reviewedRevision": {
+  "exact": "sha256:dd5472d0b2c3510fbaf2a459c9c057302099b141859cc83df7d7c41020764c4b",
+  "normalized": "sha256:a4cbd3629ed2cd2bb92323be6dcbf7039615ab9d9c1c6e32a6715a195e5fa822"
+ },
+ "verdict": "PASS",
+ "reviewer": {
+  "mode": "isolated-subagent",
+  "contextId": "hygiene-reviewer-20261113-boundary-hardening-r1",
+  "role": "context-hygiene-reviewer",
+  "runtime": "claude-code-subagent"
+ },
+ "preparer": {
+  "contextId": "preparer-boundary-hardening-20261113"
+ },
+ "inputs": [
+  "context-pack",
+  "candidate-cr",
+  "owner-directives",
+  "verified-evidence",
+  "prefilter"
+ ],
+ "protectedFacts": [
+  {
+   "id": "owner-n2-not-defence",
+   "textHash": "sha256:8eb126b724698362ec9abe78ff2994a4a8c5357f8d3dc3c4fc2a5f366db43019",
+   "outcome": "preserved",
+   "note": "Дословно, строка 12 CR. Согласуется с A6 (строки 90-93): успех приёма записывается как находка, а не как пройденная защита."
+  },
+  {
+   "id": "owner-hold",
+   "textHash": "sha256:ef9b11ef56ebe933aba8d40e8652dbfab2cbd0efd6e207f454201937da1eca47",
+   "outcome": "preserved",
+   "note": "Дословно, строка 13 CR. Out of scope (строки 69-70) не ослабляет: настоящий driver, cancel и stop исключены."
+  },
+  {
+   "id": "owner-no-default-risk",
+   "textHash": "sha256:f0ee8c81ec0ddd17adf1cb009bbad6bd1e88205e0687e329d7c200567b953dd2",
+   "outcome": "preserved",
+   "note": "Дословно, строка 14 CR. Регистрация задач планировщика вынесена в Out of scope (строка 75); постоянная метка каталога данных раскрыта в рисках (строки 124-125) и остаётся предложением до решения владельца."
+  },
+  {
+   "id": "owner-fail-closed",
+   "textHash": "sha256:5123c465bc8b98f20858a1d57dbd3151b14483e848a48693f881e42769c03c2c",
+   "outcome": "preserved",
+   "note": "Дословно, строка 15 CR. Противоречий нет: сбой проверок ведёт к отказу WORKER_BOUNDARY_UNENFORCED (строки 41, 46, 80-81, 127)."
+  },
+  {
+   "id": "owner-no-extra-secrets",
+   "textHash": "sha256:19e0428c85e8ed63c1b07f2fd7eced87fab3eff59a5c7b05b39cb1fa76f71ec0",
+   "outcome": "preserved",
+   "note": "Дословно, строка 16 CR. Остаточное чтение секретов воркером не скрыто: строки 74 и 118."
+  },
+  {
+   "id": "owner-billing",
+   "textHash": "sha256:360804acd449ab28aec437d2d0ee43077ad0052a79052a81a5179fa6fea91a4b",
+   "outcome": "preserved",
+   "note": "Дословно, строка 17 CR. В CR нет утверждений об остановке удалённого inference или billing."
+  },
+  {
+   "id": "owner-no-per-test-approval",
+   "textHash": "sha256:845793ec324444078918d4713dc8b0aad3593826378a28fcf4e6c92dbbc21763",
+   "outcome": "preserved",
+   "note": "Дословно, строка 18 CR. Запрос допуска (строки 105-108) — один на весь проход, а не на каждую команду."
+  },
+  {
+   "id": "owner-no-release",
+   "textHash": "sha256:52a1820341e72203e5e4960afd9a448c8f210868fb5b02a63484c76e2beb839b",
+   "outcome": "preserved",
+   "note": "Дословно, строка 19 CR. Deploy, merge, публикация и снятие HOLD исключены в Out of scope (строки 69-70)."
+  },
+  {
+   "id": "owner-permit-spent-20261111",
+   "textHash": "sha256:aef128362a673c0bb04e09457f0698da9067cf408e7c06f67c768fb0d5b14acb",
+   "outcome": "preserved",
+   "note": "Дословно, строка 20 CR. Native-проверки поставлены в зависимость от нового допуска (строки 100, 108); действующий допуск CR не заявляет."
+  },
+  {
+   "id": "owner-native-permit-20261113",
+   "textHash": "sha256:c1381dc0b4311f941b29cbd0accc46f7bd89a48a410d90571a1395f4a6e43521",
+   "outcome": "preserved",
+   "note": "Дословно, строка 26 CR. Замечание без блокировки: слова «одобрен владельцем 2026-11-13, выполнен» о предшественнике (строки 6-8) не являются claim пакета; их подтверждает только запись исполнителя в RESULT-20261112.md (строка 28). На текущий CR одобрение не переносится: статус «черновик, ждёт решения владельца»."
+  },
+  {
+   "id": "unknown-1",
+   "textHash": "sha256:d539ff01f64bfc21cb7bbbe40df51fa0760dd9b10c94abb6501dd94758efa094",
+   "outcome": "preserved",
+   "note": "Дословно, строка 112 CR."
+  },
+  {
+   "id": "unknown-2",
+   "textHash": "sha256:371852905375343c9de2ac905e147716a9e0a4ff0414270ddb318029487cab02",
+   "outcome": "preserved",
+   "note": "Дословно, строка 113 CR."
+  },
+  {
+   "id": "unknown-3",
+   "textHash": "sha256:0899b1ac7f4b412e03d64d1008ea59ddeb14a1b12ab3bf7ce22481f98f91acbf",
+   "outcome": "preserved",
+   "note": "Дословно, строка 114 CR."
+  },
+  {
+   "id": "unknown-4",
+   "textHash": "sha256:76c87b9b13895dd004aeac2eab3e21a3830d9e666889a7a6b1da463ecb9cbf28",
+   "outcome": "preserved",
+   "note": "Дословно, строка 115 CR. A6 оставляет вопрос диагностикой, а не утверждением."
+  },
+  {
+   "id": "unknown-5",
+   "textHash": "sha256:4b1b6476f696cbc23f8da7db4c69ceea77784629654e62f899a5a80d21bdb509",
+   "outcome": "preserved",
+   "note": "Дословно, строка 116 CR."
+  },
+  {
+   "id": "unknown-6",
+   "textHash": "sha256:19afe17bd31987d014650f7b5931d744ac8f61624dc3725917c004a769bca27d",
+   "outcome": "preserved",
+   "note": "Дословно, строка 117 CR. Согласуется с п. 7 (строки 51-52) и Out of scope (строка 71)."
+  },
+  {
+   "id": "unknown-7",
+   "textHash": "sha256:7ae626c98efe70e9996422230436e8c508aa2795cfaacb3b27dde2fb9d9e4f8f",
+   "outcome": "preserved",
+   "note": "Дословно, строка 118 CR. Согласуется с Out of scope (строки 74, 76)."
+  },
+  {
+   "id": "unknown-8",
+   "textHash": "sha256:0e5a8a5e045300863ee6febbb37d21dbf8872c78b9a863826b9020baf5869d31",
+   "outcome": "preserved",
+   "note": "Дословно, строка 119 CR. Замечание без блокировки: строка 25 («Закрыт путь дублирования Job из owner») внешне расходится с этим пунктом. Это дословная формулировка из RESULT-20261112.md (строки 18-19), где она относится к synthetic-воркеру с целостностью Low в одном прогоне; в CR эта оговорка не повторена, а отдельного claim для строки 25 в пакете нет."
+  },
+  {
+   "id": "unknown-9",
+   "textHash": "sha256:e8deea53d8f5f4cec205b7be056894d5ffd54440a34c94a3699788f9c8aeda36",
+   "outcome": "preserved",
+   "note": "Дословно, строка 120 CR. Согласуется с п. 3 (строки 44-45): значения пределов в CR не заданы."
+  }
+ ],
+ "activeRequirements": [
+  "owner-n2-not-defence",
+  "owner-hold",
+  "owner-no-default-risk",
+  "owner-fail-closed",
+  "owner-no-extra-secrets",
+  "owner-billing",
+  "owner-no-per-test-approval",
+  "owner-no-release",
+  "owner-permit-spent-20261111"
+ ],
+ "removed": [],
+ "staleClaims": [
+  {
+   "id": "state-review-findings",
+   "action": "reverified"
+  }
+ ],
+ "unsupportedClaims": [
+  "proposal-hardening"
+ ],
+ "conflicts": [],
+ "superseded": [],
+ "unknowns": [
+  "unknown-1",
+  "unknown-2",
+  "unknown-3",
+  "unknown-4",
+  "unknown-5",
+  "unknown-6",
+  "unknown-7",
+  "unknown-8",
+  "unknown-9"
+ ],
+ "missingEvidence": [],
+ "telemetry": {
+  "hygieneRequired": true,
+  "charsBefore": 9006,
+  "charsAfter": 9006,
+  "protectedFactsChanged": false,
+  "staleCount": 1,
+  "conflictCount": 0,
+  "sourcesConsulted": [
+   "D:\\Claude\\claude-kit\\plugins\\b24-kit\\skills\\context-hygiene\\references\\contract.md",
+   "D:\\Claude\\claude-kit\\plugins\\b24-kit\\skills\\context-hygiene\\schemas\\hygiene-report.schema.json",
+   "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\context-hygiene\\CR-hermes-symphony-serving-lifecycle-20261106-boundary-hardening-20261113\\context-pack.json",
+   "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\docs\\change-requests\\CR-hermes-symphony-serving-lifecycle-20261106-boundary-hardening-20261113.md",
+   "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\docs\\audits\\CR-hermes-symphony-serving-lifecycle-20261106-worker-boundary-20261112\\RESULT-20261112.md",
+   "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\docs\\audits\\CR-hermes-symphony-serving-lifecycle-20261106-worker-boundary-20261112\\native-b1-result.json"
+  ]
+ }
+}
