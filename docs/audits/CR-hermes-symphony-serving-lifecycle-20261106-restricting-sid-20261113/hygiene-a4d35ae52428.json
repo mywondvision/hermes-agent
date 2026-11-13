@@ -1,0 +1,181 @@
+{
+ "schemaVersion": 1,
+ "crId": "CR-hermes-symphony-serving-lifecycle-20261106-restricting-sid-20261113",
+ "reviewedRevision": {
+  "exact": "sha256:da6ae58344c61eef5b6f4c9611651aaade72e2ab70cf249d9a1a3a5913a141e2",
+  "normalized": "sha256:a4d35ae52428cac921c541761d90a8c1c0bc18ffd18e9849c9ac243536f418b3"
+ },
+ "verdict": "PASS",
+ "reviewer": {
+  "mode": "isolated-subagent",
+  "contextId": "hygiene-reviewer-20261113-restricting-sid-r2",
+  "role": "context-hygiene-reviewer",
+  "runtime": "claude-code-subagent"
+ },
+ "preparer": {
+  "contextId": "preparer-restricting-sid-20261113"
+ },
+ "inputs": [
+  "context-pack",
+  "candidate-cr",
+  "owner-directives",
+  "verified-evidence",
+  "prefilter"
+ ],
+ "protectedFacts": [
+  {
+   "id": "owner-n2-not-defence",
+   "textHash": "sha256:8eb126b724698362ec9abe78ff2994a4a8c5357f8d3dc3c4fc2a5f366db43019",
+   "outcome": "preserved",
+   "note": "Дословно, строка 12 CR. A5 оставлен диагностикой, а не утверждением защиты; противоречий нет."
+  },
+  {
+   "id": "owner-hold",
+   "textHash": "sha256:ef9b11ef56ebe933aba8d40e8652dbfab2cbd0efd6e207f454201937da1eca47",
+   "outcome": "preserved",
+   "note": "Дословно, строка 13 CR. Согласуется с Out of scope (строки 63-65) и риском на строке 114."
+  },
+  {
+   "id": "owner-no-default-risk",
+   "textHash": "sha256:f0ee8c81ec0ddd17adf1cb009bbad6bd1e88205e0687e329d7c200567b953dd2",
+   "outcome": "preserved",
+   "note": "Дословно, строка 14 CR. Строки 49-50 и 113 не заявляют изменения системных настроек вне стенда."
+  },
+  {
+   "id": "owner-fail-closed",
+   "textHash": "sha256:5123c465bc8b98f20858a1d57dbd3151b14483e848a48693f881e42769c03c2c",
+   "outcome": "preserved",
+   "note": "Дословно, строка 15 CR. Не ослаблено: строки 45-46 и 112 описывают отказ запуска без отката к полным правам."
+  },
+  {
+   "id": "owner-no-extra-secrets",
+   "textHash": "sha256:19e0428c85e8ed63c1b07f2fd7eced87fab3eff59a5c7b05b39cb1fa76f71ec0",
+   "outcome": "preserved",
+   "note": "Дословно, строка 16 CR. Остаточное чтение файлов вне профиля вынесено в неизвестные (строки 105, 107), а не принято молча."
+  },
+  {
+   "id": "owner-billing",
+   "textHash": "sha256:360804acd449ab28aec437d2d0ee43077ad0052a79052a81a5179fa6fea91a4b",
+   "outcome": "preserved",
+   "note": "Дословно, строка 17 CR. В CR нет утверждений об остановке удалённого inference или billing."
+  },
+  {
+   "id": "owner-no-per-test-approval",
+   "textHash": "sha256:845793ec324444078918d4713dc8b0aad3593826378a28fcf4e6c92dbbc21763",
+   "outcome": "preserved",
+   "note": "Дословно, строка 18 CR. Запрос допуска на проход (строки 89-97) относится к native-допуску по директиве строки 20, а не к каждой команде."
+  },
+  {
+   "id": "owner-no-release",
+   "textHash": "sha256:52a1820341e72203e5e4960afd9a448c8f210868fb5b02a63484c76e2beb839b",
+   "outcome": "preserved",
+   "note": "Дословно, строка 19 CR. Deploy, merge, публикация и настоящий driver стоят в Out of scope (строки 63-64)."
+  },
+  {
+   "id": "owner-permit-spent-20261111",
+   "textHash": "sha256:aef128362a673c0bb04e09457f0698da9067cf408e7c06f67c768fb0d5b14acb",
+   "outcome": "preserved",
+   "note": "Дословно, строка 20 CR. Строки 87 и 92 подтверждают: native не запускается без нового допуска."
+  },
+  {
+   "id": "owner-native-permit-hardening-spent",
+   "textHash": "sha256:724fe1b316b22047f071adcd73d67681f515c72d39fe340bf5c3b85b35c795f1",
+   "outcome": "preserved",
+   "note": "Дословно, строка 26 CR. CR нигде не заявляет действующего native-допуска; новый только запрашивается (строки 89-97)."
+  },
+  {
+   "id": "unknown-1",
+   "textHash": "sha256:64a18badeed697282b0ed43b30af2ad676aedda861bd932b0bffabaca558e12e",
+   "outcome": "preserved",
+   "note": "Дословно, строка 101 CR."
+  },
+  {
+   "id": "unknown-2",
+   "textHash": "sha256:6c49237dbd2a3e82eb7137c857a2a89016e1267ff4222c5834f072ab1c5c0d9e",
+   "outcome": "preserved",
+   "note": "Дословно, строка 102 CR."
+  },
+  {
+   "id": "unknown-3",
+   "textHash": "sha256:cdbba4f3021c59f8ad1f06f5126ead921888254b2b9564bf053a99f8287ac47f",
+   "outcome": "preserved",
+   "note": "Дословно, строка 103 CR."
+  },
+  {
+   "id": "unknown-4",
+   "textHash": "sha256:1ab9a9679ef3a2b3ae4e00cf25746dc1c6ac06eba5914272600b70baedd40e54",
+   "outcome": "preserved",
+   "note": "Дословно, строка 104 CR."
+  },
+  {
+   "id": "unknown-5",
+   "textHash": "sha256:36960f95f505e369b0dea432437e7b6069a8f7499267d7dd2a02978a7da72221",
+   "outcome": "preserved",
+   "note": "Дословно, строка 105 CR."
+  },
+  {
+   "id": "unknown-6",
+   "textHash": "sha256:f98241b90b13977538733fb2790b007a615ec18b1b120528af7667d4287b2b58",
+   "outcome": "preserved",
+   "note": "Дословно, строка 106 CR. A5 (строки 79-80) оставляет этот вопрос диагностикой."
+  },
+  {
+   "id": "unknown-7",
+   "textHash": "sha256:c184c79e61267002d2856bac762c464728ec6c3f4557eb3f403c13e0482f6ad8",
+   "outcome": "preserved",
+   "note": "Дословно, строка 107 CR. Согласуется с Out of scope (строка 67)."
+  },
+  {
+   "id": "unknown-8",
+   "textHash": "sha256:0e5a8a5e045300863ee6febbb37d21dbf8872c78b9a863826b9020baf5869d31",
+   "outcome": "preserved",
+   "note": "Дословно, строка 108 CR."
+  }
+ ],
+ "activeRequirements": [
+  "owner-n2-not-defence",
+  "owner-hold",
+  "owner-no-default-risk",
+  "owner-fail-closed",
+  "owner-no-extra-secrets",
+  "owner-billing",
+  "owner-no-per-test-approval",
+  "owner-no-release",
+  "owner-permit-spent-20261111",
+  "owner-native-permit-hardening-spent"
+ ],
+ "removed": [],
+ "staleClaims": [],
+ "unsupportedClaims": [
+  "proposal-restricting-sid"
+ ],
+ "conflicts": [],
+ "superseded": [],
+ "unknowns": [
+  "unknown-1",
+  "unknown-2",
+  "unknown-3",
+  "unknown-4",
+  "unknown-5",
+  "unknown-6",
+  "unknown-7",
+  "unknown-8"
+ ],
+ "missingEvidence": [],
+ "telemetry": {
+  "hygieneRequired": true,
+  "charsBefore": 8026,
+  "charsAfter": 8026,
+  "protectedFactsChanged": false,
+  "staleCount": 0,
+  "conflictCount": 0,
+  "sourcesConsulted": [
+   "D:\\Claude\\claude-kit\\plugins\\b24-kit\\skills\\context-hygiene\\references\\contract.md",
+   "D:\\Claude\\claude-kit\\plugins\\b24-kit\\skills\\context-hygiene\\schemas\\hygiene-report.schema.json",
+   "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\.artifacts\\context-hygiene\\CR-hermes-symphony-serving-lifecycle-20261106-restricting-sid-20261113\\context-pack.json",
+   "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\docs\\change-requests\\CR-hermes-symphony-serving-lifecycle-20261106-restricting-sid-20261113.md",
+   "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\docs\\audits\\CR-hermes-symphony-serving-lifecycle-20261106-boundary-hardening-20261113\\native-b2-test-lines.txt",
+   "D:\\AI\\worktrees\\hermes-pm-ingress-20261031\\docs\\audits\\CR-hermes-symphony-serving-lifecycle-20261106-boundary-hardening-20261113\\native-b2-escape-probe.json"
+  ]
+ }
+}
