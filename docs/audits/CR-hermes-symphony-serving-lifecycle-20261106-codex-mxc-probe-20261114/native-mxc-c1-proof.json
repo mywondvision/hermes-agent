@@ -1,0 +1,49 @@
+{
+  "run": "30cab2e2a66a",
+  "codex": "D:\\Codex\\npm-global\\node_modules\\@openai\\codex\\node_modules\\@openai\\codex-win32-x64\\vendor\\x86_64-pc-windows-msvc\\bin\\codex.exe",
+  "controls": {
+    "write": {
+      "primary_file": true,
+      "primary_git_config": true,
+      "neighbour_file": true
+    },
+    "read_closed": true,
+    "by_id_closed": true,
+    "key": true,
+    "loopback": true
+  },
+  "m0": {
+    "finished": true,
+    "exit": 1,
+    "stdout": "",
+    "stderr": "Error: failed to prepare MXC sandbox: MXC requires nonempty Unicode host SystemDrive\n"
+  },
+  "probe": null,
+  "s1": {},
+  "host_before": {
+    "users": "b6bdeae85e733d817e4d17d6341fe72c6c8ac8bf87c9e3bb5b2cac8afeef38ea",
+    "firewall_rules": "82607c98dec8f45ac84e7eae445d8da60d05706ee7405a9a53b0c914b488f1ab",
+    "codex_configs": {
+      "D:\\Codex\\codex-home": "454e88549542f43d62db9dc334fd6b8a58597bd1e26a193e5e01a7606888f8ab",
+      "C:\\OpenAI\\CodexHome": "a351251eb06b699f9f10757e30d6b3b7e6e6f0628933c27dc6cc7ed6d5c7bfb0"
+    },
+    "worktree": {
+      "head": "16ea4b7abbb2541c61c7059f3bde6b3c784d261a",
+      "tracked": "1ac1354f6aa8d9c1d645c45f262c4dd83d0a11b83771cec2b47c51458f1c3fba",
+      "untracked": "05b27aaada104bef6dacadb840dd3acce0fd078a37f2c5436423ef5e0e705b6a"
+    }
+  },
+  "host_after": {
+    "users": "b6bdeae85e733d817e4d17d6341fe72c6c8ac8bf87c9e3bb5b2cac8afeef38ea",
+    "firewall_rules": "82607c98dec8f45ac84e7eae445d8da60d05706ee7405a9a53b0c914b488f1ab",
+    "codex_configs": {
+      "D:\\Codex\\codex-home": "454e88549542f43d62db9dc334fd6b8a58597bd1e26a193e5e01a7606888f8ab",
+      "C:\\OpenAI\\CodexHome": "a351251eb06b699f9f10757e30d6b3b7e6e6f0628933c27dc6cc7ed6d5c7bfb0"
+    },
+    "worktree": {
+      "head": "16ea4b7abbb2541c61c7059f3bde6b3c784d261a",
+      "tracked": "1ac1354f6aa8d9c1d645c45f262c4dd83d0a11b83771cec2b47c51458f1c3fba",
+      "untracked": "05b27aaada104bef6dacadb840dd3acce0fd078a37f2c5436423ef5e0e705b6a"
+    }
+  }
+}
