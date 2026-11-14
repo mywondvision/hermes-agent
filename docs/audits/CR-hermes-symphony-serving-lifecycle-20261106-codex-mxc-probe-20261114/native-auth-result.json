@@ -1,0 +1,23 @@
+{
+  "argv": [
+    "C:/Program Files/Git/bin/bash.exe",
+    "scripts/run_tests.sh",
+    "-j",
+    "1",
+    "--file-retries",
+    "0",
+    "--file-timeout",
+    "900",
+    "tests/plugins/test_symphony_pm_windows_codex_auth.py",
+    "-v"
+  ],
+  "attempt": 1,
+  "model": false,
+  "microphone": false,
+  "paid_resources": false,
+  "scope": "synthetic no-model; own Python processes only",
+  "exit": 1,
+  "outcome": "FINISHED",
+  "seconds": 99.555,
+  "source_unchanged": true
+}

@@ -1,0 +1,93 @@
+{
+  "run": "8a2a2ba0f5ff",
+  "codex": "D:\\Codex\\npm-global\\node_modules\\@openai\\codex\\node_modules\\@openai\\codex-win32-x64\\vendor\\x86_64-pc-windows-msvc\\bin\\codex.exe",
+  "host_before": {
+    "users": "b6bdeae85e733d817e4d17d6341fe72c6c8ac8bf87c9e3bb5b2cac8afeef38ea",
+    "firewall_rules": "5283f1b4e66467616feca1e0162c7d37e4e304623d6343a525553ffb436cbdfe",
+    "appcontainer_mappings": "8cd2510271575d8430c05368315a87b9c4784c7389a47496080c1e615a2a00b6",
+    "packages": "1dfacb2ea5a03e0a915999e03b5a56196f1b1664d2f768d1b7eff60ac059789d",
+    "codex_configs": {
+      "D:\\Codex\\codex-home": "454e88549542f43d62db9dc334fd6b8a58597bd1e26a193e5e01a7606888f8ab",
+      "C:\\OpenAI\\CodexHome": "a351251eb06b699f9f10757e30d6b3b7e6e6f0628933c27dc6cc7ed6d5c7bfb0"
+    },
+    "worktree": {
+      "head": "16ea4b7abbb2541c61c7059f3bde6b3c784d261a",
+      "tracked": "1ac1354f6aa8d9c1d645c45f262c4dd83d0a11b83771cec2b47c51458f1c3fba",
+      "untracked": "32d2363af495cb7fb89461d68d970e72b7a15d8bbe63019fb86fb600f12ba45b"
+    },
+    "credential_targets": 82
+  },
+  "client_secret_like_names": [
+    "SYMPHONY_DECOY_TOKEN"
+  ],
+  "login": {
+    "exit": 0,
+    "status_exit": 0,
+    "status": "",
+    "file_holds_decoy": true,
+    "auth_mode": "apikey"
+  },
+  "client": {
+    "finished": true,
+    "exit": 0,
+    "in_job": true,
+    "stopped": true
+  },
+  "output": {
+    "stdout": "",
+    "stderr": "Failed to find real location of D:\\AI\\tmp\\sauth-20261114-181350\\test-temp\\hermes-pytest\\r-seb5l9v3\\pytest-of-unknown\\pytest-0\\test_codex_file_auth_is_not_re0\\probe-python\\python.exe\n",
+    "sandbox_log": null
+  },
+  "probe": {
+    "steps": [
+      {
+        "seq": 1,
+        "name": "a1-env",
+        "names": [],
+        "ok": true,
+        "key_value_visible": false,
+        "policy_decoy_value_visible": false,
+        "policy_decoy_name_visible": false
+      },
+      {
+        "seq": 2,
+        "name": "a2-read-auth",
+        "ok": false,
+        "winerror": null,
+        "errno": 13
+      },
+      {
+        "seq": 3,
+        "name": "a3-list-home",
+        "ok": false,
+        "winerror": 5,
+        "errno": 13
+      },
+      {
+        "seq": 4,
+        "name": "a4-read-config",
+        "ok": false,
+        "winerror": null,
+        "errno": 13
+      }
+    ]
+  },
+  "decoy_in_output": false,
+  "owner_reads_auth": true,
+  "host_after": {
+    "users": "b6bdeae85e733d817e4d17d6341fe72c6c8ac8bf87c9e3bb5b2cac8afeef38ea",
+    "firewall_rules": "5283f1b4e66467616feca1e0162c7d37e4e304623d6343a525553ffb436cbdfe",
+    "appcontainer_mappings": "8cd2510271575d8430c05368315a87b9c4784c7389a47496080c1e615a2a00b6",
+    "packages": "1dfacb2ea5a03e0a915999e03b5a56196f1b1664d2f768d1b7eff60ac059789d",
+    "codex_configs": {
+      "D:\\Codex\\codex-home": "454e88549542f43d62db9dc334fd6b8a58597bd1e26a193e5e01a7606888f8ab",
+      "C:\\OpenAI\\CodexHome": "a351251eb06b699f9f10757e30d6b3b7e6e6f0628933c27dc6cc7ed6d5c7bfb0"
+    },
+    "worktree": {
+      "head": "16ea4b7abbb2541c61c7059f3bde6b3c784d261a",
+      "tracked": "1ac1354f6aa8d9c1d645c45f262c4dd83d0a11b83771cec2b47c51458f1c3fba",
+      "untracked": "32d2363af495cb7fb89461d68d970e72b7a15d8bbe63019fb86fb600f12ba45b"
+    },
+    "credential_targets": 82
+  }
+}

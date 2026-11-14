@@ -106,7 +106,7 @@ def test_codex_file_auth_is_not_reachable_from_the_mxc_sandbox(tmp_path):
         auth = home/'auth.json'
         stored = json.loads(auth.read_text(encoding='utf-8')) if auth.exists() else {}
         proof['login'] = {'exit': login.returncode, 'status_exit': status.returncode,
-                          'status': status.stdout.decode('utf-8', 'replace').replace(decoy_key, '<decoy>')[-500:],
+                          'status': (status.stdout+status.stderr).decode('utf-8', 'replace').replace(decoy_key, '<decoy>')[-500:],  # status goes to stderr
                           'file_holds_decoy': stored.get('OPENAI_API_KEY') == decoy_key,
                           'auth_mode': stored.get('auth_mode')}
         plan = {'attempt': str(attempt), 'auth': str(auth), 'home': str(home), 'config': str(home/'config.toml')}
