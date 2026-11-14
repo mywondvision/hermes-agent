@@ -1,0 +1,224 @@
+diff --git a/plugins/symphony_pm/transport/attempt_workspace.py b/plugins/symphony_pm/transport/attempt_workspace.py
+index 3828989931cfd804b7cdf428e51ced88c29dde02..69cf8f80bd3664389614e5774fa1d25a13e6f5e5 100644
+--- a/plugins/symphony_pm/transport/attempt_workspace.py
++++ b/plugins/symphony_pm/transport/attempt_workspace.py
+@@ -8,7 +8,7 @@ After the worker has stopped, the owner reads the copy as data. Nothing in it is
+ diff is taken by Git with a Git directory, index and configuration that live outside the copy, and
+ before that the copy is walked without following links. A link, a hard link or anything named like
+ Git's own files is a refusal, not a filtered result. The patch is checked to apply to the fixed
+-commit in the owner's repository through a separate index; it is never applied here.
++commit through a separate shadow index; the primary repository is only read.
+ """
+ from dataclasses import dataclass
+ import ctypes as C
+@@ -17,9 +17,10 @@ import hashlib
+ import json
+ import os
+ from pathlib import Path
++import shutil
+ import stat
+ import subprocess
+-import tarfile
++import tempfile
+ 
+ from .types import Refused
+ from .windows_token import attempt_sid
+@@ -29,6 +30,7 @@ _MODIFY, _READ = 0x1301BF, 0x1200A9
+ _REPARSE = 0x400  # FILE_ATTRIBUTE_REPARSE_POINT
+ PATCH_LIMIT = 16 << 20
+ GIT_TIMEOUT = 600
++EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
+ 
+ 
+ @dataclass(frozen=True)
+@@ -128,14 +130,12 @@ def _clean_environment(**extra):
+ 
+ 
+ def export(git, repository, sha, destination, paths=()):
+-    """Extract the tree of `sha` into `destination` as data; `.git` is not part of an archive."""
+-    command = [git, '-C', str(repository), '-c', 'core.autocrlf=false', 'archive', '--format=tar', sha,
+-               *(('--', *paths) if paths else ())]
+-    with subprocess.Popen(command, stdout=subprocess.PIPE, env=_clean_environment()) as process:
+-        with tarfile.open(fileobj=process.stdout, mode='r|') as archive:
+-            archive.extractall(destination, filter='data')
+-        if process.wait(timeout=GIT_TIMEOUT):
+-            raise Refused('ATTEMPT_EXPORT_FAILED')
++    """Check out stored bytes without applying the source tree's attributes."""
++    with tempfile.TemporaryDirectory() as temporary:
++        shadow = Shadow(git, Path(temporary)/'shadow', repository)
++        shadow.run(destination, 'base.index', 'read-tree', sha)
++        shadow.run(destination, 'base.index', 'checkout-index', '-f',
++                   *(('--', *paths) if paths else ('-a',)))
+ 
+ 
+ class Shadow:
+@@ -144,13 +144,18 @@ class Shadow:
+     _SAFE = ('core.autocrlf=false', 'core.safecrlf=false', 'core.filemode=false', 'core.symlinks=false',
+              'core.fsmonitor=false', 'core.untrackedCache=false', 'core.longpaths=true')
+ 
+-    def __init__(self, git, directory):
++    def __init__(self, git, directory, source):
+         self.git, self.directory = git, Path(directory)
+         self.repository, self.hooks = self.directory/'repo.git', self.directory/'no-hooks'
+         self.directory.mkdir(parents=True, exist_ok=False)
+         self.hooks.mkdir()
+         subprocess.run([git, 'init', '--bare', '-q', str(self.repository)], env=_clean_environment(),
+                        check=True, timeout=GIT_TIMEOUT)
++        objects = subprocess.run([git, '-C', str(source), 'rev-parse', '--path-format=absolute',
++                                  '--git-path', 'objects'], capture_output=True, env=_clean_environment(),
++                                 check=True, timeout=GIT_TIMEOUT).stdout.decode().strip()
++        (self.repository/'objects'/'info'/'alternates').write_text(
++            Path(objects).as_posix()+'\n', encoding='utf-8')
+ 
+     def run(self, work_tree, index, *args, stdout=subprocess.PIPE):
+         options = [item for pair in (('-c', value) for value in (*self._SAFE, 'core.hooksPath='+str(self.hooks)))
+@@ -158,12 +163,14 @@ class Shadow:
+         done = subprocess.run([self.git, *options, *args], cwd=str(work_tree), stdout=stdout,
+                               stderr=subprocess.PIPE, timeout=GIT_TIMEOUT, check=False, env=_clean_environment(
+                                   GIT_DIR=str(self.repository), GIT_WORK_TREE=str(work_tree),
++                                  GIT_ATTR_SOURCE=EMPTY_TREE,
+                                   GIT_INDEX_FILE=str(self.directory/index)))
+         if done.returncode:
+             raise Refused('ATTEMPT_GIT_FAILED')
+         return done.stdout
+ 
+     def tree(self, work_tree, index):
++        shutil.copyfile(self.directory/'base.index', self.directory/index)
+         self.run(work_tree, index, 'add', '--all', '--force', '--', '.')
+         return self.run(work_tree, index, 'write-tree').decode('ascii').strip()
+ 
+@@ -194,15 +201,13 @@ def require_patch_policy(patch, paths, limit=PATCH_LIMIT):
+             raise Refused('ATTEMPT_POLICY')
+ 
+ 
+-def require_applies(git, repository, sha, patch_file, index, hooks):
+-    """The patch applies to `sha` in the owner's repository, checked against a separate index only."""
+-    environment = _clean_environment(GIT_INDEX_FILE=str(index))
+-    options = ('-c', 'core.autocrlf=false', '-c', 'core.fsmonitor=false', '-c', 'core.hooksPath='+str(hooks))
+-    for args in (('read-tree', sha), ('apply', '--cached', '--check', '--binary', str(patch_file))):
+-        done = subprocess.run([git, '-C', str(repository), *options, *args],
+-                              capture_output=True, env=environment, timeout=GIT_TIMEOUT, check=False)
+-        if done.returncode:
+-            raise Refused('ATTEMPT_PATCH_DOES_NOT_APPLY')
++def require_applies(shadow, sha, patch_file):
++    """Verify against the commit without writing an index in the primary repository."""
++    try:
++        shadow.run(shadow.directory, 'verify.index', 'read-tree', sha)
++        shadow.run(shadow.directory, 'verify.index', 'apply', '--cached', '--check', '--binary', str(patch_file))
++    except Refused as exc:
++        raise Refused('ATTEMPT_PATCH_DOES_NOT_APPLY') from exc
+ 
+ 
+ @dataclass(frozen=True)
+@@ -218,15 +223,18 @@ class Capture:
+ 
+     def __init__(self, git, repository, sha, workspace, shadow_directory, results):
+         self.git, self.repository, self.sha, self.workspace = git, Path(repository), sha, workspace
+-        self.shadow, self.results = Shadow(git, shadow_directory), Path(results)
++        self.shadow, self.results = Shadow(git, shadow_directory, repository), Path(results)
++        self.shadow.run(workspace.src, 'base.index', 'read-tree', sha)
+         self.base = None
+ 
+     def baseline(self):
+         require_plain_tree(self.workspace.src)
+-        self.base = self.shadow.tree(self.workspace.src, 'base.index')
+-        source = subprocess.run([self.git, '-C', str(self.repository), 'rev-parse', self.sha+'^{tree}'],
+-                                capture_output=True, env=_clean_environment(), timeout=GIT_TIMEOUT, check=True)
+-        self.source_tree = source.stdout.decode('ascii').strip()
++        self.source_tree = self.shadow.run(self.workspace.src, 'base.index', 'rev-parse',
++                                           self.sha+'^{tree}').decode('ascii').strip()
++        tree = self.shadow.tree(self.workspace.src, 'baseline.index')
++        if tree != self.source_tree:
++            raise Refused('ATTEMPT_BASELINE_MISMATCH')
++        self.base = tree
+         return self.base
+ 
+     def result(self, limit=PATCH_LIMIT):
+@@ -244,8 +252,7 @@ class Capture:
+         target = self.results/(self.workspace.attempt+'.patch')
+         with target.open('xb') as stream:
+             stream.write(patch)
+-        require_applies(self.git, self.repository, self.sha, target, self.shadow.directory/'verify.index',
+-                        self.shadow.hooks)
++        require_applies(self.shadow, self.sha, target)
+         digest = hashlib.sha256(patch).hexdigest()
+         result = Result(target, digest, paths, self.base == self.source_tree)
+         (self.results/(self.workspace.attempt+'.json')).write_text(json.dumps({
+diff --git a/tests/plugins/test_symphony_pm_attempt_workspace.py b/tests/plugins/test_symphony_pm_attempt_workspace.py
+index d288b54f278fc4f3556dde371a5b8e77fa525b1f..26e9caa9029a5fa71e67102e15fdbc897719570e 100644
+--- a/tests/plugins/test_symphony_pm_attempt_workspace.py
++++ b/tests/plugins/test_symphony_pm_attempt_workspace.py
+@@ -65,6 +65,73 @@ def test_copy_has_no_git_and_its_baseline_is_the_source_tree(tmp_path, source):
+     assert capture.base == capture.source_tree
+ 
+ 
++def test_editing_a_committed_executable_preserves_its_mode(tmp_path, source):
++    """The commit's index supplies modes even when the host ignores executable bits."""
++    repository, _ = source
++    _git(repository, 'update-index', '--chmod=+x', 'pkg/module.py')
++    _git(repository, 'commit', '-q', '-m', 'executable')
++    sha = _git(repository, 'rev-parse', 'HEAD').decode().strip()
++    workspace, capture = _workspace(tmp_path, repository, sha)
++    (workspace.src/'pkg'/'module.py').write_bytes(b'x = 2\n')
++    patch = capture.result().patch.read_bytes()
++    assert b'-x = 1\n+x = 2\n' in patch
++    assert b'old mode ' not in patch and b'new mode ' not in patch
++
++
++def test_attributes_do_not_reencode_the_copy_or_capture(tmp_path, source):
++    """Stored CRLF bytes survive an attribute that would otherwise normalize them."""
++    repository, _ = source
++    content = b'x = 1\r\n'
++    target = repository/'pkg'/'module.py'
++    target.write_bytes(content)
++    blob = _git(repository, 'hash-object', '-w', '--no-filters', str(target)).decode().strip()
++    _git(repository, 'update-index', '--cacheinfo', '100644', blob, 'pkg/module.py')
++    _git(repository, 'commit', '-q', '-m', 'stored CRLF')
++    sha = _git(repository, 'rev-parse', 'HEAD').decode().strip()
++    workspace, capture = _workspace(tmp_path, repository, sha)
++    assert (workspace.src/'pkg'/'module.py').read_bytes() == content
++    assert capture.base == capture.source_tree
++    (workspace.src/'README.md').write_bytes(b'edited\n')
++    result = capture.result()
++    assert result.paths == ('README.md',)
++    assert result.baseline_matches_source
++
++
++def test_verification_uses_only_the_shadow_repository(tmp_path, source, monkeypatch):
++    """Primary-repository commands must stay read-only even during verification."""
++    repository, sha = source
++    commands = []
++    run = subprocess.run
++
++    def record(argv, *args, **kwargs):
++        commands.append(argv)
++        return run(argv, *args, **kwargs)
++
++    monkeypatch.setattr(subprocess, 'run', record)
++    workspace, capture = _workspace(tmp_path, repository, sha)
++    (workspace.src/'README.md').write_bytes(b'edited\n')
++    capture.result()
++    assert any('apply' in argv and '--cached' in argv and '--check' in argv for argv in commands)
++    for argv in commands:
++        if '-C' in argv and Path(argv[argv.index('-C')+1]) == repository:
++            assert argv[argv.index('-C')+2] == 'rev-parse'
++        if 'apply' in argv or 'read-tree' in argv:
++            assert '-C' not in argv
++
++
++def test_an_altered_copy_is_refused_before_the_worker(tmp_path, source):
++    repository, sha = source
++    workspace = Workspace('attempt-x', tmp_path/'w')
++    workspace.src.mkdir(parents=True)
++    export(GIT, repository, sha, workspace.src)
++    capture = Capture(GIT, repository, sha, workspace, tmp_path/'shadow', tmp_path/'results')
++    (workspace.src/'README.md').write_bytes(b'altered before baseline\n')
++    with pytest.raises(Refused, match='ATTEMPT_BASELINE_MISMATCH'):
++        capture.baseline()
++    with pytest.raises(Refused, match='ATTEMPT_BASELINE_MISSING'):
++        capture.result()
++
++
+ def test_patch_carries_exactly_the_changes_and_applies_to_the_commit(tmp_path, source):
+     repository, sha = source
+     workspace, capture = _workspace(tmp_path, repository, sha)

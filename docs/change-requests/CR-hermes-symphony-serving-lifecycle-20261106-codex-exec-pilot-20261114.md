@@ -1,6 +1,6 @@
 # CR: пилот `codex exec` — одна настоящая задача под песочницей MXC
 
-context_hygiene: PASS rev=a128f2599990 report=docs/audits/CR-hermes-symphony-serving-lifecycle-20261106-codex-exec-pilot-20261114/hygiene-a128f2599990.json
+context_hygiene: PASS rev=ac862afea89c report=docs/audits/CR-hermes-symphony-serving-lifecycle-20261106-codex-exec-pilot-20261114/hygiene-ac862afea89c.json
 
 Дата: 2026-11-14. База: `0ca1eb18` (публичная ветка `claude/hermes-symphony-codex-auth-20261114`). Предшественники:
 `CR-hermes-symphony-serving-lifecycle-20261106-codex-mxc-probe-20261114.md` (граница MXC подтверждена на приманках,
@@ -29,11 +29,24 @@ context_hygiene: PASS rev=a128f2599990 report=docs/audits/CR-hermes-symphony-ser
 `require_applies` в `plugins/symphony_pm/transport/attempt_workspace.py` выполняет `git read-tree` и
 `git apply --cached --check` в основной копии; страж тестов это запрещает, и проверка patch не работает на стенде.
 
-Задание для Codex: проверять patch в теневом Git-каталоге попытки против базового дерева (оно уже вычисляется в
-`Capture.baseline` и совпадает с деревом SHA, когда `baseline_matches_source`), без вызова Git в основной копии;
-отказывать, если базовое дерево не совпадает с деревом SHA; добавить fixture-тест на это поведение в
-`tests/plugins/test_symphony_pm_attempt_workspace.py`. Объём — два файла. Задача проверяется fixture-тестами без
-native-запуска.
+Ревизия 2026-11-14 после запуска 1 (`RESULT-RUN1-20261114.md`): на Windows копия через `git archive` и
+`git add` не совпадает с деревом коммита (108 путей теряют бит исполнения, 5 файлов перекодируются атрибутами),
+поэтому прежнее требование «отказывать при несовпадении» сделало бы отказом любую capture.
+
+Проверенный исполнителем подход (временный репозиторий, без модели; `RESULT-RUN1-20261114.md`, раздел о подходе):
+теневой Git-каталог видит объекты основной копии через `objects/info/alternates` (основная копия только читается);
+базовый индекс — `read-tree <SHA>`; копия — `checkout-index` из этого индекса при `GIT_ATTR_SOURCE` = пустое дерево и
+`core.autocrlf=false`; после воркера `git add` поверх копии базового индекса при `core.filemode=false` и том же
+`GIT_ATTR_SOURCE`. Результат на `0ca1eb18`: дерево до работы воркера совпало с деревом коммита (0 расхождений);
+изменение исполняемого файла не дало строк смены режима; `git apply --cached --check` в теневом каталоге прошёл.
+
+Задание для Codex: перевести `export`, `Shadow` и `Capture` в `plugins/symphony_pm/transport/attempt_workspace.py`
+на этот подход; patch — diff дерева коммита и дерева после воркера; проверка patch — `read-tree <SHA>` и
+`git apply --cached --check` в теневом каталоге, без вызова Git с `-C` основной копии; отказ
+`ATTEMPT_BASELINE_MISMATCH`, если дерево копии до воркера не совпало с деревом коммита. Fixture-тесты в
+`tests/plugins/test_symphony_pm_attempt_workspace.py`: файл с битом исполнения, файл, который атрибуты
+перекодировали бы, отсутствие вызовов Git с `-C` основной копии при проверке patch. Объём — два файла; проверка —
+fixture-тестами без native-запуска.
 
 ## Предлагаемое решение (предложение исполнителя, INFERRED; не решение владельца до `ok`)
 
