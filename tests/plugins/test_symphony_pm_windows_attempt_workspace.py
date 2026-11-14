@@ -317,8 +317,8 @@ def test_attempt_workspace_on_decoys(tmp_path):
         started = time.monotonic()
         ws.export(git, REPOSITORY, SOURCE, spaces['A'].src)
         proof['export_seconds'] = round(time.monotonic()-started, 1)
-        for name in 'BC':
-            ws.export(git, REPOSITORY, SOURCE, spaces[name].src, paths=('README.md',))
+        for name in 'BC':  # full copies: the baseline must equal the commit tree, a partial copy is refused
+            ws.export(git, REPOSITORY, SOURCE, spaces[name].src)
         for name in 'ABC':
             captures[name] = ws.Capture(git, REPOSITORY, SOURCE, spaces[name], tmp_path/'owner'/name/'shadow',
                                         tmp_path/'owner'/'results')

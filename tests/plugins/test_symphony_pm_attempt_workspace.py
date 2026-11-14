@@ -65,6 +65,73 @@ def test_copy_has_no_git_and_its_baseline_is_the_source_tree(tmp_path, source):
     assert capture.base == capture.source_tree
 
 
+def test_editing_a_committed_executable_preserves_its_mode(tmp_path, source):
+    """The commit's index supplies modes even when the host ignores executable bits."""
+    repository, _ = source
+    _git(repository, 'update-index', '--chmod=+x', 'pkg/module.py')
+    _git(repository, 'commit', '-q', '-m', 'executable')
+    sha = _git(repository, 'rev-parse', 'HEAD').decode().strip()
+    workspace, capture = _workspace(tmp_path, repository, sha)
+    (workspace.src/'pkg'/'module.py').write_bytes(b'x = 2\n')
+    patch = capture.result().patch.read_bytes()
+    assert b'-x = 1\n+x = 2\n' in patch
+    assert b'old mode ' not in patch and b'new mode ' not in patch
+
+
+def test_attributes_do_not_reencode_the_copy_or_capture(tmp_path, source):
+    """Stored CRLF bytes survive an attribute that would otherwise normalize them."""
+    repository, _ = source
+    content = b'x = 1\r\n'
+    target = repository/'pkg'/'module.py'
+    target.write_bytes(content)
+    blob = _git(repository, 'hash-object', '-w', '--no-filters', str(target)).decode().strip()
+    _git(repository, 'update-index', '--cacheinfo', '100644', blob, 'pkg/module.py')
+    _git(repository, 'commit', '-q', '-m', 'stored CRLF')
+    sha = _git(repository, 'rev-parse', 'HEAD').decode().strip()
+    workspace, capture = _workspace(tmp_path, repository, sha)
+    assert (workspace.src/'pkg'/'module.py').read_bytes() == content
+    assert capture.base == capture.source_tree
+    (workspace.src/'README.md').write_bytes(b'edited\n')
+    result = capture.result()
+    assert result.paths == ('README.md',)
+    assert result.baseline_matches_source
+
+
+def test_verification_uses_only_the_shadow_repository(tmp_path, source, monkeypatch):
+    """Primary-repository commands must stay read-only even during verification."""
+    repository, sha = source
+    commands = []
+    run = subprocess.run
+
+    def record(argv, *args, **kwargs):
+        commands.append(argv)
+        return run(argv, *args, **kwargs)
+
+    monkeypatch.setattr(subprocess, 'run', record)
+    workspace, capture = _workspace(tmp_path, repository, sha)
+    (workspace.src/'README.md').write_bytes(b'edited\n')
+    capture.result()
+    assert any('apply' in argv and '--cached' in argv and '--check' in argv for argv in commands)
+    for argv in commands:
+        if '-C' in argv and Path(argv[argv.index('-C')+1]) == repository:
+            assert argv[argv.index('-C')+2] == 'rev-parse'
+        if 'apply' in argv or 'read-tree' in argv:
+            assert '-C' not in argv
+
+
+def test_an_altered_copy_is_refused_before_the_worker(tmp_path, source):
+    repository, sha = source
+    workspace = Workspace('attempt-x', tmp_path/'w')
+    workspace.src.mkdir(parents=True)
+    export(GIT, repository, sha, workspace.src)
+    capture = Capture(GIT, repository, sha, workspace, tmp_path/'shadow', tmp_path/'results')
+    (workspace.src/'README.md').write_bytes(b'altered before baseline\n')
+    with pytest.raises(Refused, match='ATTEMPT_BASELINE_MISMATCH'):
+        capture.baseline()
+    with pytest.raises(Refused, match='ATTEMPT_BASELINE_MISSING'):
+        capture.result()
+
+
 def test_patch_carries_exactly_the_changes_and_applies_to_the_commit(tmp_path, source):
     repository, sha = source
     workspace, capture = _workspace(tmp_path, repository, sha)
