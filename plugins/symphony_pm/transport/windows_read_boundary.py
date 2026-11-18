@@ -18,7 +18,6 @@ from ctypes import wintypes as W
 import json
 import os
 from pathlib import Path
-import re
 
 from .types import Refused
 from .windows_token import WORKER_CLASS_SID
@@ -30,7 +29,6 @@ _MAPPING = {FILE: (0x120089, 0x120116, 0x1200A0, 0x1F01FF), KEY: (0x20019, 0x200
 _DACL = 0x4  # DACL_SECURITY_INFORMATION
 _HKEY_CURRENT_USER = 0x80000001
 _KEY_ACCESS = 0x00020000 | 0x00040000  # READ_CONTROL | WRITE_DAC
-_ACE = re.compile(r'\(([^()]*)\)')
 
 
 class _Mapping(C.Structure):
@@ -40,14 +38,36 @@ class _Mapping(C.Structure):
 # --- SDDL of one DACL: pure text, no OS call ---------------------------------------------------
 
 def _split(sddl):
-    """(text before the DACL aces, list of ace bodies, text after them) of one SDDL string."""
-    start = sddl.index('D:')
-    end = sddl.find('S:', start)
-    end = len(sddl) if end < 0 else end
-    head, body = sddl[:start+2], sddl[start+2:end]
-    first = body.find('(')
-    flags = body if first < 0 else body[:first]
-    return head+flags, _ACE.findall(body[len(flags):]), sddl[end:]
+    """Keep conditional ACE text intact when splitting the DACL into head, ACE bodies and tail."""
+    depth = 0
+    quoted = False
+    in_dacl = False
+    first_ace = None
+    aces = []
+    end = len(sddl)
+    for i, char in enumerate(sddl):
+        if depth and char == '"':
+            quoted = not quoted
+        elif quoted:
+            continue
+        elif char == '(':
+            if depth == 0:
+                ace_start = i
+                if in_dacl and first_ace is None:
+                    first_ace = i
+            depth += 1
+        elif char == ')':
+            depth -= 1
+            if in_dacl and depth == 0:
+                aces.append(sddl[ace_start+1:i])
+        elif depth == 0 and char in 'OGDS' and sddl.startswith(':', i+1):
+            if in_dacl:
+                end = i
+                break
+            in_dacl = char == 'D'
+    if not in_dacl or depth:
+        raise ValueError('Expected a balanced DACL section')
+    return sddl[:end if first_ace is None else first_ace], aces, sddl[end:]
 
 
 def _is_class_deny(ace):

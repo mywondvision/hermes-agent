@@ -256,6 +256,37 @@ def test_class_deny_goes_first_and_is_removed_exactly():
     assert not has_class_deny(inherit_only)  # it would not apply to the object itself
 
 
+@pytest.mark.parametrize('ace', [
+    '(XA;;FR;;;WD;(@User.Project Any_of "a"))',
+    '(ZA;;FA;;;BA;((@User.x == 1) && (@User.y == 2)))',
+])
+def test_conditional_ace_round_trips_with_class_deny_first(ace):
+    head = 'O:BAG:BAD:PAI'
+    sddl = head + ace + '(A;;FA;;;BA)'
+    added = with_class_deny(sddl, FILE)
+    assert added == head + f'(D;;0x1200a9;;;{windows_token.WORKER_CLASS_SID})' + sddl[len(head):]
+    assert without_class_deny(added) == sddl
+
+
+def test_quoted_sacl_marker_and_parenthesis_stay_inside_dacl():
+    dacl = 'D:(XA;;FR;;;WD;(@User.Project == "S:)"))'
+    sacl = 'S:(AU;SA;FR;;;WD)'
+    sddl = dacl + f'(D;;0x1200a9;;;{windows_token.WORKER_CLASS_SID})' + sacl
+    assert has_class_deny(sddl)
+    assert without_class_deny(sddl) == dacl + sacl
+
+
+@pytest.mark.parametrize('ace_type', ['XD', 'D'])
+def test_conditional_worker_sid_ace_is_preserved(ace_type):
+    sid = windows_token.WORKER_CLASS_SID
+    sddl = f'D:({ace_type};;FR;;;{sid};(@User.Project == "a;b"))'
+    assert not has_class_deny(sddl)
+    assert without_class_deny(sddl) == sddl
+    added = with_class_deny(sddl, FILE)
+    assert has_class_deny(added)
+    assert without_class_deny(added) == sddl
+
+
 class FakeObjects:
     def __init__(self, objects):
         self.sddl, self.writes = dict(objects), []
