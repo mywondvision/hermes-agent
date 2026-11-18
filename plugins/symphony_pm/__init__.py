@@ -5,7 +5,8 @@ binding to the Hermes tool registry, through the ``PluginContext`` the loader ha
 ``register(ctx)``. At load the tool is registered UNWIRED (no port, no trusted-context source):
 its ``check_fn`` is False, so ``get_tool_definitions`` never emits it, and a direct dispatch
 returns ``UNAVAILABLE``/``hold``. Discovery additionally declares an inert host-service factory;
-no issuer, driver, thread, process or network request is created here.
+no issuer, driver, thread, process or network request is created here. A host that supports plugin
+CLI commands also gets `hermes symphony status`, which reads the journal only when invoked.
 
 Wiring seam
 -----------
@@ -84,6 +85,9 @@ def register(ctx: Any) -> None:
     if declare is not None:  # older native hosts retain the original inert/manual wire contract
         from .service import ServingIngress
         declare("ingress", lambda scope: ServingIngress(ctx, scope))
+    if getattr(ctx, "register_cli_command", None) is not None:
+        from .status_cli import register as register_status
+        register_status(ctx)  # `hermes symphony status`: reads the journal only when invoked
 
 
 def wire(
