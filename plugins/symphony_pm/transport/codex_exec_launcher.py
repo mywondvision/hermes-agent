@@ -31,7 +31,7 @@ from hermes_platform.resolver import locate_command
 from . import attempt_workspace as ws
 from .qualification import _open_denying_writers, environment_digest
 from .types import Refused, binding_from_json, digest, finite, identifier, sha
-from .windows_receiver import _SECRET_NAME, require_plain_environment
+from .windows_receiver import require_plain_environment
 
 #: The plan's model and effort when both come from the qualified `config.toml`, not from flags.
 CONFIG_SELECTED = 'codex-config'
@@ -100,13 +100,23 @@ def probe_ok(report):
             and all(steps.get(name, {}).get('ok') is False for name in _DENIED))
 
 
-def client_environment(source, *, codex_home, client_home):
-    """The client's explicit environment: `source` without secret-looking names, its own HOME and TEMP.
+#: What the client takes from the owner's environment. A name filter alone let a webhook URL through
+#: in the first native run (`*_WEBHOOK`): a credential need not be named like one, so this is an allow-list.
+CLIENT_ENVIRONMENT = frozenset((
+    'ALLUSERSPROFILE', 'COMMONPROGRAMFILES', 'COMMONPROGRAMFILES(X86)', 'COMMONPROGRAMW6432', 'COMPUTERNAME',
+    'COMSPEC', 'HOMEDRIVE', 'HOMEPATH', 'NUMBER_OF_PROCESSORS', 'OS', 'PATH', 'PATHEXT', 'PROCESSOR_ARCHITECTURE',
+    'PROCESSOR_IDENTIFIER', 'PROCESSOR_LEVEL', 'PROCESSOR_REVISION', 'PROGRAMDATA', 'PROGRAMFILES',
+    'PROGRAMFILES(X86)', 'PROGRAMW6432', 'PUBLIC', 'SYSTEMDRIVE', 'SYSTEMROOT', 'USERDOMAIN', 'USERNAME', 'WINDIR',
+))
 
-    Commands the sandbox runs inherit from this, so nothing here may carry a credential; the
+
+def client_environment(source, *, codex_home, client_home):
+    """The client's explicit environment: allow-listed names from `source`, its own HOME and TEMP.
+
+    Commands the sandbox runs may inherit from this, so nothing here may carry a credential; the
     client's own login lives in the file store of `codex_home`, which the profile denies.
     """
-    environment = {k: v for k, v in source.items() if not _SECRET_NAME.search(k)}
+    environment = {k: v for k, v in source.items() if k.upper() in CLIENT_ENVIRONMENT}
     home = Path(client_home)
     environment.setdefault('SYSTEMDRIVE', 'C:')  # the MXC sandbox will not start without it
     environment.update(CODEX_HOME=str(codex_home), USERPROFILE=str(home), HOME=str(home),

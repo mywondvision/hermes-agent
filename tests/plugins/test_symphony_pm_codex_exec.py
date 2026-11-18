@@ -21,7 +21,8 @@ from hermes_platform.resolver import locate_command
 from plugins.symphony_pm import status_cli
 from plugins.symphony_pm.transport.codex_client import command_outcome
 from plugins.symphony_pm.transport.codex_exec_launcher import (
-    CONFIG_SELECTED, AttemptSettings, CodexExecLauncher, CodexExecQualification, file_sha256,
+    CONFIG_SELECTED, AttemptSettings, CodexExecLauncher, CodexExecQualification, client_environment,
+    file_sha256,
 )
 from plugins.symphony_pm.transport.lifecycle import LifecycleOwner
 from plugins.symphony_pm.transport.qualification import environment_digest
@@ -261,3 +262,13 @@ def test_status_without_journal_creates_nothing(tmp_path, monkeypatch, capsys):
     home.mkdir()
     assert status(home, monkeypatch, capsys) == {'journal': False, 'launches': []}
     assert list(home.iterdir()) == []
+
+
+def test_client_environment_keeps_only_allow_listed_names(tmp_path):
+    """A credential need not be named like one: the first native run carried a `*_WEBHOOK` URL past a name filter."""
+    source = {'PATH': 'C:\\Windows', 'SystemRoot': 'C:\\Windows', 'PROJECT_B24_WEBHOOK': 'https://x/rest/1/abc/',
+              'CRM_SQL_READONLY': 'dsn', 'OPENAI_API_KEY': 'sk-x', 'APPDATA': 'C:\\elsewhere'}
+    environment = client_environment(source, codex_home=tmp_path/'codex', client_home=tmp_path/'client')
+    assert set(environment) == {'PATH', 'SystemRoot', 'SYSTEMDRIVE', 'CODEX_HOME', 'USERPROFILE', 'HOME', 'APPDATA',
+                                'LOCALAPPDATA', 'TEMP', 'TMP'}
+    assert environment['APPDATA'] == str(tmp_path/'client'/'appdata')
