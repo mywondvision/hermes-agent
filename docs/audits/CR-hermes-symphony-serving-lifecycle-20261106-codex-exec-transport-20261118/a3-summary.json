@@ -1,0 +1,154 @@
+{
+ "source_sha": "5fc59d649ad7dae8928cddd050979caa3b739e11",
+ "permit": "Ок на все (owner, 2026-11-18) — CR codex-exec-transport-20261118: один native-запуск A3 с моделью",
+ "login_status": "Logged in using ChatGPT",
+ "qualification": {
+  "executable_sha256": "edfdd48f8b458af0906e507b4cb05217b326c3d6e515e9f024e05e3b8d650f70",
+  "config_sha256": "67185ca5ed46e3dea0372a687a7772558425d3eee31a5ebc0a9ced1d8672cf3f",
+  "permission_profile": "symphony-pilot",
+  "environment_ref": "symphony-a3-client",
+  "environment_sha256": "a9b22db2772cd2b3a8aa36548215cc41dd64415489fe3877221484454532daeb",
+  "namespace": "symphony_pm:ingress",
+  "scheduler_id": "symphony-a3"
+ },
+ "ticket": {
+  "job": "job-8c0dca26e9794d41b9a15ea7534ac1c6",
+  "attempt": "attempt-2c246d9242ed4c0b9580fdd395d668a7",
+  "fresh": true
+ },
+ "submit_seconds": 135.1,
+ "journal_launch": {
+  "state": "RESUME_INTENT",
+  "bound": true
+ },
+ "precheck": {
+  "exit_code": 0,
+  "report": {
+   "mode": "precheck",
+   "steps": [
+    {
+     "name": "env",
+     "ok": true,
+     "secret_like_names": [],
+     "suspicious_values": []
+    },
+    {
+     "errno": 13,
+     "name": "read-auth",
+     "ok": false,
+     "winerror": null
+    },
+    {
+     "errno": 13,
+     "name": "list-codex-home",
+     "ok": false,
+     "winerror": 5
+    },
+    {
+     "errno": 13,
+     "name": "read-outside",
+     "ok": false,
+     "winerror": null
+    },
+    {
+     "errno": 13,
+     "name": "write-outside",
+     "ok": false,
+     "winerror": null
+    },
+    {
+     "errno": 13,
+     "name": "loopback",
+     "ok": false,
+     "winerror": 10013
+    }
+   ]
+  },
+  "timed_out": false,
+  "verdict": "PROBE_OK"
+ },
+ "exec": {
+  "exit_code": 0,
+  "stop": null,
+  "inexec_probe": "PROBE_NOT_RUN",
+  "probe_stop": null,
+  "usage": [
+   {
+    "cache_write_input_tokens": 0,
+    "cached_input_tokens": 224512,
+    "input_tokens": 257724,
+    "output_tokens": 1574,
+    "reasoning_output_tokens": 21
+   }
+  ],
+  "commands": 7
+ },
+ "capture_in_run": {
+  "refused": "ATTEMPT_GIT_FAILED"
+ },
+ "workspace": {
+  "path": "D:\\SymphonyAttempts\\attempt-2c246d9242ed4c0b9580fdd395d668a7",
+  "renamed": true
+ },
+ "status_cli_in_stand_exit": 3221225794,
+ "host_after_in_stand": "failed: git exit 0xC0000142",
+ "offline_capture": {
+  "patch_sha256": "2eb081977c1da688b5773f9c69b789771ace4a94abe9f2f90a830bfcc11d137c",
+  "paths": [
+   "plugins/symphony_pm/transport/codex_exec_launcher.py",
+   "tests/plugins/test_symphony_pm_codex_exec_probe.py"
+  ],
+  "check": {
+   "apply": 0,
+   "commands": {
+    "ruff": 0,
+    "tests": 0
+   },
+   "ok": true
+  }
+ },
+ "status_cli_rerun": {
+  "exit": 0,
+  "journal_dir_unchanged": true,
+  "output": {
+   "journal": true,
+   "launches": [
+    {
+     "job": "job-8c0dca26e9794d41b9a15ea7534ac1c6",
+     "attempt": "attempt-2c246d9242ed4c0b9580fdd395d668a7",
+     "state": "RESUME_INTENT",
+     "bound": true,
+     "recorded": true,
+     "stop": null,
+     "exit_code": 0,
+     "precheck": "PROBE_OK",
+     "inexec_probe": "PROBE_NOT_RUN",
+     "patch_path": null,
+     "patch_sha256": null,
+     "patch_refused": "ATTEMPT_GIT_FAILED",
+     "paths": null,
+     "check_ok": null,
+     "workspace": "D:\\SymphonyAttempts\\attempt-2c246d9242ed4c0b9580fdd395d668a7",
+     "usage": [
+      {
+       "cache_write_input_tokens": 0,
+       "cached_input_tokens": 224512,
+       "input_tokens": 257724,
+       "output_tokens": 1574,
+       "reasoning_output_tokens": 21
+      }
+     ]
+    }
+   ]
+  }
+ },
+ "host_before_vs_after": {
+  "first_retake_same": false,
+  "first_retake_diff_keys": [
+   "users"
+  ],
+  "second_retake_same": true
+ },
+ "client_environment_name_count": 108,
+ "client_environment_note": "names withheld from publication; filter was name-based in this run (see RESULT)"
+}

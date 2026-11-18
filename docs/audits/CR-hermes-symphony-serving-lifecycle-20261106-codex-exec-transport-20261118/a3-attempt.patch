@@ -1,0 +1,92 @@
+diff --git a/plugins/symphony_pm/transport/codex_exec_launcher.py b/plugins/symphony_pm/transport/codex_exec_launcher.py
+index 3a2d390de286dccb1f063d9d159933a58240ac96..1532dd9c19f991f9fa0b16cb80e34d8c43b247c0 100644
+--- a/plugins/symphony_pm/transport/codex_exec_launcher.py
++++ b/plugins/symphony_pm/transport/codex_exec_launcher.py
+@@ -204,7 +204,7 @@ class AttemptSettings:
+ 
+ 
+ def clean_artifacts(src):
+-    """Interpreter, pytest and PowerShell caches are by-products of running things, never part of a patch."""
++    """Interpreter, pytest, Ruff and PowerShell caches are left out of the patch."""
+     removed = []
+     stray = src/'Microsoft'/'Windows'/'PowerShell'
+     if stray.is_dir():
+@@ -213,7 +213,7 @@ def clean_artifacts(src):
+         for parent in (src/'Microsoft'/'Windows', src/'Microsoft'):
+             if parent.is_dir() and not any(parent.iterdir()):
+                 parent.rmdir()
+-    for name in ('__pycache__', '.pytest_cache'):
++    for name in ('__pycache__', '.pytest_cache', '.ruff_cache'):
+         for path in sorted(src.rglob(name), reverse=True):
+             if path.is_dir() and not path.is_symlink():
+                 shutil.rmtree(path)
+diff --git a/tests/plugins/test_symphony_pm_codex_exec_probe.py b/tests/plugins/test_symphony_pm_codex_exec_probe.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..06995e5f39e73d6ad35dc23a3124ea73b9fded73
+--- /dev/null
++++ b/tests/plugins/test_symphony_pm_codex_exec_probe.py
+@@ -0,0 +1,64 @@
++"""Fixture coverage for sandbox verdicts and attempt cleanup."""
++import pytest
++
++from plugins.symphony_pm.transport.codex_exec_launcher import clean_artifacts, probe_ok
++
++
++OUTSIDE_STEPS = ('read-auth', 'list-codex-home', 'read-outside', 'write-outside', 'loopback')
++
++
++@pytest.fixture
++def probe_report():
++    return {'steps': [
++        {'name': 'env', 'ok': True, 'secret_like_names': [], 'suspicious_values': []},
++        *({'name': name, 'ok': False} for name in OUTSIDE_STEPS),
++    ]}
++
++
++def test_probe_accepts_clean_denied_report(probe_report):
++    assert probe_ok(probe_report) is True
++
++
++@pytest.mark.parametrize('name', OUTSIDE_STEPS)
++@pytest.mark.parametrize('missing', [False, True], ids=['allowed', 'missing'])
++def test_probe_requires_each_outside_step_to_be_denied(probe_report, name, missing):
++    steps = probe_report['steps']
++    step = next(step for step in steps if step['name'] == name)
++    if missing:
++        steps.remove(step)
++    else:
++        step['ok'] = True
++    assert probe_ok(probe_report) is False
++
++
++@pytest.mark.parametrize('env_fields', [
++    {'ok': False},
++    {'secret_like_names': ['EXAMPLE_API_KEY']},
++    {'suspicious_values': ['EXAMPLE_SETTING']},
++])
++def test_probe_requires_clean_successful_env(probe_report, env_fields):
++    probe_report['steps'][0].update(env_fields)
++    assert probe_ok(probe_report) is False
++
++
++def test_clean_artifacts_removes_only_generated_directories(tmp_path):
++    caches = (
++        'package/__pycache__',
++        '.pytest_cache',
++        'package/.ruff_cache',
++        'Microsoft/Windows/PowerShell',
++    )
++    for cache in caches:
++        path = tmp_path / cache
++        path.mkdir(parents=True)
++        (path / 'generated').write_text('cache', encoding='utf-8')
++
++    kept = (tmp_path / 'package' / 'source.py', tmp_path / '.ruff_cache')
++    for path in kept:
++        path.write_text('keep', encoding='utf-8')
++
++    assert sorted(clean_artifacts(tmp_path)) == sorted(caches)
++    assert all(not (tmp_path / cache).exists() for cache in caches)
++    assert not (tmp_path / 'Microsoft' / 'Windows').exists()
++    assert not (tmp_path / 'Microsoft').exists()
++    assert all(path.read_text(encoding='utf-8') == 'keep' for path in kept)
