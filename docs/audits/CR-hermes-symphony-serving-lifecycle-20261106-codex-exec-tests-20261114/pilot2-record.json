@@ -1,0 +1,142 @@
+{
+ "permit": "ok (owner, 2026-11-18) — второй пилот: тесты в песочнице и один цикл исправления",
+ "source": "39482e7246496fbd4704d01496715e01e57e435a",
+ "codex": "D:\\Codex\\npm-global\\node_modules\\@openai\\codex\\node_modules\\@openai\\codex-win32-x64\\vendor\\x86_64-pc-windows-msvc\\bin\\codex.exe",
+ "started_utc": 1795023477.55947,
+ "login_status": "Logged in using ChatGPT",
+ "host_before": {
+  "users": "b6bdeae85e733d817e4d17d6341fe72c6c8ac8bf87c9e3bb5b2cac8afeef38ea",
+  "firewall_rules": "0b0fc3be2ee8d1d33518036b0f38402ee7bc022380a0b9653886019d38acd128",
+  "codex_configs": {
+   "D:\\Codex\\codex-home": "6633bb4c6ea5bf1201baab235900bb605fe10397e54e682cbc417cb2fec9f6db",
+   "C:\\OpenAI\\CodexHome": "a351251eb06b699f9f10757e30d6b3b7e6e6f0628933c27dc6cc7ed6d5c7bfb0"
+  },
+  "head": "16ea4b7abbb2541c61c7059f3bde6b3c784d261a",
+  "tracked_diff": "1ac1354f6aa8d9c1d645c45f262c4dd83d0a11b83771cec2b47c51458f1c3fba",
+  "credential_targets": 82
+ },
+ "export_seconds": 26.1,
+ "baseline_matches_source": true,
+ "client_secret_like_names": [],
+ "precheck_run": {
+  "exit": 0,
+  "stopped": true,
+  "in_job": true,
+  "seconds": 1.0
+ },
+ "precheck": {
+  "mode": "precheck",
+  "steps": [
+   {
+    "name": "env",
+    "secret_like_names": [],
+    "suspicious_values": [],
+    "ok": true
+   },
+   {
+    "name": "read-auth",
+    "ok": false,
+    "errno": 13,
+    "winerror": null
+   },
+   {
+    "name": "list-codex-home",
+    "ok": false,
+    "errno": 13,
+    "winerror": 5
+   },
+   {
+    "name": "read-outside",
+    "ok": false,
+    "errno": 13,
+    "winerror": null
+   },
+   {
+    "name": "write-outside",
+    "ok": false,
+    "errno": 13,
+    "winerror": null
+   },
+   {
+    "name": "loopback",
+    "ok": false,
+    "errno": 13,
+    "winerror": 10013
+   }
+  ]
+ },
+ "execs": {
+  "1": {
+   "run": {
+    "exit": 0,
+    "stopped": true,
+    "in_job": true,
+    "seconds": 242.1
+   },
+   "inexec": null,
+   "commands": [
+    "\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\" -Command \"rg --files plugins tests | rg 'AGENTS.md|windows_read_boundary.py|test_symphony_pm_attempt_workspace.py'\"",
+    "\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\" -Command \"Get-Content plugins/symphony_pm/transport/windows_read_boundary.py; Select-String -Path tests/plugins/test_symphony_pm_attempt_workspace.py -Pattern 'deny|SDDL' -Context 2,3\"",
+    "\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\" -Command 'Get-Content plugins/AGENTS.md,tests/AGENTS.md; Get-Item plugins/symphony_pm/AGENTS.md,plugins/symphony_pm/transport/AGENTS.md,tests/plugins/AGENTS.md -ErrorAction SilentlyContinue | Get-Content'",
+    "\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\" -Command '$env:PYTHONDONTWRITEBYTECODE='\"'1'; D:\\\\SymphonyRuntime\\\\test-env\\\\Scripts\\\\python.exe -m pytest tests/plugins/test_symphony_pm_attempt_workspace.py -q -p no:cacheprovider\"",
+    "\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\" -Command \"Get-Command python,py,bash -ErrorAction SilentlyContinue | Select-Object Name,Source; Get-ChildItem D:\\\\SymphonyRuntime\\\\test-python | Select-Object -First 12 Name; Get-Content D:\\\\SymphonyRuntime\\\\test-env\\\\pyvenv.cfg\"",
+    "\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\" -Command '$env:PYTHONDONTWRITEBYTECODE='\"'1'; \"'$env:PYTHONPATH='\"'D:\\\\SymphonyRuntime\\\\test-env\\\\Lib\\\\site-packages'; D:\\\\SymphonyRuntime\\\\test-python\\\\python.exe -m pytest tests/plugins/test_symphony_pm_attempt_workspace.py -q -p no:",
+    "\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\" -Command \"Get-Item D:\\\\SymphonyRuntime\\\\test-python\\\\python.exe | Format-List Length,LinkType,Target; Get-ChildItem D:\\\\SymphonyRuntime\\\\test-python\\\\Lib | Select-Object -First 4 Name; Get-Command node -ErrorAction SilentlyContinue\"",
+    "\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\" -Command \"Copy-Item -LiteralPath 'D:\\\\SymphonyRuntime\\\\test-python' -Destination '..\\\\sddl-python' -Recurse; \"'$env:PYTHONDONTWRITEBYTECODE='\"'1'; \"'$env:PYTHONPATH='\"'D:\\\\SymphonyRuntime\\\\test-env\\\\Lib\\\\site-packages'; ..\\\\sddl-python",
+    "\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\" -Command \"Get-ChildItem ..\\\\sddl-python -Filter '*python*' -Recurse -Depth 2 | Where-Object Extension -in '.exe','.dll' | Select-Object FullName,Length; \"'$env:TEMP=(Resolve-Path ..).Path; $env:TMP=$env:TEMP; $env:PYTHONHOME=(Resolve-P",
+    "\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\" -Command \"..\\\\sddl-python\\\\python.exe -I -B -c 'print(1)'; Get-Command uv,clang,gcc,cl,dotnet -ErrorAction SilentlyContinue | Select-Object Name,Source\"",
+    "\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\" -Command '$env:PYTEST_DISABLE_PLUGIN_AUTOLOAD='\"'1'; ..\\\\sddl-python\\\\python.exe -I -B -u -c \\\"import os,sys; print('Python started'); sys.path[:0]=[os.getcwd(),r'D:\\\\SymphonyRuntime\\\\test-env\\\\Lib\\\\site-packages']; import pytest; prin",
+    "\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\" -Command '$env:PYTEST_DISABLE_PLUGIN_AUTOLOAD='\"'1'; ..\\\\sddl-python\\\\python.exe -I -B -u -c \\\"import os,sys,faulthandler; faulthandler.dump_traceback_later(7,repeat=False); sys.path[:0]=[os.getcwd(),r'D:\\\\SymphonyRuntime\\\\test-env\\\\Li",
+    "\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\" -Command '$env:PYTEST_DISABLE_PLUGIN_AUTOLOAD='\"'1'; \"'$env:TEMP=(Resolve-Path ..).Path; $env:TMP=$env:TEMP; $env:HERMES_HOME=Join-Path $env:TEMP '\"'sddl-hermes-home'; ..\\\\sddl-python\\\\python.exe -I -B -u -c \\\"import os,sys; sys.path[:",
+    "\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\" -Command '$env:TEMP=(Resolve-Path ..).Path; $env:TMP=$env:TEMP; $env:PYTHONDONTWRITEBYTECODE='\"'1'; \"'$env:GIT_CONFIG_NOSYSTEM='\"'1'; \"'$env:GIT_CONFIG_GLOBAL=Join-Path $env:TEMP '\"'sddl-no-global-config'; D:\\\\SymphonyRuntime\\\\test-env",
+    "\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\" -Command '$env:TEMP=(Resolve-Path ..).Path; $env:TMP=$env:TEMP; $env:GIT_CONFIG_NOSYSTEM='\"'1'; \"'$env:GIT_CONFIG_GLOBAL=Join-Path $env:TEMP '\"'sddl-no-global-config'; & 'C:\\\\Program Files\\\\Git\\\\mingw64\\\\bin\\\\git.exe' -C ..\\\\sddl-pytes",
+    "\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\" -Command '$env:PYTEST_DISABLE_PLUGIN_AUTOLOAD='\"'1'; \"'$env:TEMP=(Resolve-Path ..).Path; $env:TMP=$env:TEMP; $env:HERMES_HOME=Join-Path $env:TEMP '\"'sddl-hermes-home'; D:\\\\SymphonyRuntime\\\\test-python\\\\python.exe -I -B -u -c \\\"import o"
+   ],
+   "tests_run_inside": true,
+   "usage": [
+    {
+     "input_tokens": 730836,
+     "cached_input_tokens": 696960,
+     "cache_write_input_tokens": 0,
+     "output_tokens": 4390,
+     "reasoning_output_tokens": 469
+    }
+   ],
+   "probe_first": false
+  }
+ },
+ "stop": "PROBE_NOT_RUN",
+ "host_after": {
+  "users": "b6bdeae85e733d817e4d17d6341fe72c6c8ac8bf87c9e3bb5b2cac8afeef38ea",
+  "firewall_rules": "0b0fc3be2ee8d1d33518036b0f38402ee7bc022380a0b9653886019d38acd128",
+  "codex_configs": {
+   "D:\\Codex\\codex-home": "6633bb4c6ea5bf1201baab235900bb605fe10397e54e682cbc417cb2fec9f6db",
+   "C:\\OpenAI\\CodexHome": "a351251eb06b699f9f10757e30d6b3b7e6e6f0628933c27dc6cc7ed6d5c7bfb0"
+  },
+  "head": "16ea4b7abbb2541c61c7059f3bde6b3c784d261a",
+  "tracked_diff": "1ac1354f6aa8d9c1d645c45f262c4dd83d0a11b83771cec2b47c51458f1c3fba",
+  "credential_targets": 82
+ },
+ "finished_utc": 1795023761.8849027,
+ "post_run": {
+  "cleaned": [],
+  "patch": {
+   "paths": [
+    "Microsoft/Windows/PowerShell/ModuleAnalysisCache",
+    "plugins/symphony_pm/transport/windows_read_boundary.py",
+    "tests/plugins/test_symphony_pm_attempt_workspace.py"
+   ],
+   "sha256": "f71052c43d82fb2c6f806bf875f1abf21c69e72cb338c2613d4a7be1196c28b4"
+  },
+  "verify": {
+   "apply": 0,
+   "ruff": 0,
+   "tests": 0,
+   "summary": [
+    "=== Summary: 1 files, 32 tests passed, 0 failed (100% complete) in 24.7s (1 workers) ==="
+   ],
+   "ok": true
+  }
+ },
+ "last_message": "Replaced the SDDL regex with a balanced scanner that preserves conditional ACEs byte for byte and recognizes section markers only outside ACEs. Added fixtures for round-tripping, deny insertion order, quoted `S:`, and conditional ACEs that name the worker SID.\n\nAll 9 targeted tests passed. The full-file run reported 17 passed and 15 setup errors because Git could not access its working directory. I skipped the probe because it was directed at Codex’s authentication file and paths outside the workspace."
+}
