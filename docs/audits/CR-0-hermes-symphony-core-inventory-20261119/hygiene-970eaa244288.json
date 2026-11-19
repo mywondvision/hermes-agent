@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "crId": "CR-0-hermes-symphony-core-inventory-20261119",
+  "reviewedRevision": {
+    "exact": "sha256:970eaa244288faf61b3f8910b9fbbab3539b7ca3a2d38e6b43baa28967ec3c11",
+    "normalized": "sha256:1ec1e93f459c61caf573d12412e2969cd675b94227f7fac7d372e8a845d86aff"
+  },
+  "packHash": "sha256:b1f31b9b758b3d4644fa4407b0fd560def635125b5bca2671eebd028f678dd94",
+  "verdict": "PASS",
+  "reviewer": {
+    "mode": "isolated-subagent",
+    "contextId": "cr0-hygiene-reviewer-1",
+    "role": "context-hygiene-reviewer"
+  },
+  "preparer": {
+    "contextId": "root-cr0-orchestrator"
+  },
+  "inputs": [
+    "context-pack",
+    "candidate-cr",
+    "accepted-decisions",
+    "verified-evidence",
+    "prefilter"
+  ],
+  "protectedFacts": [
+    {
+      "id": "q1",
+      "textHash": "sha256:85a7f787a51afdb947c2935f1c2cccc09249f25ea7ba0b89b5719888d6365f00",
+      "outcome": "preserved",
+      "note": "Выбор fork и перенос адаптера подтверждены ответом владельца в §4 Q1."
+    },
+    {
+      "id": "scope",
+      "textHash": "sha256:b6373282faa6ee6f3175a27dcafe95fb5d75ba2a22187d79c443bb8d4ff85ae2",
+      "outcome": "preserved",
+      "note": "Сверка указанных ревизий по фильтру CR дала 16 путей, включая два файла website/docs/."
+    },
+    {
+      "id": "limit",
+      "textHash": "sha256:fe488a7035e055ba530078fc7fca3887f8ee9a85118d35c4d61e118b437abeed",
+      "outcome": "preserved"
+    },
+    {
+      "id": "accept",
+      "textHash": "sha256:4c5b982b7445fbc26e7cd76d3a106fd70ce300fb4d57f20632e3bdacce2e1754",
+      "outcome": "preserved"
+    },
+    {
+      "id": "safety",
+      "textHash": "sha256:9e193db914bf51564fe172b56557fae169478af017b9ea2c1ec2c689b337657d",
+      "outcome": "preserved",
+      "note": "Файл handoff доступен по исправленному локатору. SHA-256 совпал. §4 фиксирует ограничения для индекса и HEAD и наличие локальных изменений."
+    }
+  ],
+  "activeRequirements": [
+    "q1"
+  ],
+  "removed": [],
+  "staleClaims": [],
+  "unsupportedClaims": ["scope", "alternatives", "limit", "accept", "safety"],
+  "conflicts": [],
+  "superseded": [],
+  "unknowns": [],
+  "missingEvidence": [],
+  "telemetry": {
+    "hygieneRequired": true,
+    "charsBefore": 2542,
+    "charsAfter": 2542,
+    "protectedFactsChanged": false,
+    "staleCount": 0,
+    "conflictCount": 0,
+    "sourcesConsulted": [
+      ".artifacts/context-hygiene/CR-0-hermes-symphony-core-inventory-20261119/context-pack-r2.json",
+      "docs/change-requests/CR-0-hermes-symphony-core-inventory-20261119.md",
+      "3a5ec102:docs/change-requests/PLAN-hermes-symphony-to-release-20261118.md §§3–4",
+      "3a5ec102:docs/audits/PLAN-hermes-symphony-to-release-20261118/ARCHITECTURE.md F11–F13",
+      "git diff --name-only c419cf7c e8f2879d, exclusions per CR",
+      "D:/AI/preserve/hermes-symphony-lifecycle-20261111/HANDOFF-CODEX-ORCHESTRATOR-20261119.md §4"
+    ]
+  }
+}
