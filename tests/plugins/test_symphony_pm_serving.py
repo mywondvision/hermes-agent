@@ -14,8 +14,8 @@ import pytest
 from hermes_cli import plugins
 from hermes_cli.plugin_request_binding import AuthorityGrant
 from hermes_cli.plugin_services import ServiceHost
-from tests.tools.test_symphony_pm_adapter import FakeScheduler, ISSUER, SCHED, ctx, submit_payload
-from tools import symphony_pm_adapter as pm
+from plugins.symphony_pm import adapter as pm
+from tests.plugins.test_symphony_pm_adapter import FakeScheduler, ISSUER, SCHED, ctx, submit_payload
 from tools.registry import registry
 
 
@@ -82,6 +82,7 @@ def test_explicit_binding_dispatches_once_and_revokes_captured_handler_on_stop(l
     result = _call(payload)
     assert result['outcome'] == 'SUBMITTED' and not result['hold']
     assert len(port.calls) == 1
+    assert type(port.calls[0][1]) is pm.SubmitIntent
     captured = entry.handler
     loaded[1].stop()
     assert json.loads(captured(payload))['outcome'] == 'UNAVAILABLE'

@@ -1,4 +1,4 @@
-"""Offline contract tests for ``tools/symphony_pm_adapter.py`` (ADD-HERMES-PM-INGRESS-01, cases 1-8).
+"""Offline contract tests for ``plugins/symphony_pm/adapter.py`` (ADD-HERMES-PM-INGRESS-01, cases 1-8).
 
 Source/fake-only. The adapter talks to a synthetic Symphony scheduler port; case 4 drives that fake
 scheduler into the ACTUAL frozen S2 PRIMARY source (``.artifacts/frozen-s2``), loaded under an
@@ -24,7 +24,7 @@ from unittest import mock
 
 import pytest
 
-from tools import symphony_pm_adapter as pm
+from plugins.symphony_pm import adapter as pm
 
 REPO = Path(__file__).resolve().parents[2]
 FROZEN = REPO / ".artifacts" / "frozen-s2"

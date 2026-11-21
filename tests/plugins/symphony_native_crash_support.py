@@ -174,9 +174,21 @@ def decoy_protected(directory):
     It carries the worker-class deny entry; the journal sits next to it and is the test's only record.
     """
     decoy = Path(directory)/'protected-decoy'
-    decoy.mkdir(parents=True, exist_ok=True)
+    # The fixture grants its worker traversal of the parent after taking this object's snapshot.
+    # A private Windows DACL keeps those later parent updates out of the restart comparison.
+    make_user_dir(decoy, mode=0o700, parents=True, exist_ok=True)
     DenyEntries(WindowsApi(), Path(directory)/'protected-decoy.journal.json').apply([(FILE, str(decoy))])
     return ((FILE, str(decoy)),)
+
+
+def release_cut(receipt):
+    """Publish a complete CUT marker before the helper can observe its name."""
+    pending = receipt.with_suffix('.release-pending')
+    with pending.open('x', encoding='utf-8') as stream:
+        stream.write('CUT')
+        stream.flush()
+        os.fsync(stream.fileno())
+    pending.rename(receipt.with_suffix('.release'))
 
 
 def owner_environment(tmp_path, home, proofs):
@@ -430,6 +442,7 @@ def child_main(home, cut, receipt):
                 rig.observer.api.snapshot = lambda job: rig.native.api.pause()
                 rig.owner.status(receiver.binding)
             future.result(timeout=45)
+            raise Refused('EXPECTED_TEST_OWNER_CRASH_NOT_REACHED')
     finally:
         rig.close(time.monotonic()+10)
 

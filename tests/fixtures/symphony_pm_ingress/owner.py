@@ -15,7 +15,7 @@ import threading
 import uuid
 from dataclasses import asdict, dataclass
 
-from tools import symphony_pm_adapter as pm
+from plugins.symphony_pm import adapter as pm
 
 CLAIMS = ("worker_stopped", "descendants_stopped", "external_effects_settled", "billing_settled")
 PRODUCER = "symphony-readback"

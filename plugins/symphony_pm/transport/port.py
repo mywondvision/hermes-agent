@@ -1,5 +1,5 @@
 """Existing PM Protocol projected from one durable lifecycle owner, never a queue."""
-from tools import symphony_pm_adapter as pm
+from plugins.symphony_pm import adapter as pm
 from .types import Refused
 
 
@@ -19,7 +19,7 @@ class ServingPort:
     def submit_intent(self, request, context):
         common = self._common(request, context)
         try:
-            ticket, fresh = self.owner.submit(request, context)
+            ticket, fresh = self.owner.submit(request, context, background=True)
         except Refused as exc:
             reason = str(exc)
             outcome = 'CONFLICT' if reason == 'CONFLICT' else 'UNKNOWN'
@@ -32,32 +32,36 @@ class ServingPort:
     def get_status(self, request, context):
         common = self._common(request, context)
         try:
-            binding = self.owner.control_target(request, context)
-            phase, evidence = self.owner.status(binding)
+            ticket, _, body = self.owner.control_target(request, context)
+            if body is None:
+                raise Refused('STATUS_OBSERVATION_REQUIRED')
+            view = body['view']
         except Refused as exc:
             return pm.PmStatusReceipt(**common, job_ref=request.job_ref,
                                      job_revision=request.expected_job_revision, attempt_ref='',
                                      phase='UNKNOWN', uncertainty=(str(exc),))
-        return pm.PmStatusReceipt(**common, job_ref=binding.ticket.job, job_revision=binding.ticket.revision,
-                                 attempt_ref=binding.ticket.attempt, phase=phase,
-                                 evidence_refs=evidence,
-                                 retention=(('reservation', 'POSSIBLY_CONSUMED_HELD'),),
-                                 uncertainty=('EXTERNAL_AND_BILLING_UNKNOWN',))
+        common['observed_at'] = view['observed_at']
+        return pm.PmStatusReceipt(**common, job_ref=ticket.job, job_revision=ticket.revision,
+                                 attempt_ref=ticket.attempt, phase=view['phase'], evidence_refs=(view['evidence_ref'],),
+                                 retention=tuple(map(tuple, view['retention'])), uncertainty=tuple(view['uncertainty']))
 
     def request_cancel(self, request, context):
         common = self._common(request, context)
         try:
-            binding = self.owner.control_target(request, context)
-            result = self.owner.cancel_internal(binding, 'PM_CANCEL', request_id=request.request_id,
-                                                detail=request.reason)
+            with self.owner.lock:
+                ticket, _, body = self.owner.control_target(request, context)
+                result = self.owner.stop_by_owner(ticket.project, ticket.job, ticket.revision,
+                                                  request_id=request.request_id, detail=request.reason)
         except Refused as exc:
             return pm.PmCancelReceipt(**common, job_ref=request.job_ref,
                                      job_revision=request.expected_job_revision, outcome='UNKNOWN',
                                      reservation_state='POSSIBLY_CONSUMED', uncertainty=(str(exc),))
         # A query-only local-stop proof is not an acknowledgement of a cancel
         # effect. Keep the shared receipt UNKNOWN unless this call got an ACK.
-        outcome = 'CANCEL_REQUESTED' if result.dispatched else 'UNKNOWN'
-        return pm.PmCancelReceipt(**common, job_ref=binding.ticket.job, job_revision=binding.ticket.revision,
+        outcome = result.state if result.state in ('CANCEL_REQUESTED', 'ALREADY_REQUESTED') else 'UNKNOWN'
+        claims = ('worker_stopped', 'descendants_stopped') if body and body['job_empty'] else ()
+        return pm.PmCancelReceipt(**common, job_ref=ticket.job, job_revision=ticket.revision,
                                  outcome=outcome, reservation_state='POSSIBLY_CONSUMED',
+                                 claims=claims, evidence_refs=(body['view']['evidence_ref'],) if claims else (),
                                  retention=(('reservation', result.reservation),),
                                  uncertainty=('EXTERNAL_AND_BILLING_UNKNOWN',))

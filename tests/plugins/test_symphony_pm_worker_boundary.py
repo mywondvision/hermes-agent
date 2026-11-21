@@ -15,10 +15,10 @@ from plugins.symphony_pm.transport.lifecycle import AttemptRunner
 from plugins.symphony_pm.transport.types import Refused, job_object_name
 from plugins.symphony_pm.transport.windows_token import LOW, MEDIUM
 from tests.plugins.symphony_serving_support import approve, rig
+from tests.plugins.test_symphony_pm_adapter import submit_payload
 from tests.plugins.test_symphony_pm_job_registry import (  # the autouse registry fixture must be in scope here
     OWNER_PROCESS, WORKER_TOKEN, FakeKernel, _receiver, _registry_gains_no_entries,
 )
-from tests.tools.test_symphony_pm_adapter import submit_payload
 
 pytestmark = pytest.mark.platforms('windows')
 

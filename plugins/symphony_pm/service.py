@@ -6,29 +6,16 @@ qualification; this module never derives authority from a model's arguments.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Callable
-
 from hermes_cli.plugin_request_binding import (
     AuthorityGrant, RequestIdentity, bind_request, current_authority,
 )
-from tools.symphony_pm_adapter import (
-    SymphonyPmAdapter, SymphonyPmPort, TrustedPmContextV1, make_pm_tool_handler,
+from plugins.symphony_pm.adapter import (
+    SymphonyPmAdapter, TrustedPmContextV1, make_pm_tool_handler,
     parse_intent, register_pm_tool,
 )
 
 
-@dataclass(frozen=True)
-class ServingBinding:
-    port: SymphonyPmPort
-    authority_source: Callable[[RequestIdentity], AuthorityGrant | None]
-    trusted_issuers: tuple[str, ...]
-    scheduler_id: str
-
-
-@dataclass(frozen=True)
-class ServingBootstrap:
-    factory: Callable
+from plugins.symphony_pm.contracts import ServingBinding, ServingBootstrap
 
 
 class _LivePort:
@@ -65,6 +52,10 @@ class ServingIngress:
         self.adapter = SymphonyPmAdapter(
             _LivePort(scope, self.binding.port), trusted_issuers=self.binding.trusted_issuers,
             scheduler_id=self.binding.scheduler_id)
+        self.typed_approval = None
+        if getattr(ctx, 'get_config', lambda *_: None)('typed_approval', None) is not None:
+            from plugins.symphony_pm.typed_approval import TypedApproval
+            self.typed_approval = TypedApproval(ctx, scope, self.binding)
         self.handler = make_pm_tool_handler(self.adapter, lambda: current_authority(scope))
         self.without_authority = make_pm_tool_handler(self.adapter, lambda: None)
         register_pm_tool(_ServiceRegistry(ctx, self), adapter=self.adapter,
@@ -84,7 +75,14 @@ class ServingIngress:
         identity = RequestIdentity(self.scope.profile_home, self.scope.namespace,
                                    session_id, intent.request_id, intent.payload_digest)
         try:
-            grant = self.binding.authority_source(identity)
+            source = self.binding.authority_source
+            for_control = getattr(source, 'for_control', None)
+            if self.typed_approval is not None and intent.operation == 'submit_intent':
+                grant = self.typed_approval.for_submit(identity, intent)
+            elif intent.operation in ('get_status', 'request_cancel') and callable(for_control):
+                grant = for_control(identity, intent)
+            else:
+                grant = source(identity)
         except Exception:  # health: allow BLE001 -- issuer failures deny without exposing exception text
             return self.without_authority(args, **runtime)
         if not self._bound_context(grant, identity):

@@ -124,7 +124,8 @@ def freeze(api, workspace):
 # --- Git: copy in, patch out --------------------------------------------------------------------
 
 def _clean_environment(**extra):
-    environment = {k: v for k, v in os.environ.items() if not k.upper().startswith('GIT_')}
+    names = ('SYSTEMROOT', 'SYSTEMDRIVE', 'WINDIR', 'TEMP', 'TMP')
+    environment = {k: os.environ[k] for k in names if k in os.environ}
     environment.update(GIT_CONFIG_NOSYSTEM='1', GIT_CONFIG_GLOBAL=os.devnull, GIT_TERMINAL_PROMPT='0', **extra)
     return environment
 
@@ -237,9 +238,28 @@ class Capture:
         self.base = tree
         return self.base
 
-    def result(self, limit=PATCH_LIMIT):
+    def restore_baseline(self, saved_index):
+        """Recover the tree measured before dispatch from the owner's original baseline index."""
+        try:
+            shutil.copyfile(saved_index, self.shadow.directory/'baseline.index')
+        except FileNotFoundError as exc:
+            raise Refused('ATTEMPT_BASELINE_MISSING') from exc
+        self.source_tree = self.shadow.run(self.workspace.src, 'base.index', 'rev-parse',
+                                           self.sha+'^{tree}').decode('ascii').strip()
+        # The immutable source supplies the blobs. Compare the actual indexed names, modes,
+        # stages and object IDs even if an unrelated replacement index references missing blobs.
+        listing = ('ls-files', '--stage', '--full-name', '-z')
+        measured = self.shadow.run(self.workspace.src, 'baseline.index', *listing)
+        expected = self.shadow.run(self.workspace.src, 'base.index', *listing)
+        if measured != expected:
+            raise Refused('ATTEMPT_BASELINE_MISMATCH')
+        self.base = self.source_tree
+
+    def result(self, limit=PATCH_LIMIT, *, observation_seq=None):
         if self.base is None:
             raise Refused('ATTEMPT_BASELINE_MISSING')
+        if observation_seq is not None and (type(observation_seq) is not int or observation_seq < 1):
+            raise Refused('OBSERVATION_SEQUENCE')
         require_plain_tree(self.workspace.src)
         after = self.shadow.tree(self.workspace.src, 'after.index')
         names = self.shadow.run(self.workspace.src, 'after.index', 'diff', '--name-only', '-z', '--no-renames',
@@ -249,13 +269,15 @@ class Capture:
                                 '--no-renames', '--no-ext-diff', '--no-textconv', self.base, after)
         require_patch_policy(patch, paths, limit)
         self.results.mkdir(parents=True, exist_ok=True)
-        target = self.results/(self.workspace.attempt+'.patch')
+        stem = self.workspace.attempt if observation_seq is None else f'capture-{observation_seq}'
+        target = self.results/(stem+'.patch')
         with target.open('xb') as stream:
             stream.write(patch)
-        require_applies(self.shadow, self.sha, target)
+        if paths:
+            require_applies(self.shadow, self.sha, target)
         digest = hashlib.sha256(patch).hexdigest()
         result = Result(target, digest, paths, self.base == self.source_tree)
-        (self.results/(self.workspace.attempt+'.json')).write_text(json.dumps({
+        (self.results/(stem+'.json')).write_text(json.dumps({
             'attempt': self.workspace.attempt, 'source_sha': self.sha, 'sha256': digest, 'paths': list(paths),
             'base_tree': self.base, 'after_tree': after, 'baseline_matches_source': result.baseline_matches_source,
         }, indent=1), encoding='utf-8')

@@ -17,7 +17,7 @@ import pytest
 
 from plugins.symphony_pm.transport.types import ProcessIdentity, Refused, binding_from_json
 from tests.plugins.symphony_native_crash_support import (
-    BoundedApi, NativeRig, helper_command, owner_environment, save_proof,
+    BoundedApi, NativeRig, helper_command, owner_environment, release_cut, save_proof,
 )
 from tests.waiting import wait_until
 
@@ -66,7 +66,7 @@ def test_owner_crash_during_observer_read_stops_worker_and_descendant(tmp_path):
                 handles[identity] = api.open_process(identity.pid)
                 assert api.creation(handles[identity]) == identity.creation
                 assert not api.wait(handles[identity])  # alive: the owner holds the Job and a duplicate
-            receipt.with_suffix('.release').write_text('CUT', encoding='utf-8')
+            release_cut(receipt)
             assert _stopped(api, process) and api.exit_code(process) == 71
             # The parent containment Job is still open: only the dead owner's handles explain these stops.
             terminal = [{**asdict(identity), 'signaled': _stopped(api, handle)}
@@ -76,9 +76,15 @@ def test_owner_crash_during_observer_read_stops_worker_and_descendant(tmp_path):
             assert all(record['signaled'] for record in terminal)
             before = _journal_rows(home)
             assert len(before[0]) == 1 and before[0][0][5] == 'RESUME_INTENT' and before[1] == []
-            with pytest.raises(Refused, match='OBSERVER_COVERAGE_UNKNOWN'):
-                NativeRig(home, descendant=True)  # recovery holds; it never relaunches or releases
-            assert _journal_rows(home) == before
+            recovered = NativeRig(home, descendant=True)
+            try:
+                _, row = recovered.owner.journal.read_launch(recovered.owner.token, binding.ticket.project,
+                                                             binding.ticket.job, binding.ticket.revision)
+                assert (row['state'], row['stop_proof']) == ('STOPPED', 'OWNER_DEAD')
+                assert recovered.creates == 0 and recovered.owner.journal.unfinished(recovered.owner.token) == []
+            finally:
+                recovered.close(0)
+            assert _journal_rows(home)[1] == before[1]
             wait_until(lambda: api.snapshot(parent_job)[0] == 0, timeout=10, what='empty parent containment Job')
     finally:
         failures = []

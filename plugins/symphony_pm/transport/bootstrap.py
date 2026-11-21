@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from .approval import ApprovalSource
 from .lifecycle import LifecycleOwner
 from .port import ServingPort
+from .run_supervisor import RunSupervisor
 from .types import Refused
 
 
@@ -43,6 +44,7 @@ class TransportBootstrap:
     scheduler_id: str
     controller: str
     trusted_issuers: tuple[str, ...]
+    migrate_v1: bool = False
 
     def __call__(self, scope):
         from ..service import ServingBinding
@@ -54,7 +56,8 @@ class TransportBootstrap:
         resources.observer = self.observer_factory(scope)
         native = self.native_factory(scope)
         owner = LifecycleOwner(scope, guard, resources.observer, native, self.launcher,
-                               scheduler_id=self.scheduler_id, controller=self.controller)
+                               scheduler_id=self.scheduler_id, controller=self.controller, migrate_v1=self.migrate_v1)
         resources.owner = owner
         source = ApprovalSource(owner, self.approval_transport, scheduler_id=self.scheduler_id)
+        owner.supervisor = RunSupervisor(owner)
         return ServingBinding(ServingPort(owner), source, self.trusted_issuers, self.scheduler_id)
