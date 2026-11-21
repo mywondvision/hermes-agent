@@ -1,4 +1,4 @@
-"""symphony_pm plugin — Hermes registry wiring for ``tools/symphony_pm_adapter.py``.
+"""symphony_pm plugin — Hermes registry wiring for ``plugins/symphony_pm/adapter.py``.
 
 The adapter deliberately has no import-time registration; this plugin is its one explicit
 binding to the Hermes tool registry, through the ``PluginContext`` the loader hands to
@@ -34,7 +34,9 @@ from __future__ import annotations
 
 from typing import Any, Callable, Optional
 
-from tools.symphony_pm_adapter import (
+# Use one set of adapter types even when the loader imports this entry point
+# under a profile-specific name.
+from plugins.symphony_pm.adapter import (
     TOOL_NAME,
     TOOLSET,
     SymphonyPmAdapter,
@@ -82,9 +84,25 @@ def register(ctx: Any) -> None:
     _ctx = ctx
     _bind(None, None)
     declare = getattr(ctx, "register_runtime_service", None)
+    reference = linux_reference = None
     if declare is not None:  # older native hosts retain the original inert/manual wire contract
         from .service import ServingIngress
-        declare("ingress", lambda scope: ServingIngress(ctx, scope))
+        from plugins.symphony_pm.operator_commands import attach_operator
+        selected = None
+
+        def start_ingress(scope):
+            nonlocal selected
+            if scope.binding is not None:
+                if selected is not None:
+                    raise ValueError("Only one Symphony ingress may serve a profile")
+                selected = scope
+            return attach_operator(ctx, ServingIngress(ctx, scope))
+
+        reference = declare("ingress", start_ingress)
+        linux_reference = declare("ingress-linux", start_ingress)
+    if getattr(ctx, "register_command", None) is not None:
+        from plugins.symphony_pm.operator_commands import register_operator
+        register_operator(ctx, reference, linux_reference)
     if getattr(ctx, "register_cli_command", None) is not None:
         from .status_cli import register as register_status
         register_status(ctx)  # `hermes symphony status`: reads the journal only when invoked

@@ -6,29 +6,29 @@ qualification; this module never derives authority from a model's arguments.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Callable
-
 from hermes_cli.plugin_request_binding import (
     AuthorityGrant, RequestIdentity, bind_request, current_authority,
 )
-from tools.symphony_pm_adapter import (
-    SymphonyPmAdapter, SymphonyPmPort, TrustedPmContextV1, make_pm_tool_handler,
+from plugins.symphony_pm.adapter import (
+    SymphonyPmAdapter, TrustedPmContextV1, make_pm_tool_handler,
     parse_intent, register_pm_tool,
 )
 
 
-@dataclass(frozen=True)
-class ServingBinding:
-    port: SymphonyPmPort
-    authority_source: Callable[[RequestIdentity], AuthorityGrant | None]
-    trusted_issuers: tuple[str, ...]
-    scheduler_id: str
+from plugins.symphony_pm.contracts import ServingBinding, ServingBootstrap
 
 
-@dataclass(frozen=True)
-class ServingBootstrap:
-    factory: Callable
+def linux_serving_bootstrap(**options):
+    """Construct the Linux binding for this loaded plugin without selecting it for other profiles."""
+    from plugins.symphony_pm.transport.linux_bootstrap import linux_exec_transport
+    transport = linux_exec_transport(**options)
+
+    def factory(scope):
+        if scope.namespace != 'symphony_pm:ingress-linux':
+            raise ValueError('Linux transport requires its dedicated service namespace')
+        bound = transport(scope)
+        return bound
+    return ServingBootstrap(factory)
 
 
 class _LivePort:
@@ -84,7 +84,12 @@ class ServingIngress:
         identity = RequestIdentity(self.scope.profile_home, self.scope.namespace,
                                    session_id, intent.request_id, intent.payload_digest)
         try:
-            grant = self.binding.authority_source(identity)
+            source = self.binding.authority_source
+            for_control = getattr(source, 'for_control', None)
+            if intent.operation in ('get_status', 'request_cancel') and callable(for_control):
+                grant = for_control(identity, intent)
+            else:
+                grant = source(identity)
         except Exception:  # health: allow BLE001 -- issuer failures deny without exposing exception text
             return self.without_authority(args, **runtime)
         if not self._bound_context(grant, identity):

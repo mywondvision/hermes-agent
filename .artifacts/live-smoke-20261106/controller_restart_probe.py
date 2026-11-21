@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 from cancel_control import CancellationCoordinator
 from tests.fixtures.symphony_pm_ingress.owner import Owner, Target, Token
-from tools import symphony_pm_adapter as pm
+from plugins.symphony_pm import adapter as pm
 
 NAMESPACE = "isolated-controller-restart-probe"
 PROJECT = "synthetic-controller-restart"

@@ -1,7 +1,7 @@
 """Versioned serving schema, retaining the historical owner tables without importing fixtures."""
 from .types import Refused
 
-VERSION = 1
+VERSION = 2
 _LEGACY = {'writers', 'operations', 'jobs', 'effects'}
 _COLUMNS = {
     'writers': ['namespace', 'owner', 'epoch', 'expires'],
@@ -9,7 +9,7 @@ _COLUMNS = {
     'jobs': ['namespace', 'project', 'job', 'revision', 'contract', 'target'],
     'effects': ['effect_key', 'target', 'state', 'dispatch_epoch', 'cancel_at', 'fence_ref', 'proof', 'proof_epoch'],
 }
-_CURRENT_COLUMNS = {
+_V1_COLUMNS = {
     **_COLUMNS,
     'serving_schema': ['version'],
     'serving_owner': ['namespace', 'identity', 'controller', 'epoch', 'observer_generation', 'observer_healthy'],
@@ -20,6 +20,16 @@ _CURRENT_COLUMNS = {
     'serving_recovery_hold': ['namespace', 'reason'],
     'serving_members': ['attempt', 'pid', 'creation'],
 }
+_LAUNCH_FIELDS = ['stop_proof', 'proof_source', 'hold_reason', 'owner_identity', 'ownership_contract', 'host_id',
+                  'boot_id']
+_CURRENT_COLUMNS = {
+    **_V1_COLUMNS,
+    'serving_owner': [*_V1_COLUMNS['serving_owner'], 'host_id', 'workspace_guarded'],
+    'serving_launches': [*_V1_COLUMNS['serving_launches'], *_LAUNCH_FIELDS],
+    'serving_observations': ['attempt', 'seq', 'kind', 'body'],
+}
+_OBSERVATIONS = ('CREATE TABLE serving_observations(attempt TEXT NOT NULL,seq INTEGER NOT NULL,'
+                 'kind TEXT NOT NULL,body TEXT NOT NULL,PRIMARY KEY(attempt,seq))')
 _PRESERVED_LEGACY = {'launches', 'cancel_causes', 'cancel_readbacks'}
 
 DDL = """
@@ -39,12 +49,30 @@ CREATE TABLE IF NOT EXISTS serving_members(attempt TEXT,pid INTEGER,creation TEX
 """
 
 
-def initialize(db, *, migrate_legacy=False):
+def _install_v2(db):
+    db.execute('ALTER TABLE serving_owner ADD COLUMN host_id TEXT')
+    db.execute('ALTER TABLE serving_owner ADD COLUMN workspace_guarded INTEGER NOT NULL DEFAULT 0')
+    for field in _LAUNCH_FIELDS:
+        db.execute(f'ALTER TABLE serving_launches ADD COLUMN {field} TEXT')
+    db.execute(_OBSERVATIONS)
+
+
+def initialize(db, *, migrate_legacy=False, migrate_v1=False):
     """Explicit legacy migration preserves all rows and quarantines every legacy namespace.
 
     A database with unrelated tables or a newer schema is refused. Migration never
     manufactures process identities, proof, permits or permission to resume.
     """
+    db.execute('BEGIN IMMEDIATE')
+    try:
+        _initialize(db, migrate_legacy, migrate_v1)
+        db.commit()
+    except BaseException:
+        db.rollback()
+        raise
+
+
+def _initialize(db, migrate_legacy, migrate_v1):
     tables = {r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")}
     if tables and 'serving_schema' not in tables:
         if not migrate_legacy or not _LEGACY.issubset(tables):
@@ -56,27 +84,28 @@ def initialize(db, *, migrate_legacy=False):
                 raise Refused('LEGACY_SCHEMA_MISMATCH')
     elif 'serving_schema' in tables:
         versions = [tuple(r) for r in db.execute('SELECT version FROM serving_schema')]
-        if versions != [(VERSION,)]:
+        if versions not in ([(1,)], [(VERSION,)]):
             raise Refused('UNSUPPORTED_SCHEMA_VERSION')
-        if not _CURRENT_COLUMNS.keys() <= tables or tables - (_CURRENT_COLUMNS.keys() | _PRESERVED_LEGACY):
+        columns = _V1_COLUMNS if versions == [(1,)] else _CURRENT_COLUMNS
+        if not columns.keys() <= tables or tables - (columns.keys() | _PRESERVED_LEGACY):
             raise Refused('SERVING_SCHEMA_MISMATCH')
-        for name, expected in _CURRENT_COLUMNS.items():
+        for name, expected in columns.items():
             if [r[1] for r in db.execute(f'PRAGMA table_info({name})')] != expected:
                 raise Refused('SERVING_SCHEMA_MISMATCH')
+        if versions == [(1,)]:
+            if not migrate_v1:
+                raise Refused('EXPLICIT_V1_MIGRATION_REQUIRED')
+            _install_v2(db)
+            db.execute('UPDATE serving_schema SET version=?', (VERSION,))
         return
-    try:
-        db.execute('BEGIN IMMEDIATE')
-        for statement in DDL.split(';'):
-            if statement.strip():
-                db.execute(statement)
-        db.execute('INSERT INTO serving_schema VALUES(?)', (VERSION,))
-        if tables:
-            namespaces = {r[0] for r in db.execute('SELECT namespace FROM writers UNION SELECT namespace FROM jobs')}
-            for namespace in namespaces:
-                db.execute('INSERT INTO serving_recovery_hold VALUES(?,?)', (namespace, 'LEGACY_NATIVE_IDENTITY_UNKNOWN'))
-            if any(db.execute(f'SELECT 1 FROM {name} LIMIT 1').fetchone() for name in tables):
-                db.execute('INSERT INTO serving_recovery_hold VALUES(?,?)', ('*', 'LEGACY_STATE_REQUIRES_RECONCILIATION'))
-        db.commit()
-    except BaseException:
-        db.rollback()
-        raise
+    for statement in DDL.split(';'):
+        if statement.strip():
+            db.execute(statement)
+    _install_v2(db)
+    db.execute('INSERT INTO serving_schema VALUES(?)', (VERSION,))
+    if tables:
+        namespaces = {r[0] for r in db.execute('SELECT namespace FROM writers UNION SELECT namespace FROM jobs')}
+        for namespace in namespaces:
+            db.execute('INSERT INTO serving_recovery_hold VALUES(?,?)', (namespace, 'LEGACY_NATIVE_IDENTITY_UNKNOWN'))
+        if any(db.execute(f'SELECT 1 FROM {name} LIMIT 1').fetchone() for name in tables):
+            db.execute('INSERT INTO serving_recovery_hold VALUES(?,?)', ('*', 'LEGACY_STATE_REQUIRES_RECONCILIATION'))

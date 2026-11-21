@@ -23,7 +23,7 @@ from plugins.symphony_pm.transport.types import ProcessIdentity, Refused, bindin
 from plugins.symphony_pm.transport.windows_observer import WindowsQueryObserver
 from plugins.symphony_pm.transport.windows_ownership import WindowsOwnershipGuard
 from tests.plugins.symphony_native_crash_support import (
-    BoundedApi, NativeRig, capture_members, close_queries, helper_command, save_proof,
+    BoundedApi, NativeRig, capture_members, close_queries, helper_command, release_cut, save_proof,
 )
 from tests.waiting import wait_until
 
@@ -244,7 +244,7 @@ def test_serving_crash_preserves_intent_and_never_recreates_sender(tmp_path, cut
                 save_proof('worker-before-cut-'+cut,
                     {'terminal': worker_terminal, 'parent_containment_open': True, 'cancel': 'HOLD'})
                 assert all(record['signaled'] for record in worker_terminal)
-            receipt.with_suffix('.release').write_text('CUT', encoding='utf-8')
+            release_cut(receipt)
             assert _signal(api, process) and api.exit_code(process) == 71
             if cut == 'after_create':
                 # Parent containment Job is still OPEN: only the dead owner's Job handle can explain this stop.
@@ -256,24 +256,23 @@ def test_serving_crash_preserves_intent_and_never_recreates_sender(tmp_path, cut
             before = _snapshot(journal)
             assert before[0][0][5] == ('CREATE_INTENT' if cut == 'after_create' else 'RESUME_INTENT')
             if cut == 'after_create':
-                assert before[0][0][6] is None  # binding never became durable
-                recovered = NativeRig(home)
-                try:
-                    runner = AttemptRunner(recovered.owner, recovered.owner.token, binding.ticket)
-                    with pytest.raises(Refused, match='LAUNCH_TICKET_SPENT'):
-                        runner(recovered.argv, cwd=binding.ticket.plan.workspace, timeout=30, stdin_text='')
-                    assert recovered.creates == 0
-                    record = recovered.owner.journal.reconcile_record(recovered.owner.token, binding.ticket)
-                    reconcile = json.loads(record['body'])
-                    assert reconcile['outcome'] == 'CREATE_UNBOUND_UNOBSERVED' and 'job_present' not in reconcile
-                finally:
-                    recovered.close(0)
-                # The last-resort fence has nothing left to kill: no test-side orphan cleanup exists.
-                wait_until(lambda: api.snapshot(parent_job)[0] == 0, timeout=10, what='empty parent containment Job')
-            else:
-                with pytest.raises(Refused, match='OBSERVER_COVERAGE_UNKNOWN'):
-                    NativeRig(home)  # exactly one recovery attempt; never retry the claimed epoch
-            assert _snapshot(journal) == before
+                assert before[0][0][6] is None
+            recovered = NativeRig(home)
+            try:
+                runner = AttemptRunner(recovered.owner, recovered.owner.token, binding.ticket)
+                with pytest.raises(Refused, match='LAUNCH_TICKET_SPENT'):
+                    runner(recovered.argv, cwd=binding.ticket.plan.workspace, timeout=30, stdin_text='')
+                assert recovered.creates == 0
+                _, row = recovered.owner.journal.read_launch(recovered.owner.token, binding.ticket.project,
+                                                             binding.ticket.job, binding.ticket.revision)
+                assert (row['state'], row['stop_proof']) == ('STOPPED', 'OWNER_DEAD')
+                reconcile = {'proof': row['stop_proof'], 'source': row['proof_source']}
+                assert recovered.owner.journal.unfinished(recovered.owner.token) == []
+            finally:
+                recovered.close(0)
+            wait_until(lambda: api.snapshot(parent_job)[0] == 0, timeout=10, what='empty parent containment Job')
+            after = _snapshot(journal)
+            assert after[1] == before[1] and after[0][0][6:8] == before[0][0][6:8]
             if cut == 'after_effect':
                 assert before[1][0][2] == 'DISPATCH_INTENT'
             # Durable evidence retained by the test temp directory; no release claim.

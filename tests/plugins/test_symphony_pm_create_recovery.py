@@ -1,15 +1,14 @@
-"""A successor owner records, never repairs, a create the dead predecessor left unbound."""
+"""Fenced recovery from qualified predecessor evidence, without repeating a create."""
 import ctypes as C
-import json
 import sqlite3
 
 import pytest
 
 from plugins.symphony_pm.transport.journal import Journal
 from plugins.symphony_pm.transport.lifecycle import AttemptRunner
-from plugins.symphony_pm.transport.types import Refused, job_object_name
+from plugins.symphony_pm.transport.types import Refused
 from tests.plugins.symphony_serving_support import approve, rig
-from tests.tools.test_symphony_pm_adapter import submit_payload
+from tests.plugins.test_symphony_pm_adapter import submit_payload
 
 ARGV = ['fixture', 'exec']
 
@@ -40,100 +39,151 @@ def _reservation(path):
         return {name: list(db.execute(f'SELECT * FROM {name}')) for name in tables}
 
 
-def _record(r, ticket):
-    row = r.owner.journal.reconcile_record(r.owner.token, ticket)
-    return row and json.loads(row['body'])
+def _row(r, ticket):
+    return r.owner.journal.read_launch(r.owner.token, ticket.project, ticket.job, ticket.revision)[1]
 
 
-def test_unbound_create_is_recorded_as_unobserved_and_launch_stays_held(tmp_path, monkeypatch):
-    ticket = _predecessor(tmp_path, monkeypatch, create_entered=True)
-    r = _successor(tmp_path)
-    try:
-        assert _record(r, ticket) == {'state': 'CREATE_INTENT', 'job_object': job_object_name(ticket),
-                                      'outcome': 'CREATE_UNBOUND_UNOBSERVED'}
-        assert r.native.created == []
-        _, row = r.owner.journal.read_launch(r.owner.token, ticket.project, ticket.job, ticket.revision)
-        assert row['state'] == 'CREATE_INTENT' and row['binding'] is None and row['result'] is None
-    finally:
-        r.owner.close(0)
-
-
-def test_reconciliation_changes_no_launch_permit_job_operation_or_effect(tmp_path, monkeypatch):
-    ticket = _predecessor(tmp_path, monkeypatch, create_entered=True)
+@pytest.mark.parametrize(('entered', 'expected'), [(True, 'STOPPED'), (False, 'NOT_STARTED')])
+def test_proven_successor_preserves_previous_ticket_and_admits_new_grant(tmp_path, monkeypatch, entered, expected):
+    ticket = _predecessor(tmp_path, monkeypatch, create_entered=entered)
     path = Journal(tmp_path, 'symphony_pm:ingress').path
-    expected = _reservation(path)
+    before = _reservation(path)
     r = _successor(tmp_path)
     try:
-        assert _record(r, ticket)['outcome'] == 'CREATE_UNBOUND_UNOBSERVED'
-        assert _reservation(path) == expected
-        assert expected['serving_permits'][0][-1] == 1
-    finally:
-        r.owner.close(0)
-
-
-def test_successor_cannot_create_again_or_start_another_launch(tmp_path, monkeypatch):
-    ticket = _predecessor(tmp_path, monkeypatch, create_entered=True)
-    r = _successor(tmp_path)
-    try:
+        row = _row(r, ticket)
+        assert row['state'] == expected
+        assert row['stop_proof'] == ('OWNER_DEAD' if entered else None)
+        assert row['proof_source'] == 'fixture-readback'
+        assert row['result'] is None and row['binding'] is None
+        after = _reservation(path)
+        for table in ('jobs', 'operations', 'effects', 'serving_permits'):
+            assert after[table] == before[table]
+        assert r.owner.journal.unfinished(r.owner.token) == []
         with pytest.raises(Refused, match='CREATE_SLOT_SPENT'):
             r.owner.journal.claim_create(r.owner.token, ticket)
-        with pytest.raises(Refused, match='LAUNCH_TICKET_SPENT'):
-            AttemptRunner(r.owner, r.owner.token, ticket)(
-                ARGV, cwd=ticket.plan.workspace, timeout=1, stdin_text='fixture')
-        other, other_context, _ = approve(r, payload=submit_payload(request_id='request-2'))
-        with pytest.raises(Refused, match='UNSETTLED_PRIOR_LAUNCH_HOLD'):
-            r.owner.submit(other, other_context)
-        assert r.native.created == []
-        with sqlite3.connect(r.owner.journal.path) as db:
-            used = dict(db.execute('SELECT ref, used FROM serving_permits'))
-        assert used['permit-'+other.request_id] == 0 and sum(used.values()) == 1
-    finally:
-        r.owner.close(0)
-
-
-def test_launch_that_never_entered_the_os_is_recorded_as_such(tmp_path, monkeypatch):
-    ticket = _predecessor(tmp_path, monkeypatch, create_entered=False)
-    r = _successor(tmp_path)
-    try:
-        assert _record(r, ticket) == {'state': 'LAUNCH_INTENT', 'job_object': job_object_name(ticket),
-                                      'outcome': 'NEVER_ENTERED_OS'}
         request, context, _ = approve(r)
-        replay, fresh = r.owner.submit(request, context)
-        assert replay == ticket and not fresh and r.native.created == []
+        assert r.owner.submit(request, context) == (ticket, False)
+        assert r.native.created == []
+        request, context, _ = approve(r, payload=submit_payload(request_id='request-2'))
+        new, fresh = r.owner.submit(request, context)
+        assert fresh and new != ticket and len(r.native.created) == 1
     finally:
         r.owner.close(0)
 
 
-def test_unwritable_reconcile_record_never_yields_an_owner(tmp_path, monkeypatch):
+def test_same_boot_live_predecessor_keeps_epoch_and_launch(tmp_path, monkeypatch):
     ticket = _predecessor(tmp_path, monkeypatch, create_entered=True)
-
-    def unavailable(*_args):
-        raise Refused('STORE_OUTCOME_UNKNOWN')
-
-    with monkeypatch.context() as patch:
-        patch.setattr(Journal, 'record_reconcile', unavailable)
-        with pytest.raises(Refused, match='STORE_OUTCOME_UNKNOWN'):
-            _successor(tmp_path)
-    r = _successor(tmp_path, incarnation='incarnation-3')
-    try:
-        assert _record(r, ticket)['outcome'] == 'CREATE_UNBOUND_UNOBSERVED' and r.native.created == []
-    finally:
-        r.owner.close(0)
+    path = Journal(tmp_path, ticket.namespace).path
+    before = _reservation(path)
+    with pytest.raises(Refused, match='PREDECESSOR_LIVE_OR_UNKNOWN'):
+        rig(tmp_path, incarnation='rival')
+    assert _reservation(path) == before
 
 
-def test_a_later_successor_keeps_the_first_observation(tmp_path, monkeypatch):
+def test_foreign_guard_cannot_claim_copied_namespace(tmp_path, monkeypatch):
+    from tests.plugins.symphony_serving_support import Guard
+    ticket = _predecessor(tmp_path, monkeypatch, create_entered=True)
+    path = Journal(tmp_path, ticket.namespace).path
+    before = _reservation(path)
+    monkeypatch.setattr(Guard, 'recovery_host_id', 'another-fixture-host')
+    with pytest.raises(Refused, match='HOST_IDENTITY_CHANGED'):
+        _successor(tmp_path)
+    assert _reservation(path) == before
+
+
+def test_unattested_execution_remains_held_across_claims_until_owner_release(tmp_path, monkeypatch):
+    from tests.plugins.symphony_serving_support import Native
+    monkeypatch.setattr(Native, 'ownership_contract', None)
     ticket = _predecessor(tmp_path, monkeypatch, create_entered=True)
     first = _successor(tmp_path)
+    assert _row(first, ticket)['state'] == 'HELD_UNKNOWN'
+    first.owner.close(0)
+    r = _successor(tmp_path, incarnation='third')
     try:
-        recorded = first.owner.journal.reconcile_record(first.owner.token, ticket)
+        row = _row(r, ticket)
+        assert row['state'] == 'HELD_UNKNOWN' and row['stop_proof'] is None and row['hold_reason']
+        request, context, _ = approve(r, payload=submit_payload(request_id='new-grant'))
+        with pytest.raises(Refused, match='UNSETTLED_PRIOR'):
+            r.owner.submit(request, context)
+        r.owner.journal.release_by_owner(r.owner.token, ticket, 'fixture operator decision')
+        assert _row(r, ticket)['state'] == 'RELEASED_BY_OWNER'
+        assert r.owner.submit(request, context)[1]
     finally:
-        first.owner.close(0)
-    second = _successor(tmp_path, incarnation='incarnation-3')
+        r.owner.close(0)
+
+
+def test_bound_held_predecessor_remains_releasable_without_its_job_handle(tmp_path, monkeypatch):
+    from tests.plugins.symphony_serving_support import Native, Observer
+
+    monkeypatch.setattr(Native, 'ownership_contract', None)
+    first = rig(tmp_path)
+    request, context, _ = approve(first)
+    ticket, _ = first.owner.submit(request, context)
+    first.owner.close(0)
+    handshake = Observer.handshake
+
+    def without_old_job(observer, owner, generation, targets):
+        if any(target.binding.ticket == ticket for target in targets):
+            raise Refused('JOB_HANDLE_UNAVAILABLE')
+        return handshake(observer, owner, generation, targets)
+
+    monkeypatch.setattr(Observer, 'handshake', without_old_job)
+    successor = _successor(tmp_path)
     try:
-        assert second.owner.token.epoch > recorded['writer_epoch']
-        assert second.owner.journal.reconcile_record(second.owner.token, ticket) == recorded
+        assert _row(successor, ticket)['state'] == 'HELD_UNKNOWN'
+        request, context, _ = approve(successor, payload=submit_payload(request_id='after-hold'))
+        with pytest.raises(Refused, match='OBSERVER_COVERAGE_UNKNOWN'):
+            successor.owner.submit(request, context)
+        assert not successor.native.created
+        with pytest.raises(Refused, match='WRITER_FENCED'):
+            successor.owner.release_by_owner(None, ticket.project, ticket.job, ticket.revision, 'test')
+        successor.owner.release_by_owner(successor.owner.token, ticket.project, ticket.job, ticket.revision,
+                                        'operator checked the original attempt')
+        assert _row(successor, ticket)['state'] == 'RELEASED_BY_OWNER'
+        assert successor.owner.submit(request, context)[1]
     finally:
-        second.owner.close(0)
+        successor.owner.close(0)
+
+
+def test_new_boot_on_same_fixture_host_has_distinct_evidence(tmp_path, monkeypatch):
+    from dataclasses import replace
+    from tests.plugins.symphony_serving_support import Guard
+    ticket = _predecessor(tmp_path, monkeypatch, create_entered=False)
+    original = Guard.__init__
+    def next_boot(self, *args):
+        original(self, *args)
+        self.identity = replace(self.identity, boot_id='next-boot')
+    monkeypatch.setattr(Guard, '__init__', next_boot)
+    r = rig(tmp_path, incarnation='new-boot-owner')
+    try:
+        row = _row(r, ticket)
+        assert (row['state'], row['stop_proof']) == ('STOPPED', 'BOOT_CHANGED')
+    finally:
+        r.owner.close(0)
+
+
+def test_create_slot_and_not_started_have_one_winner(tmp_path):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+    r = rig(tmp_path)
+    try:
+        request, context, _ = approve(r)
+        journal, token = r.owner.journal, r.owner.token
+        ticket, _, _ = journal.reserve_launch(token, request, context, r.now[0])
+        barrier = Barrier(2)
+        def attempt(operation):
+            barrier.wait(timeout=20)
+            try:
+                return operation(token, ticket) is not False
+            except Refused as exc:
+                assert str(exc) in ('CREATE_SLOT_SPENT', 'STORE_OUTCOME_UNKNOWN')
+                return False
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            winners = list(pool.map(attempt, [journal.claim_create, journal.mark_not_started]))
+        assert sum(winners) == 1
+        assert _row(r, ticket)['state'] == ('CREATE_INTENT' if winners[0] else 'NOT_STARTED')
+    finally:
+        r.owner.close(0)
 
 
 @pytest.mark.platforms('windows')

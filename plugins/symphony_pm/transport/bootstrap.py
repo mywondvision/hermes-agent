@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from .approval import ApprovalSource
 from .lifecycle import LifecycleOwner
 from .port import ServingPort
+from .run_supervisor import RunSupervisor
 from .types import Refused
 
 
@@ -43,9 +44,11 @@ class TransportBootstrap:
     scheduler_id: str
     controller: str
     trusted_issuers: tuple[str, ...]
+    migrate_v1: bool = False
 
     def __call__(self, scope):
-        from ..service import ServingBinding
+        if scope.namespace == 'symphony_pm:ingress-linux':
+            raise Refused('WINDOWS_PROFILE_BINDING')
         if not self.trusted_issuers:
             raise Refused('TRUSTED_ISSUER_REQUIRED')
         guard = self.guard_factory(scope)
@@ -54,7 +57,13 @@ class TransportBootstrap:
         resources.observer = self.observer_factory(scope)
         native = self.native_factory(scope)
         owner = LifecycleOwner(scope, guard, resources.observer, native, self.launcher,
-                               scheduler_id=self.scheduler_id, controller=self.controller)
+                               scheduler_id=self.scheduler_id, controller=self.controller, migrate_v1=self.migrate_v1)
         resources.owner = owner
-        source = ApprovalSource(owner, self.approval_transport, scheduler_id=self.scheduler_id)
-        return ServingBinding(ServingPort(owner), source, self.trusted_issuers, self.scheduler_id)
+        return serve_owner(owner, self.approval_transport, self.trusted_issuers)
+
+
+def serve_owner(owner, approval_transport, trusted_issuers):
+    from plugins.symphony_pm.contracts import ServingBinding
+    source = ApprovalSource(owner, approval_transport, scheduler_id=owner.scheduler_id)
+    owner.supervisor = RunSupervisor(owner)
+    return ServingBinding(ServingPort(owner), source, trusted_issuers, owner.scheduler_id)

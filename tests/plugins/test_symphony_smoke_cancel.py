@@ -8,8 +8,8 @@ from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
+from plugins.symphony_pm import adapter as pm
 from tests.fixtures.symphony_pm_ingress.owner import Owner, Target
-from tools import symphony_pm_adapter as pm
 
 ART = Path(__file__).resolve().parents[2] / ".artifacts/live-smoke-20261106"
 

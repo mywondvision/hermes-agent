@@ -1,4 +1,4 @@
-"""Behaviour contracts for the bundled ``plugins/symphony_pm`` wiring of ``tools/symphony_pm_adapter.py``.
+"""Behaviour contracts for the bundled Symphony PM plugin and its adapter.
 
 Everything goes through the REAL ``PluginManager`` discovery (bundled ``plugins/`` scan, opt-in via
 ``plugins.enabled`` in an isolated ``HERMES_HOME``), the REAL ``tools.registry.registry`` and the
@@ -20,7 +20,8 @@ from unittest import mock
 
 import pytest
 
-from tests.tools.test_symphony_pm_adapter import (
+from plugins.symphony_pm import adapter as pm
+from tests.plugins.test_symphony_pm_adapter import (
     ISSUER,
     SCHED,
     FakeScheduler,
@@ -29,7 +30,6 @@ from tests.tools.test_symphony_pm_adapter import (
     job_payload,
     submit_payload,
 )
-from tools import symphony_pm_adapter as pm
 
 PLUGIN_KEY = "symphony_pm"
 REPO = Path(__file__).resolve().parents[2]

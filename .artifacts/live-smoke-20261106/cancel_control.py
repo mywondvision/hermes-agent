@@ -128,7 +128,7 @@ class CancellationCoordinator:
 
     def cancel(self, target, cause, *, request=None, context=None):
         from tests.fixtures.symphony_pm_ingress.owner import Fence
-        from tools import symphony_pm_adapter as pm
+        from plugins.symphony_pm import adapter as pm
         if cause not in CAUSES:
             raise CancelRejected("CAUSE")
         if request is None:

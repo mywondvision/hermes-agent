@@ -34,7 +34,7 @@ class WindowsNativeFactory:
 
 
 def windows_transport(*, profile_home, namespace, launcher, environment, command_result, sanitize,
-                      approval_transport, scheduler_id, controller, trusted_issuers, qualification):
+                      approval_transport, scheduler_id, controller, trusted_issuers, qualification, migrate_v1=False):
     """Host must supply qualified kit objects and an exact approval source.
 
     environment is the owning profile's explicit child environment, never ambient
@@ -55,4 +55,4 @@ def windows_transport(*, profile_home, namespace, launcher, environment, command
     qualification.verify_executable()
     native = WindowsNativeFactory(home, namespace, launcher, MappingProxyType(dict(environment)), command_result, sanitize)
     return TransportBootstrap(WindowsOwnershipGuard, WindowsQueryObserver, native,
-                              launcher, approval_transport, scheduler_id, controller, tuple(trusted_issuers))
+                              launcher, approval_transport, scheduler_id, controller, tuple(trusted_issuers), migrate_v1)

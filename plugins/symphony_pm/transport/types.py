@@ -8,11 +8,8 @@ from pathlib import Path
 import re
 
 from hermes_cli.plugin_request_binding import RequestIdentity, canonical_home
-from tools.symphony_pm_adapter import canonical_bytes
-
-
-class Refused(RuntimeError):
-    """A closed admission/reconciliation boundary, never permission to retry."""
+from plugins.symphony_pm.adapter import canonical_bytes
+from plugins.symphony_pm.contracts import Refused
 
 
 def digest(value) -> str:
