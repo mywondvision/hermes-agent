@@ -1,0 +1,12 @@
+diff --git a/.artifacts/live-smoke-20261106/smoke.py b/.artifacts/live-smoke-20261106/smoke.py
+index 48bc1f54fa4f9a2d348a433859ea2a5e891db3c1..edd479efb5e54be00743b76df902460bb35efff4 100644
+--- a/.artifacts/live-smoke-20261106/smoke.py
++++ b/.artifacts/live-smoke-20261106/smoke.py
+@@ -37 +37 @@ sys.path.insert(0, str(ROOT))
+-from tools import symphony_pm_adapter as pm
++from plugins.symphony_pm import adapter as pm
+@@ -69,2 +69,2 @@ def baseline():
+-    paths = [ROOT / "tools/symphony_pm_adapter.py", ROOT / "tests/tools/test_symphony_pm_adapter.py",
+-             ROOT / "tests/tools/test_symphony_pm_adapter_cancel_s2.py",
++    paths = [ROOT / "plugins/symphony_pm/adapter.py", ROOT / "tests/plugins/test_symphony_pm_adapter.py",
++             ROOT / "tests/plugins/test_symphony_pm_adapter_cancel_s2.py",
