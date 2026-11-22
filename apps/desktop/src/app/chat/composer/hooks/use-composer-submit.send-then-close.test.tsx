@@ -310,7 +310,7 @@ it('an interrupted send with attachments comes back once, under its id, even whe
   expect(retried.mock.calls[0][1]?.submission_id).toBe(timedOut.mock.calls[0][1]?.submission_id)
 })
 
-it('a restored send retried while a turn runs is queued under its id, never steered as a new message', async () => {
+it('a restored send while a turn runs requests its original receipt without steering or queueing', async () => {
   saveDraft('busy words')
   const cutOff = vi.fn<ChatBarProps['onSubmit']>(() => new Promise<boolean>(() => {}))
   await openPage(cutOff)
@@ -320,11 +320,17 @@ it('a restored send retried while a turn runs is queued under its id, never stee
 
   const onSteer = vi.fn(async () => true)
   const queueCurrentDraft = vi.fn((_submissionId?: string) => true)
-  await openPage(async () => true, [], { busy: true, onSteer, queueCurrentDraft })
+  const reconcile = vi.fn<ChatBarProps['onSubmit']>(async () => true)
+  await openPage(reconcile, [], { busy: true, onSteer, queueCurrentDraft })
   await waitFor(() => expect(handles.editor()).toBe('busy words'))
   await act(async () => handles.submitDraft())
   expect(onSteer).not.toHaveBeenCalled()
-  expect(queueCurrentDraft).toHaveBeenCalledWith(firstId)
+  expect(queueCurrentDraft).not.toHaveBeenCalled()
+  expect(reconcile).toHaveBeenCalledTimes(1)
+  expect(reconcile.mock.calls[0][0].trim()).toBe('busy words')
+  expect(reconcile.mock.calls[0][1]).toMatchObject({
+    submission_id: firstId, restoredSubmission: true, storedSessionId: 'stored-B'
+  })
 })
 
 it('recovery never discards a file the user attached while it was running', async () => {

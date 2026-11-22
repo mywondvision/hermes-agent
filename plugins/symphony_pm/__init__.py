@@ -83,6 +83,12 @@ def register(ctx: Any) -> None:
     global _ctx
     _ctx = ctx
     _bind(None, None)
+    register_env = getattr(ctx, "register_terminal_environment_provider", None)
+    if register_env is not None and getattr(ctx, "get_config", lambda *_: None)("project_terminal", None) is not None:
+        from .project_terminal import ProjectTerminal
+        terminal = ProjectTerminal(ctx)
+        ctx.register_hook('pre_tool_call', terminal.guard_tool)
+        register_env(terminal)
     declare = getattr(ctx, "register_runtime_service", None)
     reference = None
     if declare is not None:  # older native hosts retain the original inert/manual wire contract

@@ -2977,6 +2977,42 @@
       }
     },
     {
+      "name": "prompt.forward_probe",
+      "summary": "Classify the attached conversation without sending input.",
+      "params": [
+        {
+          "name": "params",
+          "schema": {
+            "$ref": "#/components/schemas/ForwardProbeParams"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/ForwardProbeResult"
+        }
+      }
+    },
+    {
+      "name": "prompt.forward_submit",
+      "summary": "Forward one typed input to its verified durable owner.",
+      "params": [
+        {
+          "name": "params",
+          "schema": {
+            "$ref": "#/components/schemas/ForwardSubmitParams"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/ForwardSubmitResult"
+        }
+      }
+    },
+    {
       "name": "prompt.submit",
       "summary": "Send a user turn to a live session; busy sessions queue / steer / redirect instead of refusing.",
       "params": [
@@ -4681,6 +4717,18 @@
             "title": "Admission Id",
             "type": "string"
           },
+          "submission_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Submission Id"
+          },
           "ref": {
             "$ref": "#/components/schemas/CanonicalSessionRef"
           },
@@ -4916,6 +4964,18 @@
           "admission_id": {
             "title": "Admission Id",
             "type": "string"
+          },
+          "submission_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Submission Id"
           },
           "ref": {
             "$ref": "#/components/schemas/CanonicalSessionRef"
@@ -8908,6 +8968,18 @@
             "title": "Admission Id",
             "type": "string"
           },
+          "submission_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Submission Id"
+          },
           "ref": {
             "$ref": "#/components/schemas/CanonicalSessionRef"
           },
@@ -11886,6 +11958,19 @@
       "CommandDispatchParams": {
         "additionalProperties": false,
         "properties": {
+          "interaction": {
+            "anyOf": [
+              {
+                "const": "displayed-plan",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Interaction"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -18218,6 +18303,148 @@
           "content"
         ],
         "title": "ForeignTurn",
+        "type": "object"
+      },
+      "ForwardProbeParams": {
+        "additionalProperties": false,
+        "properties": {
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ],
+        "title": "ForwardProbeParams",
+        "type": "object"
+      },
+      "ForwardProbeResult": {
+        "additionalProperties": false,
+        "properties": {
+          "version": {
+            "const": 1,
+            "title": "Version",
+            "type": "integer"
+          },
+          "route": {
+            "enum": [
+              "ordinary",
+              "forward",
+              "hold"
+            ],
+            "title": "Route",
+            "type": "string"
+          },
+          "ref": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CanonicalSessionRef"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "generation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Generation"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "const": "shared",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Mode"
+          }
+        },
+        "required": [
+          "version",
+          "route"
+        ],
+        "title": "ForwardProbeResult",
+        "type": "object"
+      },
+      "ForwardSubmitParams": {
+        "additionalProperties": false,
+        "properties": {
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          },
+          "ref": {
+            "$ref": "#/components/schemas/CanonicalSessionRef"
+          },
+          "generation": {
+            "title": "Generation",
+            "type": "string"
+          },
+          "submission_id": {
+            "title": "Submission Id",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "ref",
+          "generation",
+          "submission_id",
+          "text"
+        ],
+        "title": "ForwardSubmitParams",
+        "type": "object"
+      },
+      "ForwardSubmitResult": {
+        "additionalProperties": false,
+        "properties": {
+          "ref": {
+            "$ref": "#/components/schemas/CanonicalSessionRef"
+          },
+          "submission_id": {
+            "title": "Submission Id",
+            "type": "string"
+          },
+          "admission_id": {
+            "title": "Admission Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "started",
+              "unknown",
+              "terminal"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ref",
+          "submission_id",
+          "admission_id",
+          "status"
+        ],
+        "title": "ForwardSubmitResult",
         "type": "object"
       },
       "FreeTierAckNoticeResult": {
@@ -31985,8 +32212,28 @@
             "type": "string"
           },
           "admission_id": {
-            "title": "Admission Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Admission Id"
+          },
+          "submission_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Submission Id"
           },
           "include_result": {
             "anyOf": [
@@ -32002,8 +32249,7 @@
           }
         },
         "required": [
-          "session_id",
-          "admission_id"
+          "session_id"
         ],
         "title": "PromptReceiptParams",
         "type": "object"
@@ -32015,6 +32261,18 @@
           "admission_id": {
             "title": "Admission Id",
             "type": "string"
+          },
+          "submission_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Submission Id"
           },
           "ref": {
             "$ref": "#/components/schemas/CanonicalSessionRef"
@@ -43581,6 +43839,31 @@
         "title": "SudoRequestParams",
         "type": "object"
       },
+      "SymphonyPlanPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          },
+          "plan_digest": {
+            "title": "Plan Digest",
+            "type": "string"
+          },
+          "plan": {
+            "additionalProperties": true,
+            "title": "Plan",
+            "type": "object"
+          }
+        },
+        "required": [
+          "request_id",
+          "plan_digest",
+          "plan"
+        ],
+        "title": "SymphonyPlanPayload",
+        "type": "object"
+      },
       "SystemBatteryParams": {
         "additionalProperties": false,
         "properties": {
@@ -49673,6 +49956,18 @@
           "name": "payload",
           "schema": {
             "$ref": "#/components/schemas/SubagentEventPayload"
+          }
+        }
+      ]
+    },
+    {
+      "name": "symphony.plan",
+      "summary": "A Desktop viewer can present this pending Symphony plan.",
+      "params": [
+        {
+          "name": "payload",
+          "schema": {
+            "$ref": "#/components/schemas/SymphonyPlanPayload"
           }
         }
       ]

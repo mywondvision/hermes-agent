@@ -1,6 +1,6 @@
 """Resolve the current profile's one project and the installed launcher's exact configuration."""
 from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 import json
 import os
 from pathlib import Path
@@ -64,7 +64,7 @@ def proposal(identity, request, plan, route, issuer, token, expires_at):
     ref = 'typed-' + uuid4().hex
     details = json.loads(plan.typed_details)
     shown = dict(details, identity=asdict(identity), route=route, issuer_ref=issuer,
-                 expires_at_utc=datetime.fromtimestamp(expires_at, timezone.utc).isoformat(),
+                 expires_at_utc=datetime.fromtimestamp(expires_at, UTC).isoformat(),
                  execution_time_limit_seconds=details['exec_timeout'],
                  writer_epoch=token.epoch, permit_ref=ref, expires_at=expires_at, attempt_budget=1, driver=plan.driver)
     fingerprint = digest(shown)
@@ -74,7 +74,6 @@ def proposal(identity, request, plan, route, issuer, token, expires_at):
 
 
 def publish(ctx, shown, fingerprint):
-    from gateway.plugin_messages import _fit
     # Discord DMs can carry 2000 UTF-16 units. Keep chunks well under that bound even for astral
     # characters. Escape chat formatting characters inside the JSON so model-provided text is data.
     body = json.dumps(shown, ensure_ascii=False, indent=2, sort_keys=True)
@@ -87,11 +86,18 @@ def publish(ctx, shown, fingerprint):
         messages[-1] += '\n' + controls
     else:
         messages.append(controls)
-    for part in messages:
-        handle = ctx.post_message(part)
-        if not handle.ok or not handle.message_id or handle.result.get('delivered') is False:
-            raise Refused('TYPED_PLAN_DELIVERY_FAILED')
-        target = getattr(handle, '_target', None)
-        if (target is None or target.platform != 'discord' or target.chat_id != shown['route']['chat_id']
-                or _fit(target.adapter, target.chat_id, part) != part):
-            raise Refused('TYPED_PLAN_DELIVERY_INCOMPLETE')
+    for part in messages[:-1]:
+        deliver_part(ctx, shown['route']['chat_id'], part)
+    return deliver_part(ctx, shown['route']['chat_id'], messages[-1])
+
+
+def deliver_part(ctx, chat_id, text):
+    from gateway.plugin_messages import _fit
+    handle = ctx.post_message(text)
+    if not handle.ok or not handle.message_id or handle.result.get('delivered') is False:
+        raise Refused('TYPED_PLAN_DELIVERY_FAILED')
+    target = getattr(handle, '_target', None)
+    if (target is None or target.platform != 'discord' or target.chat_id != chat_id
+            or _fit(target.adapter, target.chat_id, text) != text):
+        raise Refused('TYPED_PLAN_DELIVERY_INCOMPLETE')
+    return handle.message_id

@@ -6,6 +6,7 @@ import { fr } from '@/i18n/fr'
 import { setRuntimeI18nLocale } from '@/i18n/runtime'
 import { toChatMessages } from '@/lib/chat-messages'
 import { resolveDesktopCommand } from '@/lib/desktop-slash-commands'
+import { $connectionsRegistry } from '@/store/connection-registry-state'
 import { $connection } from '@/store/session'
 import { dropSessionState } from '@/store/session-states'
 
@@ -98,6 +99,28 @@ const CHECKPOINTS = {
     { hash: 'bbbb2222', timestamp: '2026-10-18T09:00:00', message: 'before patch' }
   ]
 }
+
+describe('Symphony operator commands on a shared SSH connection', () => {
+  it.each(['own', 'other'])('holds status and STOP for %s before and after registry load', async job => {
+    const previous = $connectionsRegistry.get()
+    try {
+      $connectionsRegistry.set(null)
+      $connection.set({ mode: 'remote', connectionId: 'machine' } as never)
+      const request = gateway(() => { throw new Error('unexpected command') })
+      const handle = await mount(request)
+      await handle.submitText(`/symphony status ${job}`)
+      expect(renderedText(handle)).toContain('HOLD')
+      $connectionsRegistry.set({ connections: [{ id: 'machine', kind: 'ssh' }] } as never)
+      await handle.submitText(`/symphony stop ${job}`)
+      expect(renderedText(handle).match(/HOLD/g)).toHaveLength(2)
+      expect(callsOf(request, 'slash.exec')).toEqual([])
+      expect(callsOf(request, 'command.dispatch')).toEqual([])
+      expect(callsOf(request, 'prompt.submit')).toEqual([])
+    } finally {
+      $connectionsRegistry.set(previous)
+    }
+  })
+})
 
 describe('/rollback', () => {
   it('lists checkpoints through rollback.list', async () => {

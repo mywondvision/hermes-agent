@@ -36,6 +36,7 @@ export interface RemoveQueuedPromptOptions {
 }
 
 export interface QueuedPromptEntry {
+  restoredSubmission?: boolean
   id: string
   serverStatus?: string
   /** The queued-row verbs the owner serves for a server row (`steer`, `replace`); none from an
@@ -70,6 +71,7 @@ export const queuedSubmissionId = (entry: Pick<QueuedPromptEntry, 'id' | 'submis
   entry.submissionId ?? entry.id
 
 export interface EnqueueQueuedPromptPayload {
+  restoredSubmission?: boolean
   /** Stable id to reuse (a canonical submission id), else one is minted. */
   id?: string
   text: string
@@ -118,7 +120,7 @@ export const queuedEntryHasTerminalChips = (entry: Pick<QueuedPromptEntry, 'disp
   draftHasTerminalChips(entry.displayText ?? '') || draftHasTerminalChips(entry.text)
 
 export const resolveQueuedPromptTransport = (entry: QueuedPromptEntry): ResolvedQueuedPromptTransport => {
-  if (!queuedEntryHasTerminalChips(entry)) {
+  if (entry.restoredSubmission || !queuedEntryHasTerminalChips(entry)) {
     return {
       ok: true,
       transportText: entry.text,
@@ -350,7 +352,7 @@ const editedSubmission = (
   (entry.text !== text ||
     attachmentKeys(entry.attachments) !== attachmentKeys(attachments) ||
     (previousTransport?.trim() ?? '') !== (frozenQueuedTransportById.get(entry.id)?.trim() ?? ''))
-    ? { submissionId: randomUuid() }
+    ? { submissionId: randomUuid(), restoredSubmission: undefined }
     : {}
 
 export const getQueuedPrompts = (key: string | null | undefined): QueuedPromptEntry[] => {
@@ -395,6 +397,7 @@ export const enqueueQueuedPrompt = (
     text: payload.text,
     ...(payload.displayText ? { displayText: payload.displayText } : {}),
     ...(payload.displayKind ? { displayKind: payload.displayKind } : {}),
+    ...(payload.restoredSubmission && { restoredSubmission: true }),
     attachments: cloneAttachments(payload.attachments),
     queuedAt: Date.now()
   }
@@ -435,6 +438,15 @@ export const dequeueQueuedPrompt = (key: string | null | undefined): null | Queu
   })
 
   return head
+}
+
+/** Keep the original ID on a native send whose ACK may be lost during a renderer restart. */
+export function markQueuedSubmissionAttempted(key: string, submissionId: string) {
+  mutateSession(key, queue => {
+    const index = queue.findIndex(row => !row.serverStatus && queuedSubmissionId(row) === submissionId)
+    if (index < 0 || queue[index].restoredSubmission) { return null }
+    return queue.map((row, i) => i === index ? { ...row, restoredSubmission: true } : row)
+  })
 }
 
 export const removeQueuedPrompt = (

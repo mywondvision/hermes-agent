@@ -210,26 +210,119 @@ class Journal:
                               "AND json_extract(body,'$.identity.request_id')=? LIMIT 1",
                               (project, request_id)).fetchone() is not None
 
+    @contextmanager
+    def _plan_audit(self, token, permit, writer, *, authorize_commit=None):
+        if (writer is None or writer is not self._typed_writer or (permit is not None and
+                (permit.identity.namespace != self.namespace or permit.identity.profile_home != self.home))):
+            raise Refused('TYPED_PLAN_EVENT_SCOPE')
+        path = self.path.with_name('typed-plan-audit.sqlite3')
+        if path.resolve().parent != self.path.parent.resolve():
+            raise Refused('JOURNAL_PATH')
+        # Keep the versioned execution journal readable by the prior release. The same writer
+        # transaction fences the attached audit, including if the serving controller changes.
+        with self._transaction(token, authorize_commit=authorize_commit) as db:
+            db.execute('ATTACH DATABASE ? AS plan_audit', (str(path),))
+            yield db
+
+    def admit_plan_input(self, token, permit, route, voice_id, *, writer):
+        """A committed claim precedes the first delivery. An uncertain delivery stays reserved."""
+        if voice_id is None and not self.path.with_name('typed-plan-audit.sqlite3').exists():
+            return True
+        with self._plan_audit(token, permit, writer) as db:
+            db.execute('CREATE TABLE IF NOT EXISTS plan_audit.voice_inputs('
+                       'route TEXT NOT NULL,message_id TEXT NOT NULL,session_id TEXT NOT NULL,request_id TEXT NOT NULL,'
+                       'plan_digest TEXT NOT NULL,PRIMARY KEY(route,message_id),UNIQUE(session_id,request_id))')
+            session, request = permit.identity.session_id, permit.identity.request_id
+            if voice_id is None:
+                return db.execute('SELECT 1 FROM plan_audit.voice_inputs WHERE session_id=? AND request_id=?',
+                                  (session, request)).fetchone() is None
+            result = db.execute('INSERT INTO plan_audit.voice_inputs VALUES(?,?,?,?,?) ON CONFLICT DO NOTHING',
+                                (route, str(voice_id), session, request, permit.contract_digest))
+            return result.rowcount == 1
+
+    def record_plan_event(self, token, permit, state, message_id, observed_at, *, writer):
+        """Audit the displayed plan and a human refusal. This history never issues a grant."""
+        if state not in ('WAITING', 'DENIED') or not message_id:
+            raise Refused('TYPED_PLAN_EVENT_SCOPE')
+        with self._plan_audit(token, permit, writer) as db:
+            db.execute('CREATE TABLE IF NOT EXISTS plan_audit.events('
+                       'session_id TEXT,request_id TEXT,plan_digest TEXT,state TEXT,message_id TEXT,'
+                       'observed_at REAL,expires_at REAL,owner_epoch INTEGER,PRIMARY KEY(plan_digest,state))')
+            db.execute('INSERT INTO plan_audit.events VALUES(?,?,?,?,?,?,?,?)',
+                       (permit.identity.session_id, permit.identity.request_id, permit.contract_digest,
+                        state, str(message_id), observed_at, permit.expires_at, token.epoch))
+
+    def recorded_denial(self, token, permit, *, writer):
+        with self._plan_audit(token, permit, writer) as db:
+            row = db.execute("SELECT message_id FROM plan_audit.events WHERE plan_digest=? AND state='DENIED'",
+                             (permit.contract_digest,)).fetchone()
+            return row is not None
+
+    def desktop_receipt(self, token, session_id, key, *, writer, by_plan=False):
+        if writer is None or writer is not self._typed_writer:
+            raise Refused('TYPED_OWNER_DECISION_REQUIRED')
+        with self._plan_audit(token, None, writer) as db:
+            if not db.execute("SELECT 1 FROM plan_audit.sqlite_master WHERE name='desktop_plan_decisions'").fetchone():
+                return None
+            column = 'plan_digest' if by_plan else 'input_id'
+            row = db.execute('SELECT receipt FROM plan_audit.desktop_plan_decisions WHERE namespace=? AND session_id=? '
+                             f'AND {column}=?', (self.namespace, session_id, key)).fetchone()
+            receipt = json.loads(row['receipt']) if row else None
+            if receipt and 'shown_plan' in receipt and digest(receipt['shown_plan']) != receipt['plan_digest']:
+                raise Refused('DESKTOP_RECEIPT_PLAN_MISMATCH')
+            return receipt
+
+    def record_desktop_decision(self, token, permit, receipt, *, writer, authorize_commit):
+        if writer is None or writer is not self._typed_writer:
+            raise Refused('TYPED_OWNER_DECISION_REQUIRED')
+        if (receipt['plan_digest'] != permit.contract_digest or receipt['request_id'] != permit.identity.request_id
+                or receipt['session_id'] != permit.identity.session_id or receipt['namespace'] != self.namespace
+                or receipt['profile'] != self.home or permit.identity.namespace != self.namespace
+                or permit.identity.profile_home != self.home or receipt['decision'] not in ('APPROVED', 'DENIED')):
+            raise Refused('DESKTOP_DECISION_BINDING')
+        with self._plan_audit(token, permit, writer, authorize_commit=authorize_commit) as db:
+            # The permit and receipt share a SQLite super-journal on disk.
+            for schema in ('main', 'plan_audit'):
+                if db.execute(f'PRAGMA {schema}.journal_mode').fetchone()[0] not in ('delete', 'persist', 'truncate'):
+                    raise Refused('ATOMIC_DECISION_JOURNAL_REQUIRED')
+                if db.execute(f'PRAGMA {schema}.synchronous').fetchone()[0] < 2:
+                    raise Refused('ATOMIC_DECISION_JOURNAL_REQUIRED')
+            db.execute('CREATE TABLE IF NOT EXISTS plan_audit.desktop_plan_decisions(namespace TEXT,session_id TEXT,'
+                       'input_id TEXT,plan_digest TEXT,receipt TEXT,PRIMARY KEY(namespace,session_id,input_id),'
+                       'UNIQUE(namespace,session_id,plan_digest))')
+            inserted = db.execute('INSERT INTO plan_audit.desktop_plan_decisions VALUES(?,?,?,?,?) ON CONFLICT DO NOTHING',
+                                  (self.namespace, receipt['session_id'], receipt['input_id'], permit.contract_digest,
+                                   encode(receipt)))
+            if inserted.rowcount != 1:
+                raise Refused('DESKTOP_DECISION_RECORDED')
+            if receipt['decision'] == 'APPROVED':
+                self._insert_permit(db, permit, receipt['input_id'], permit.contract_digest)
+        if receipt['decision'] == 'APPROVED':
+            self._typed_refs.add(permit.ref)
+
     def record_permit(self, token, permit: Permit, approval_id, approval_digest, now, *, writer=None,
                       authorize_commit=None):
         permit.validate(now)
         if (permit.identity.profile_home != self.home or permit.identity.namespace != self.namespace
                 or not approval_id or not approval_digest):
             raise Refused('PERMIT_SCOPE')
-        body = encode(asdict(permit))
         with self._transaction(token, authorize_commit=authorize_commit) as db:
             if (writer is not self._typed_writer or (writer is not None and not callable(authorize_commit))
                     or (getattr(permit.plan, 'typed_details', '') and writer is None)):
                 raise Refused('TYPED_OWNER_DECISION_REQUIRED')
-            old = db.execute('SELECT * FROM serving_permits WHERE ref=?', (permit.ref,)).fetchone()
-            if old:
-                if (old['body'], old['approval_id'], old['approval_digest']) != (body, approval_id, approval_digest):
-                    raise Refused('PERMIT_CONFLICT')
-                return
-            db.execute('INSERT INTO serving_permits VALUES(?,?,?,?,?,?,0)',
-                       (permit.ref, body, permit.binding_digest, digest(asdict(permit.identity)), approval_id, approval_digest))
+            self._insert_permit(db, permit, approval_id, approval_digest)
         if writer is not None:
             self._typed_refs.add(permit.ref)
+
+    def _insert_permit(self, db, permit, approval_id, approval_digest):
+        body = encode(asdict(permit))
+        old = db.execute('SELECT * FROM serving_permits WHERE ref=?', (permit.ref,)).fetchone()
+        if old:
+            if (old['body'], old['approval_id'], old['approval_digest']) != (body, approval_id, approval_digest):
+                raise Refused('PERMIT_CONFLICT')
+            return
+        db.execute('INSERT INTO serving_permits VALUES(?,?,?,?,?,?,0)',
+                   (permit.ref, body, permit.binding_digest, digest(asdict(permit.identity)), approval_id, approval_digest))
 
     def _current_permit(self, permit):
         if self._typed_writer is not None or getattr(permit.plan, 'typed_details', ''):
@@ -358,6 +451,51 @@ class Journal:
                     self._verify_check_capture(db, ticket, observation)
                     return capture, observation['check']
             return capture, {}
+
+    def apply_records(self, token, project, job, prefix, *, saved_failure=False):
+        """Read the ticket, exact checked capture and prior apply in one fenced snapshot."""
+        with self._transaction(token) as db:
+            revision = db.execute("SELECT revision FROM jobs WHERE namespace=? AND project=? AND job=?",
+                                  (self.namespace, project, job)).fetchone()
+            if revision is None:
+                raise Refused("JOB_IDENTITY")
+            ticket, launch = self._launch(db, project, job, revision[0])
+            previous = db.execute("SELECT body FROM serving_observations WHERE attempt=? AND kind='APPLY' "
+                                  "ORDER BY seq DESC LIMIT 1", (ticket.attempt,)).fetchone()
+            previous = json.loads(previous[0]) if previous else None
+            captures = db.execute("SELECT seq,body FROM serving_observations WHERE attempt=? AND kind='CAPTURE' "
+                                  "ORDER BY seq", (ticket.attempt,)).fetchall()
+            matching = set()
+            for entry in captures:
+                capture = json.loads(entry['body'])
+                value = capture.get('patch', {}).get('sha256')
+                if sha(value, 64) and value.startswith(prefix):
+                    matching.add(value)
+            if len(matching) != 1:
+                raise Refused("ROBOT_CAPTURE_IDENTITY")
+            if previous and (previous.get('state') in ('PUBLISHING', 'APPLIED') or
+                             (saved_failure and previous.get('state') in ('CHECK_FAILED', 'CHECK_FAILED_SHOWN'))):
+                anchor = previous['identity']
+                if anchor['patch_sha256'] not in matching:
+                    raise Refused("ROBOT_APPLY_BINDING_CHANGED")
+                old_check = None
+                if not saved_failure and 'git_reader' not in previous:
+                    row = db.execute("SELECT body FROM serving_observations WHERE attempt=? AND seq=? AND kind='CHECK'",
+                                     (ticket.attempt, anchor['check_seq'])).fetchone()
+                    old_check = json.loads(row[0])['check'] if row else None
+                return ticket, launch, None, old_check, anchor['capture_seq'], anchor['check_seq'], previous, self._next_seq(db, ticket)
+            if capture.get('patch', {}).get('sha256') not in matching:
+                raise Refused("ROBOT_CAPTURE_IDENTITY")
+            last = db.execute("SELECT seq,body FROM serving_observations WHERE attempt=? AND kind='CHECK' "
+                              "ORDER BY seq DESC LIMIT 1", (ticket.attempt,)).fetchone()
+            if last is None:
+                raise Refused("ROBOT_CHECK_REQUIRED")
+            check = json.loads(last['body'])
+            self._verify_check_capture(db, ticket, check)
+            if check['capture_ref']['seq'] != captures[-1]['seq']:
+                raise Refused("ROBOT_CHECK_REQUIRED")
+            return (ticket, launch, capture, check['check'], captures[-1]['seq'], last['seq'],
+                    previous, self._next_seq(db, ticket))
 
     def save_status(self, token, ticket, body, seq):
         with self._transaction(token) as db:
@@ -720,7 +858,11 @@ class Journal:
             self._verify_check_capture(db, ticket, observation)
         seq = self._next_seq(db, ticket)
         if expected_seq is not None and expected_seq != seq:
-            raise Refused('OBSERVATION_SEQUENCE_CHANGED')
+            # A status read during a long check cannot change its inputs or publication intent.
+            if observation['kind'] != 'APPLY' or expected_seq > seq or db.execute(
+                    "SELECT 1 FROM serving_observations WHERE attempt=? AND seq>=? AND kind!='STATUS' LIMIT 1",
+                    (ticket.attempt, expected_seq)).fetchone():
+                raise Refused('OBSERVATION_SEQUENCE_CHANGED')
         db.execute('INSERT INTO serving_observations VALUES(?,?,?,?)',
                    (ticket.attempt, seq, observation['kind'], encode(observation)))
         return seq

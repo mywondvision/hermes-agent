@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 from gateway.config import Platform
 from gateway.platforms.base import SendResult
-from gateway.platforms.event import MessageEvent
+from gateway.platforms.event import MessageEvent, MessageType
 from gateway.session import SessionEntry, SessionSource
 from gateway.session_context import clear_session_vars, set_session_vars
 from hermes_cli import plugins
@@ -33,12 +33,17 @@ class LocalChat(_TextAdapter):
         super().__init__()
         self.platform = Platform.DISCORD
         self.chat = 'fixture-owner-room'
+        self.last_message_id = 1000
+
+    def message_id(self, supplied=None):
+        self.last_message_id = max(self.last_message_id + 1, int(supplied or 0))
+        return supplied or str(self.last_message_id)
 
     async def send(self, chat_id, content, reply_to=None, metadata=None):
         if chat_id != self.chat:
             return SendResult(success=False, error='fixture chat does not exist')
         self.sent.append(content)
-        return SendResult(success=True, message_id=str(len(self.sent)))
+        return SendResult(success=True, message_id=self.message_id())
 
 
 class FixtureLauncher:
@@ -62,7 +67,6 @@ class QualificationSession:
     def __init__(self, runner, adapter, source, entry, loop, launcher, owner):
         self.runner, self.adapter, self.source, self.entry = runner, adapter, source, entry
         self.loop, self.launcher, self.owner = loop, launcher, owner
-        self.number = 0
 
     def _submit(self, action):
         req = submit_payload(request_id='qualification-'+action, goal='Record the '+action+' fixture decision.',
@@ -79,14 +83,15 @@ class QualificationSession:
         status = self._submit(action)
         return status, '\n'.join(self.adapter.sent[before:])
 
-    def deliver(self, text):
-        self.number += 1
-        message_id = str(1000 + self.number)
-        raw = SimpleNamespace(id=message_id, content=text, author=SimpleNamespace(id=self.source.user_id, bot=False),
-                              channel=SimpleNamespace(id=self.source.chat_id), webhook_id=None, attachments=[],
+    def deliver(self, text, *, source=None, message_type=MessageType.TEXT, timeout=20, message_id=None, with_raw=True):
+        source = source or self.source
+        message_id = self.adapter.message_id(message_id)
+        raw = SimpleNamespace(id=message_id, content=text, author=SimpleNamespace(id=source.user_id, bot=False),
+                              channel=SimpleNamespace(id=source.chat_id), webhook_id=None, attachments=[],
                               message_snapshots=[], edited_at=None)
-        event = MessageEvent(text=text, source=self.source, message_id=message_id, raw_message=raw)
-        return asyncio.run_coroutine_threadsafe(self.runner._handle_message(event), self.loop).result(20)
+        event = MessageEvent(text=text, source=source, message_type=message_type, message_id=message_id,
+                             raw_message=raw if with_raw else None)
+        return asyncio.run_coroutine_threadsafe(self.runner._handle_message(event), self.loop).result(timeout)
 
     def retry(self, action):
         outcome = self._submit(action)
@@ -102,8 +107,8 @@ class QualificationSession:
 
 
 @contextmanager
-def human_session(root, *, restart=False):
-    """Each call gets its own config, Git repo, journal and plugin manager, with fake OS ports."""
+def human_session(root, *, restart=False, project_ref="fixture", owner_guard=None, launcher=None):
+    """Local operator adapter and plugin manager for one isolated test profile."""
     home, repo = root/'profile', root/'project'
     home.mkdir(exist_ok=True)
     if restart:
@@ -115,6 +120,8 @@ def human_session(root, *, restart=False):
         _git('commit', '--allow-empty', '-m', 'Fixture baseline', cwd=repo)
     adapter = LocalChat()
     runner = _runner(adapter)
+    # The command-choice fixture suppresses context binding. Exercise the real slash-command route.
+    del runner._set_session_env
     runner.config.multiplex_profiles = False
     runner.adapters = {Platform.DISCORD: adapter}
     source = SessionSource(platform=Platform.DISCORD, user_id='fixture-human', chat_type='dm', chat_id=adapter.chat)
@@ -123,7 +130,7 @@ def human_session(root, *, restart=False):
                          updated_at=datetime.now(), origin=source, platform=source.platform, chat_type='dm')
     runner.session_store.lookup_by_session_key.side_effect = lambda route: entry if route == key else None
     operator = dict(platform='discord', user_id=source.user_id, chat_id=source.chat_id, session_key=key)
-    typed = dict(project_ref='fixture', repository=str(repo), branch='fixture-base', ttl_seconds=900)
+    typed = dict(project_ref=project_ref, repository=str(repo), branch='fixture-base', ttl_seconds=900)
     (home/'config.yaml').write_text(json.dumps({'plugins': {'enabled': ['symphony_pm'], 'entries': {
         'symphony_pm': {'settings': {'operator': operator, 'typed_approval': typed}}}}}), encoding='utf-8')
     loop = asyncio.new_event_loop()
@@ -148,10 +155,11 @@ def human_session(root, *, restart=False):
         def unused(*args):
             raise RuntimeError('LEGACY_APPROVAL_ROUTE_USED')
         channel = RegisteredApprovalTransport('fixture', unused, 'test', str(home))
-        launcher = FixtureLauncher(repo, root/'attempts'/'active'/'src')
+        if launcher is None:
+            launcher = FixtureLauncher(repo, root/'attempts'/'active'/'src')
         def guard(scope):
             return Guard(scope, incarnation='fixture-restart' if restart else 'fixture-first', predecessor_dead=restart)
-        bootstrap = TransportBootstrap(guard, lambda _: Observer([time.time()]), lambda _: Native(),
+        bootstrap = TransportBootstrap(owner_guard or guard, lambda _: Observer([time.time()]), lambda _: Native(),
                                       launcher, channel, 'serving-test', 'controller', ('issuer',))
         bindings = []
         def start(scope):

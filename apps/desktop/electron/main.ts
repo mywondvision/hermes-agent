@@ -244,7 +244,10 @@ import { describeDevCdpDecision, resolveDevCdpPort } from './dev-cdp'
 import { preReadyDockLaunchSteps } from './dock-launch-order'
 import { embedHostOrigin } from './embed-host'
 import { installEmbedReferer } from './embed-referer'
-import { createAmbientClaimArbiter } from './event-dedupe'
+import { registerAmbientCues } from './register-ambient-cues'
+import { registerSymphonyRoute } from './register-symphony-route'
+import { registerSymphonyOperator } from './register-symphony-operator'
+import { trustedPlanRoutes } from './symphony-route-registry'
 import { openExternalUrl as externalOpen, type ExternalOpenDeps, reportPreOpenStatFailure } from './external-open'
 import {
   buildTerminalScript,
@@ -12502,7 +12505,8 @@ function nextInstanceBounds(source: BrowserWindow | null = BrowserWindow.getFocu
 // joins the requested pooled backend through its own connection/profile route.
 function createInstanceWindow(
   options?: DesktopProfileRoute,
-  source: BrowserWindow | null = BrowserWindow.getFocusedWindow() || mainWindow
+  source: BrowserWindow | null = BrowserWindow.getFocusedWindow() || mainWindow,
+  initialConversation?: string
 ) {
   const route = resolveDesktopWindowLaunch(
     options,
@@ -12572,6 +12576,7 @@ function createInstanceWindow(
     win,
     buildInstanceWindowUrl({
       ...route,
+      initialConversation,
       devServer: DEV_SERVER,
       rendererIndexPath: DEV_SERVER ? undefined : resolveRendererIndex()
     }),
@@ -14112,6 +14117,8 @@ function recordWindowConnectionRoute(sender: Electron.WebContents, route: unknow
     previous?.registryScoped !== next?.registryScoped
   ) {
     void resetPreviewReach(id)
+    dropSymphonyWindow(id)
+    symphonyOperator?.drop(id)
   }
 
   if (!windowConnectionRouteOwners.has(id)) {
@@ -16245,11 +16252,23 @@ ipcMain.handle('hermes:api', async (_event, request) => {
   }
 })
 
-// Speech claims outlive instant cues so throttled peer windows cannot replay a reply.
-const ownsAmbientCue: ReturnType<typeof createAmbientClaimArbiter> = createAmbientClaimArbiter()
-ipcMain.handle('hermes:ambient:claim', (_event: IpcMainInvokeEvent, key: unknown): boolean =>
-  ownsAmbientCue(String(key ?? ''))
-)
+registerAmbientCues()
+const symphonyRendererUrl = () => DEV_SERVER || pathToFileURL(resolveRendererIndex()).toString()
+const matchesSymphonyWindow = (id: number, address: { connectionId: string; profile: string }) => {
+  const route = windowConnectionRoutes.get(id)
+  return route?.registryScoped === true && route.connectionId === address.connectionId &&
+    (route.profile || 'default') === address.profile &&
+    readDesktopConnectionsRegistry().connections.some(entry => entry.id === address.connectionId && entry.kind === 'ssh')
+}
+const dropSymphonyWindow = registerSymphonyRoute(symphonyRendererUrl, matchesSymphonyWindow)
+const symphonyOperator = IS_WINDOWS ? registerSymphonyOperator({
+  rendererUrl: symphonyRendererUrl,
+  matchesWindow: (window, address) => chatWindows.has(window) && matchesSymphonyWindow(window.webContents.id, address),
+  environment: trustedPlanRoutes,
+  createWindow: (address, source) => createInstanceWindow(
+    { connectionId: address.connectionId, profile: address.profile }, source, address.storedConversation
+  )
+}) : undefined
 
 const nativeNotifications = registerNativeNotifications({
   getMainWindow: (): BrowserWindow | null => mainWindow,

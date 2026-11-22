@@ -2,11 +2,13 @@ import { skillInvocationText } from '@hermes/shared'
 import { mergeUsage, parseCommandDispatch, parseSlashCommand, randomUuid } from '@hermes/shared'
 import { type MutableRefObject, useCallback, useRef } from 'react'
 
+import { handleSymphonyOperatorSlash, handleSymphonyPatchSlash } from '@/api/symphony-operator'
 import { mergeOlderTranscriptPage } from '@/app/chat/transcript-backfill'
 import { prepareDefaultNewSession } from '@/app/session/new-session-route'
 import { invalidateContextBreakdown } from '@/app/shell/hooks/use-context-breakdown'
 import { getProfiles } from '@/hermes'
 import type { Translations } from '@/i18n'
+import { $hudMode } from '@/store/hud'
 import { translateNow } from '@/i18n/runtime'
 import { type ChatMessage, toChatMessages } from '@/lib/chat-messages'
 import { sessionTitle } from '@/lib/chat-runtime'
@@ -377,6 +379,13 @@ export function useSlashCommand(deps: SlashCommandDeps) {
         }
 
         const { render: renderSlashOutput, sessionId, storedSessionId } = resolved
+
+        if (name === 'symphony' && await handleSymphonyPatchSlash(destination, storedSessionId, command, arg,
+          ctx.recordInput && options?.typed !== false && options?.composerScope !== undefined && !options.voiceTurn &&
+          !options.surface && !options.displayKind && !options.fromQueue && !options.restoredSubmission && !$hudMode.get(),
+          renderSlashOutput)) return
+        if (destination.taskTransport && name === 'symphony' &&
+            await handleSymphonyOperatorSlash(destination, storedSessionId, arg, renderSlashOutput)) return
 
         // Resolve the INVOCATION, not just the name: a command the desktop owns
         // for its management surface can still delegate individual subcommands

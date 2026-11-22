@@ -37,8 +37,11 @@ def phase(owner, row):
 def sandbox_checks(owner, ticket):
     """Only the last capture and its bound CHECK can attest the owner-configured sandbox stage."""
     capture, check = owner.journal.stage_records(owner.token, ticket)
+    return checked_commands(ticket, getattr(owner.launcher, 'settings', None), capture, check)
+
+
+def checked_commands(ticket, settings, capture, check):
     patch = capture.get('patch') or {}
-    settings = getattr(owner.launcher, 'settings', None)
     if (capture.get('source_sha') != ticket.plan.source_sha or not isinstance(patch, dict)
             or not sha(patch.get('sha256'), 64) or not isinstance(patch.get('paths'), list)
             or not patch['paths'] or not callable(getattr(settings, 'checks', None))):

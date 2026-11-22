@@ -5,7 +5,7 @@ import type { BargeMonitorCallbacks } from '@/lib/voice-barge-in'
 import { $voicePlayback } from '@/store/voice-playback'
 import { $autoSpeakReplies, $bargeInEnabled } from '@/store/voice-prefs'
 
-import type { MicRecording } from './use-mic-recorder'
+import type { MicRecorderOptions, MicRecording } from './use-mic-recorder'
 import { useVoiceConversation } from './use-voice-conversation'
 
 // The full-duplex contract: the barge monitor is live across the WHOLE agent
@@ -14,6 +14,15 @@ import { useVoiceConversation } from './use-voice-conversation'
 // starts (the Windows report: interruption "never works" because the deaf
 // window covered generation, and playback bleed made the old monitor's
 // trigger unreachable).
+
+const wire = vi.hoisted(() => ({
+  socket: vi.fn(), config: vi.fn(async () => ({ stt: { streaming: true } }))
+}))
+vi.mock('@/lib/voice-client-direct', () => ({ fetchVoiceClientConfigFor: wire.config }))
+vi.mock('@/lib/sibling-ws-url', () => ({ resolveSiblingWsUrl: async () => 'ws://fixture.invalid/audio' }))
+vi.mock('@/api/canonical-protocol', async original => ({
+  ...await original<object>(), openGatewaySocket: wire.socket
+}))
 
 const monitorCalls: BargeMonitorCallbacks[] = []
 const stopMonitor = vi.fn()
@@ -48,7 +57,7 @@ vi.mock('@/lib/thinking-sound', () => ({
 
 const micHandle = {
   cancel: vi.fn(),
-  start: vi.fn(async () => undefined),
+  start: vi.fn(async (_options?: MicRecorderOptions) => undefined),
   stop: vi.fn<() => Promise<MicRecording | null>>(async () => null)
 }
 
@@ -141,6 +150,7 @@ async function enterThinking(hook: ReturnType<typeof renderConversation>['hook']
   micHandle.stop.mockResolvedValueOnce({
     audio: new Blob(['q'], { type: 'audio/webm' }),
     durationMs: 900,
+    utteranceId: 'test-recording',
     heardSpeech: true
   })
 
@@ -159,6 +169,39 @@ describe('useVoiceConversation full-duplex barge-in', () => {
   })
 
   afterEach(cleanup)
+
+  it.each(['duplicate', 'empty', 'cancel'])('binds only a completed stream to the recording (%s)', async mode => {
+    const socket = { close: vi.fn(), send: vi.fn(), onopen: () => {}, onmessage: (_event: { data: string }) => {} }
+    wire.socket.mockImplementation(() => {
+      setTimeout(() => socket.onopen(), 0)
+      return socket
+    })
+    micHandle.start.mockImplementationOnce(async options => options?.onPcmRate?.(16000))
+    const { hook, onSubmit, onTranscribeAudio } = renderConversation()
+    await act(async () => { await hook.result.current.start() })
+    await waitFor(() => expect(socket.send).toHaveBeenCalledWith(JSON.stringify({ sample_rate: 16000 })))
+    const frame = (message: object) => socket.onmessage({ data: JSON.stringify(message) })
+    frame({ type: 'partial', text: 'unfinished' })
+    expect(onSubmit).not.toHaveBeenCalled()
+    micHandle.stop.mockResolvedValueOnce({ utteranceId: 'synthetic-original', durationMs: 900,
+      heardSpeech: true, audio: new Blob(['fixture']) })
+    await act(async () => { hook.result.current.stopTurn() })
+    await waitFor(() => expect(socket.send).toHaveBeenCalledWith(JSON.stringify({ eos: true })))
+    if (mode === 'cancel') {
+      await act(async () => { await hook.result.current.end() })
+    }
+    await act(async () => {
+      const final = { type: 'final', transcript: mode === 'empty' ? ' ' : 'same words' }
+      frame(final)
+      frame(final)
+    })
+    if (mode === 'duplicate') {
+      expect(onSubmit.mock.calls).toEqual([['same words', 'synthetic-original']])
+    } else {
+      expect(onSubmit).not.toHaveBeenCalled()
+    }
+    expect(onTranscribeAudio).not.toHaveBeenCalled()
+  })
 
   it('arms the barge monitor during generation (before any reply audio exists)', async () => {
     const { hook } = renderConversation()
@@ -232,10 +275,10 @@ describe('useVoiceConversation full-duplex barge-in', () => {
     hook.rerender({ busy: false })
 
     await act(async () => {
-      monitor?.onUtterance?.(new Blob(['x'], { type: 'audio/webm' }))
+      monitor?.onUtterance?.(new Blob(['x'], { type: 'audio/webm' }), 'test-interjection')
     })
 
-    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith('no, do it differently'))
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith('no, do it differently', 'test-interjection'))
   })
 
   it('does not interrupt when speech trips during playback (turn already done)', async () => {
@@ -275,13 +318,13 @@ describe('useVoiceConversation full-duplex barge-in', () => {
     hook.rerender({ busy: false })
 
     await act(async () => {
-      monitor?.onUtterance?.(new Blob(['s'], { type: 'audio/webm' }))
+      monitor?.onUtterance?.(new Blob(['s'], { type: 'audio/webm' }), 'test-interjection')
     })
 
     await waitFor(() => expect(onStopWord).toHaveBeenCalledTimes(1))
     // Only the kickoff turn was submitted — the "stop" capture never was.
     expect(onSubmit).toHaveBeenCalledTimes(1)
-    expect(onSubmit).not.toHaveBeenCalledWith('stop')
+    expect(onSubmit).not.toHaveBeenCalledWith('stop', 'test-interjection')
   })
 
   it('re-arms a single monitor per turn (idempotent ensure)', async () => {
@@ -380,7 +423,7 @@ describe('useVoiceConversation TTS echo guard (#126708)', () => {
     const startsBefore = micHandle.start.mock.calls.length
 
     await act(async () => {
-      monitor?.onUtterance?.(new Blob(['e'], { type: 'audio/webm' }))
+      monitor?.onUtterance?.(new Blob(['e'], { type: 'audio/webm' }), 'test-interjection')
     })
     await waitFor(() => expect(convo.onTranscribeAudio).toHaveBeenCalledTimes(2))
 
@@ -396,7 +439,7 @@ describe('useVoiceConversation TTS echo guard (#126708)', () => {
     await waitFor(() => expect(micHandle.start.mock.calls.length).toBeGreaterThan(startsBefore))
     // …and only the kickoff turn was ever submitted.
     expect(onSubmit).toHaveBeenCalledTimes(1)
-    expect(onSubmit).not.toHaveBeenCalledWith('the build failed because of a missing dependency')
+    expect(onSubmit).not.toHaveBeenCalledWith('the build failed because of a missing dependency', 'test-interjection')
     // The "user interrupted" latch is cleared so a later genuine turn isn't annotated.
     expect(takeVoicePlaybackInterrupted).toHaveBeenCalledTimes(1)
   })
@@ -404,14 +447,14 @@ describe('useVoiceConversation TTS echo guard (#126708)', () => {
   it('still submits a genuine interjection captured during playback', async () => {
     const { onSubmit } = await bargeWith('actually can you also check my calendar for tomorrow', { playing: true })
 
-    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith('actually can you also check my calendar for tomorrow'))
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith('actually can you also check my calendar for tomorrow', 'test-interjection'))
     expect(takeVoicePlaybackInterrupted).not.toHaveBeenCalled()
   })
 
   it('does not apply the guard to a generation-phase trip (nothing audible to echo)', async () => {
     const { onSubmit } = await bargeWith('the build failed because of a missing dependency', { playing: false })
 
-    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith('the build failed because of a missing dependency'))
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith('the build failed because of a missing dependency', 'test-interjection'))
   })
 })
 
@@ -535,6 +578,7 @@ describe('useVoiceConversation parks an undeliverable barge transcript (#123357)
     micHandle.stop.mockResolvedValueOnce({
       audio: new Blob(['q'], { type: 'audio/webm' }),
       durationMs: 900,
+      utteranceId: 'test-recording',
       heardSpeech: true
     })
     await act(async () => {
@@ -557,7 +601,7 @@ describe('useVoiceConversation parks an undeliverable barge transcript (#123357)
       await vi.advanceTimersByTimeAsync(6_000)
     })
     await act(async () => {
-      await monitor?.onUtterance?.(new Blob(['barge'], { type: 'audio/webm' }))
+      await monitor?.onUtterance?.(new Blob(['barge'], { type: 'audio/webm' }), 'test-interjection')
     })
     await act(async () => {
       await vi.advanceTimersByTimeAsync(6_000)

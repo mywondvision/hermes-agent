@@ -8,6 +8,7 @@ import {
 import { map, type MapStore } from 'nanostores'
 
 import type { HermesApiRequest } from '@/global'
+import { ForwardBeforeSend, probedRoute, type ProbedParams } from './forward-probe'
 
 import { CanonicalDesktopProtocol, canonicalProfile, canonicalPromptParams, canonicalSessionKey, openGatewaySocket, recordCanonicalOwner, splitRewindSubmit } from './canonical-protocol'
 
@@ -112,6 +113,7 @@ export class HermesGateway extends JsonRpcGatewayClient {
   // Frames of an ambiguous (session, epoch) parked until its owner probes settle.
   private readonly parkedFrames = new Map<string, Array<() => void>>()
   private connectionGeneration = 0
+  private readonly forwardProbes = new WeakMap<object, number>()
 
   override onRequest(handler: ServerRequestHandler): () => void {
     this.promptHandlers.add(handler)
@@ -388,7 +390,23 @@ export class HermesGateway extends JsonRpcGatewayClient {
   }
 
   override async request<T>(method: string, params: Record<string, unknown> = {}, timeoutMs?: number, signal?: AbortSignal): Promise<T> {
-    if (!this.canonical) { return super.request<T>(method, legacyParams(method, params), timeoutMs, signal) }
+    const binding = (params as ProbedParams)[probedRoute]
+    if (binding) {
+      if (!this.canSendRequest || this.forwardProbes.get(binding.route) !== this.connectionGeneration || !binding.current()) {
+        throw new ForwardBeforeSend()
+      }
+      this.forwardProbes.delete(binding.route)
+    }
+    if (!this.canonical) {
+      const generation = this.connectionGeneration
+      const response = super.request<T>(method, legacyParams(method, params), timeoutMs, signal)
+      const result = binding ? await response.finally(() => this.requireConnectionGeneration(generation)) : await response
+      if (method === 'prompt.forward_probe' && result && typeof result === 'object') {
+        this.requireConnectionGeneration(generation)
+        this.forwardProbes.set(result, generation)
+      }
+      return result
+    }
     const generation = this.connectionGeneration
     const deadline = requestDeadline(timeoutMs)
     // A truncating submit (edit / regenerate / restore) is the owner's rewind, then the submit.

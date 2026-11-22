@@ -1,10 +1,17 @@
-import { act, cleanup, renderHook } from '@testing-library/react'
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { useComposerQueue } from '@/app/chat/composer/hooks/use-composer-queue'
+import { useComposerSubmit } from '@/app/chat/composer/hooks/use-composer-submit'
+import type { ComposerDraftRetry } from '@/store/composer-draft-retry'
+import { enqueueQueuedPrompt, getQueuedPrompts, simulateComposerQueueReloadForTests } from '@/store/composer-queue'
+import { useBackgroundQueueDrain } from '../use-background-queue-drain'
+import { requestDesktopOnboardingForCredentialWarning } from '@/store/onboarding'
 import { en } from '@/i18n/en'
 import { createClientSessionState } from '@/lib/chat-runtime'
+import { $connectionsRegistry } from '@/store/connection-registry-state'
 import { $activeGatewayProfile } from '@/store/profile'
-import { $connection, $sessions } from '@/store/session'
+import { $connection, $sessions, setSessionsLoading } from '@/store/session'
 import { $sessionStates } from '@/store/session-states'
 
 import { clearAllButStoredJournal, storedJournal } from './prepared-submissions-test-utils'
@@ -64,13 +71,14 @@ function setup() {
 
 beforeEach(() => {
   window.localStorage.clear()
+  $connectionsRegistry.set(null)
   $sessions.set([])
   $sessionStates.set({})
   $connection.set(null)
   $activeGatewayProfile.set('default')
   wire.request.mockReset()
   wire.request.mockImplementation(async (_connection, _profile, _method, params) => ({
-    admission_id: params?.submission_id,
+    admission_id: params?.submission_id, submission_id: params?.submission_id, session_id: params?.session_id,
     status: 'started'
   }))
 })
@@ -158,6 +166,30 @@ describe('submission intent destinations', () => {
     $connection.set({ ...connection, registryScoped: true, isVisible: false } as never)
     await expect(captured.requestGateway('prompt.submit', { text: 'hello' })).resolves.toEqual({ ok: true })
     expect(request).toHaveBeenCalledOnce()
+  })
+
+  it('holds a restored Desktop window before its connection and registry have arrived', () => {
+    const previous = window.hermesDesktop
+    window.hermesDesktop = { ...previous, connections: { list: vi.fn() } } as never
+    try {
+      expect(captureSubmissionDestination(null, vi.fn()).taskTransport).toBe('unresolved')
+    } finally { window.hermesDesktop = previous }
+  })
+
+  it('does not send on a route reclassified during preparation', async () => {
+    const previous = $connectionsRegistry.get()
+    try {
+      $connection.set({ connectionId: 'machine', mode: 'remote' } as never)
+      $connectionsRegistry.set({ connections: [{ id: 'machine', kind: 'remote' }] } as never)
+      const request = vi.fn()
+      const captured = captureSubmissionDestination('runtime-a', request)
+      $connectionsRegistry.set({ connections: [{ id: 'machine', kind: 'ssh' }] } as never)
+      await expect(captured.requestGateway('slash.exec', { command: '/symphony stop own' }))
+        .rejects.toThrow('Submission destination changed')
+      expect(request).not.toHaveBeenCalled()
+    } finally {
+      $connectionsRegistry.set(previous)
+    }
   })
 
   it('rejects actual endpoint, credential, connection and profile changes', async () => {
@@ -259,6 +291,11 @@ describe('submission intent destinations', () => {
         } as never
       }
 
+      if (method === 'prompt.receipt' && !loseAck && accepted.has(String(params?.submission_id))) {
+        return { admission_id: 'receipt', submission_id: params?.submission_id, status: 'terminal',
+          ref: { session_id: params?.session_id } } as never
+      }
+
       if (method !== 'prompt.submit') {
         return {} as never
       }
@@ -313,9 +350,162 @@ describe('submission intent destinations', () => {
       expect(await hook.result.current(input, { submission_id: 'new-session-retry' })).toBe(true)
     })
     expect(accepted.size).toBe(1)
+    expect(requestGateway.mock.calls.filter(call => call[0] === 'prompt.submit')).toHaveLength(1)
     expect(deps.createBackendSessionForSend).toHaveBeenCalledTimes(1)
     expect(deps.syncAttachmentsForSubmit).toHaveBeenCalledTimes(1)
     expect(expansions).toBe(slash ? 1 : 0)
+  })
+
+  it.each([false, true])('reads the native submission before any retry across remount (voice=%s)', async voiceTurn => {
+    $connection.set({ authMode: 'native', mode: 'local', connectionId: 'local' } as never)
+    const { deps, requestGateway } = setup()
+    let found = false
+    requestGateway.mockImplementation(async (method, params) => {
+      if (method === 'prompt.receipt' && found) {
+        return { submission_id: params?.submission_id, admission_id: 'ledger-1', status: 'terminal',
+          ref: { session_id: params?.session_id } } as never
+      }
+      throw new Error('fixture unavailable')
+    })
+    const options = { submission_id: 'original-input', voiceTurn }
+    const hook = renderHook(() => useSubmitPrompt(deps))
+    await act(async () => { expect(await hook.result.current('same words', options)).toBe(false) })
+    expect(requestGateway.mock.calls.map(call => call[0])).toEqual(['prompt.submit', 'prompt.receipt'])
+    hook.unmount()
+    found = true
+    const restored = renderHook(() => useSubmitPrompt(deps))
+    await act(async () => { expect(await restored.result.current('same words', options)).toBe(true) })
+    expect(requestGateway.mock.calls.map(call => call[0])).toEqual(['prompt.submit', 'prompt.receipt', 'prompt.receipt'])
+    expect(requestGateway.mock.calls[2][1]).toEqual({ session_id: 'runtime-a', submission_id: 'original-input' })
+  })
+
+  it('reconciles an explicitly restored native draft even when the prepared entry is missing', async () => {
+    $connection.set({ authMode: 'native', mode: 'local', connectionId: 'local' } as never)
+    const { deps, requestGateway } = setup()
+    requestGateway.mockRejectedValue(new Error('unavailable'))
+    const hook = renderHook(() => useSubmitPrompt(deps))
+    await act(async () => {
+      expect(await hook.result.current('original text', { submission_id: 'outbox-id', restoredSubmission: true })).toBe(false)
+    })
+    expect(requestGateway.mock.calls.map(call => call[0])).toEqual(['prompt.receipt'])
+    expect(requestGateway.mock.calls[0][1]).toEqual({ session_id: 'runtime-a', submission_id: 'outbox-id' })
+  })
+
+  it.each(['background', 'steerQueuedNow', 'deliverQueuedNow', 'sendQueuedNow'] as const)(
+    'reads the original native ID after queue reload via %s', async route => {
+      $connection.set({ authMode: 'native', mode: 'local', connectionId: 'local' } as never)
+      const { deps, requestGateway } = setup()
+      const entry = enqueueQueuedPrompt('stored-a', { text: 'original words', attachments: [] })!
+      const first = renderHook(() => useSubmitPrompt(deps))
+      requestGateway.mockRejectedValue(new Error('connection lost'))
+      await act(async () => {
+        expect(await first.result.current(entry.text, { fromQueue: true, submission_id: entry.id,
+          sessionId: 'runtime-a', storedSessionId: 'stored-a' })).toBe(false)
+      })
+      expect(requestGateway.mock.calls.map(call => call[0])).toEqual(['prompt.submit', 'prompt.receipt'])
+      first.unmount()
+      const key = 'hermes.desktop.composerQueue.v1'
+      const queue = window.localStorage.getItem(key)!
+      window.localStorage.clear()
+      window.localStorage.setItem(key, queue)
+      simulateComposerQueueReloadForTests()
+      expect(storedJournal()).toEqual({})
+      expect(getQueuedPrompts('stored-a')[0]).toMatchObject({ id: entry.id, restoredSubmission: true })
+      const original = { session_id: 'runtime-a', submission_id: entry.id }
+      const receipt = { ...original, ref: { session_id: 'runtime-a' }, admission_id: 'ledger-row', status: 'queued' }
+      requestGateway.mockClear()
+      const onSteer = vi.fn(async () => true)
+      const onCancel = vi.fn()
+      setSessionsLoading(false)
+      try {
+        if (route === 'background') {
+          deps.selectedStoredSessionIdRef.current = 'other'
+          deps.activeSessionIdRef.current = 'other-runtime'
+          requestGateway.mockResolvedValue(receipt as never)
+          renderHook(() => useBackgroundQueueDrain({ enabled: true, selectedStoredSessionId: 'other',
+            runtimeIdByStoredSessionIdRef: deps.runtimeIdByStoredSessionIdRef, submitText: useSubmitPrompt(deps) }))
+          await waitFor(() => expect(getQueuedPrompts('stored-a')).toHaveLength(0))
+          expect(requestGateway.mock.calls.map(call => call.slice(0, 2))).toEqual([['prompt.receipt', original]])
+        } else {
+          const hook = renderHook(() => useComposerQueue({ activeQueueSessionKey: 'stored-a', queueSessionKey: 'stored-a',
+            sessionId: 'runtime-a', busy: true, attachments: [], clearDraft: vi.fn(), loadIntoComposer: vi.fn(),
+            focusInput: vi.fn(), draftRef: { current: '' }, queueEditRef: { current: null },
+            onSteer, onCancel, onSubmit: useSubmitPrompt(deps) }))
+          await act(async () => { expect(await hook.result.current[route](entry.id)).toBe(false) })
+          expect(getQueuedPrompts('stored-a')).toHaveLength(1)
+          requestGateway.mockResolvedValue(receipt as never)
+          await act(async () => { expect(await hook.result.current[route](entry.id)).toBe(true) })
+          expect(getQueuedPrompts('stored-a')).toHaveLength(0)
+          expect(requestGateway.mock.calls.map(call => call.slice(0, 2))).toEqual([
+            ['prompt.receipt', original], ['prompt.receipt', original]
+          ])
+        }
+        expect(onSteer).not.toHaveBeenCalled()
+        expect(onCancel).not.toHaveBeenCalled()
+      } finally {
+        setSessionsLoading(true)
+      }
+    }
+  )
+
+  it.each(['busy restoration', 'provider preflight'])('recovers plain composer input after %s', async scenario => {
+    $connection.set({ authMode: 'native', mode: 'local', connectionId: 'local',
+      wsUrl: 'ws://localhost/api/ws?native_dial=unminted' } as never)
+    const { deps, requestGateway } = setup()
+    let busy = false
+    let found = false
+    let retry: ComposerDraftRetry | undefined
+    const draftRef = { current: 'original text' }
+    const loadIntoComposer = vi.fn((value: string) => { draftRef.current = value })
+    const draftScopeRef = { current: 'stored-a' }
+    const clearDraft = () => { draftRef.current = '' }
+    requestGateway.mockImplementation(async (method, params) => {
+      const receipt = { admission_id: 'a1', submission_id: params?.submission_id, status: 'queued' }
+      if (scenario === 'provider preflight' && method === 'prompt.submit') {
+        return { ...receipt, session_id: params?.session_id } as never
+      }
+      if (found && method === 'prompt.receipt') {
+        return { ...receipt, ref: { session_id: params?.session_id } } as never
+      }
+      throw new Error('fixture connection closed')
+    })
+    const hook = renderHook(() => {
+      const onSubmit = useSubmitPrompt(deps)
+      const common = { activeQueueSessionKey: 'stored-a', attachments: [], busy, clearDraft, draftRef,
+        focusInput: vi.fn(), loadIntoComposer, onCancel: vi.fn(), onSteer: async () => false,
+        onSubmit, sessionId: 'runtime-a' }
+      const q = useComposerQueue({ ...common, queueSessionKey: 'stored-a', queueEditRef: { current: null } })
+      return useComposerSubmit({ ...common, ...q, activeQueueSessionKeyRef: draftScopeRef, draftScopeRef,
+        disabled: false, editorRef: { current: null }, inputDisabled: false, onSteerHidden: async () => false,
+        setComposerText: vi.fn(), stashAt: vi.fn(), rememberDraftRetry: (_scope, saved) => { retry = saved },
+        takeDraftRetry: () => {
+          const saved = retry
+          retry = undefined
+          return saved
+        } })
+    })
+    if (scenario === 'provider preflight') {
+      requestDesktopOnboardingForCredentialWarning("No API key configured for provider 'openrouter'. First message will fail.")
+    }
+    act(() => hook.result.current.submitDraft())
+    await waitFor(() => expect(loadIntoComposer).toHaveBeenCalled())
+    if (scenario === 'provider preflight') {
+      expect(requestGateway).not.toHaveBeenCalled()
+      expect(retry).toBeUndefined()
+      act(() => hook.result.current.submitDraft())
+      await waitFor(() => expect(requestGateway.mock.calls.map(call => call[0])).toEqual(['prompt.submit']))
+    } else {
+      expect(retry?.id).toEqual(requestGateway.mock.calls[0][1]?.submission_id)
+      const originalId = retry?.id
+      window.localStorage.clear()
+      expect(Object.values(storedJournal())).toHaveLength(0)
+      busy = true
+      found = true
+      hook.rerender()
+      act(() => hook.result.current.submitDraft())
+      await waitFor(() => expect(requestGateway.mock.calls.map(call => call[0])).toEqual(['prompt.submit', 'prompt.receipt', 'prompt.receipt']))
+      expect(requestGateway.mock.calls[2][1]?.submission_id).toBe(originalId)
+    }
   })
 
   it.each(['missing', 'wrong', '4094', 'lost-legacy'])(
@@ -422,6 +612,7 @@ describe('submission intent destinations', () => {
   })
 
   it('pins the exact owner before attachment preprocessing changes connection and profile', async () => {
+    $connectionsRegistry.set({ connections: [{ id: 'owner-a', kind: 'remote' }] } as never)
     const { deps, requestGateway } = setup()
     $sessions.set([{ id: 'stored-a', connection_id: 'owner-a', profile: 'alice' }] as never)
     const gate = deferred<{ sessionId: string; attachments: [] }>()

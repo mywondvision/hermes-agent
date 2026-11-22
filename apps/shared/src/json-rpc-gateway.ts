@@ -214,6 +214,10 @@ export class JsonRpcGatewayClient {
     return this.state
   }
 
+  protected get canSendRequest(): boolean {
+    return this.socket?.readyState === WebSocket.OPEN && this.channel.connected
+  }
+
   /** The connected canonical owner admits `clarify_batch` on `prompt.submit` (`client.capabilities`). */
   protected get backendClarifyBatch(): boolean {
     return this.channel.clarifyBatch

@@ -23,6 +23,8 @@
 // - Detection is a windowed majority (>=80% of the last SUSTAINED_MS above
 //   trigger) so intra-word energy dips don't reset progress.
 
+import { randomUuid } from '@hermes/shared'
+
 import { closeMeterContext, meterContextsClosed } from '@/lib/mic-meter-context'
 import { $voiceSilenceMs } from '@/store/voice-prefs'
 
@@ -50,13 +52,14 @@ const UTTERANCE_MAX_MS = 30_000
 
 export interface BargeMonitorCallbacks {
   /** Sustained speech detected — cut playback / interrupt the turn now. */
+  onSegmentStart?: (id: string) => void
   onSpeech: () => void
   /**
    * The interrupting utterance, complete from its first syllable (pre-roll
    * included), delivered once the user goes quiet. `null` when capture was
    * unavailable — fall back to normal listening.
    */
-  onUtterance?: (audio: Blob | null) => void
+  onUtterance?: (audio: Blob | null, utteranceId?: string) => void
   /**
    * Is TTS audio flowing RIGHT NOW? Drives the phase-aware trigger. Omitted
    * (legacy playback-only callers) means "always playing", which preserves
@@ -125,6 +128,7 @@ export function monitorSpeechDuringPlayback(callbacks: BargeMonitorCallbacks): (
     stream = null
   }
 
+  let segmentId: string | undefined
   const startSegment = () => {
     if (!stream || typeof MediaRecorder === 'undefined') {
       return
@@ -151,6 +155,8 @@ export function monitorSpeechDuringPlayback(callbacks: BargeMonitorCallbacks): (
       }
     }
 
+    segmentId = randomUuid()
+    callbacks.onSegmentStart?.(segmentId)
     recorder.start(250)
   }
 
@@ -174,11 +180,12 @@ export function monitorSpeechDuringPlayback(callbacks: BargeMonitorCallbacks): (
 
   const finishCapture = () => {
     const active = recorder
+    const utteranceId = segmentId
     const type = active?.mimeType || mimeType || 'audio/webm'
 
     if (!active || active.state === 'inactive') {
       cleanup()
-      callbacks.onUtterance?.(chunks.length ? new Blob(chunks, { type }) : null)
+      callbacks.onUtterance?.(chunks.length ? new Blob(chunks, { type }) : null, utteranceId)
 
       return
     }
@@ -187,7 +194,7 @@ export function monitorSpeechDuringPlayback(callbacks: BargeMonitorCallbacks): (
       const audio = chunks.length ? new Blob(chunks, { type }) : null
 
       cleanup()
-      callbacks.onUtterance?.(audio)
+      callbacks.onUtterance?.(audio, utteranceId)
     }
 
     active.stop()

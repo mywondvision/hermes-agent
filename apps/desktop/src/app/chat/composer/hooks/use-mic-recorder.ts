@@ -1,3 +1,4 @@
+import { randomUuid } from '@hermes/shared'
 import { useEffect, useRef, useState } from 'react'
 
 import { hostHas } from '@/lib/host-capabilities'
@@ -6,6 +7,8 @@ import { closeMeterContext, meterContextsClosed } from '@/lib/mic-meter-context'
 type BrowserAudioContext = typeof AudioContext
 
 export interface MicRecorderOptions {
+  onCaptureStart?: (id: string) => void
+  onCaptureEnd?: (id: string) => void
   onLevel?: (level: number) => void
   onError?: (error: Error) => void
   onSilence?: () => void
@@ -22,6 +25,7 @@ export interface MicRecorderOptions {
 }
 
 export interface MicRecording {
+  utteranceId: string
   audio: Blob
   durationMs: number
   heardSpeech: boolean
@@ -330,6 +334,8 @@ export function useMicRecorder(copy: MicRecorderErrorCopy): {
     silenceStartedAtRef.current = null
     startedAtRef.current = Date.now()
 
+    const utteranceId = randomUuid()
+    options.onCaptureStart?.(utteranceId)
     recorder.ondataavailable = event => {
       if (event.data.size > 0) {
         chunksRef.current.push(event.data)
@@ -337,6 +343,7 @@ export function useMicRecorder(copy: MicRecorderErrorCopy): {
     }
 
     recorder.onstop = () => {
+      options.onCaptureEnd?.(utteranceId)
       const chunks = chunksRef.current
       const recordingType = recorder.mimeType || mimeType || 'audio/webm'
       const durationMs = Date.now() - startedAtRef.current
@@ -356,6 +363,7 @@ export function useMicRecorder(copy: MicRecorderErrorCopy): {
       }
 
       resolver?.({
+        utteranceId,
         audio: new Blob(chunks, { type: recordingType }),
         durationMs,
         heardSpeech,

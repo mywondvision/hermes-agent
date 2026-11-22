@@ -3827,6 +3827,7 @@ export interface CommandResolveResult {
   category: string
 }
 export interface CommandDispatchParams {
+  interaction?: 'displayed-plan' | null
   name: string
   arg?: string | null
   session_id?: string | null
@@ -4616,6 +4617,33 @@ export interface GroupsDiscardResult {
   discarded?: boolean
   task: RoomTaskReceipt
 }
+export interface ForwardProbeParams {
+  session_id: string
+}
+export interface ForwardProbeResult {
+  version: 1
+  route: 'ordinary' | 'forward' | 'hold'
+  ref?: CanonicalSessionRef | null
+  generation?: string | null
+  mode?: 'shared' | null
+}
+export interface CanonicalSessionRef {
+  profile_id: string
+  session_id: string
+}
+export interface ForwardSubmitParams {
+  session_id: string
+  ref: CanonicalSessionRef
+  generation: string
+  submission_id: string
+  text: string
+}
+export interface ForwardSubmitResult {
+  ref: CanonicalSessionRef
+  submission_id: string
+  admission_id: string
+  status: 'queued' | 'started' | 'unknown' | 'terminal'
+}
 export interface CanonicalShellExecParams {
   session_id: string
   command: string
@@ -4623,12 +4651,14 @@ export interface CanonicalShellExecParams {
 }
 export interface PromptReceiptParams {
   session_id: string
-  admission_id: string
+  admission_id?: string | null
+  submission_id?: string | null
   include_result?: boolean | null
 }
 /** ``result`` / ``usage``: the structured turn result committed at settlement, only with ``include_result`` on a terminal admission that saved one. */
 export interface PromptReceiptResult {
   admission_id: string
+  submission_id?: string | null
   ref: CanonicalSessionRef
   sequence: number
   status: 'queued' | 'started' | 'unknown' | 'terminal'
@@ -4638,10 +4668,6 @@ export interface PromptReceiptResult {
   result?: unknown | null
   usage?: Record<string, unknown> | null
 }
-export interface CanonicalSessionRef {
-  profile_id: string
-  session_id: string
-}
 export interface PromptCancelParams {
   session_id: string
   admission_id: string
@@ -4649,6 +4675,7 @@ export interface PromptCancelParams {
 /** ``gateway/session_contract.py::AdmissionReceipt`` as ``dataclasses.asdict`` sends it. */
 export interface AdmissionStatus {
   admission_id: string
+  submission_id?: string | null
   ref: CanonicalSessionRef
   sequence: number
   status: 'queued' | 'started' | 'unknown' | 'terminal'
@@ -4902,6 +4929,7 @@ export interface A2aForwardParams {
 }
 export interface A2aForwardResult {
   admission_id: string
+  submission_id?: string | null
   ref: CanonicalSessionRef
   sequence: number
   status: 'queued' | 'started' | 'unknown' | 'terminal'
@@ -5011,6 +5039,7 @@ export interface CanonicalSnapshot {
 }
 export interface CanonicalPendingAdmission {
   admission_id: string
+  submission_id?: string | null
   ref: CanonicalSessionRef
   sequence: number
   status: 'queued' | 'started' | 'unknown' | 'terminal'
@@ -5595,6 +5624,11 @@ export interface DisplayInstallDonePayload {
   profile_key: string
   code: number
   status: DisplayStatus
+}
+export interface SymphonyPlanPayload {
+  request_id: string
+  plan_digest: string
+  plan: Record<string, unknown>
 }
 /** ``tui_gateway/entry.py`` (stdio) / ``tui_gateway/ws.py`` (WebSocket) first frame. */
 export interface GatewayReadyPayload {
@@ -6369,6 +6403,10 @@ export interface RpcMethods {
   'prompt.background': { params: SideAgentParams; result: TaskIdResult }
   /** Side question over a snapshot of the live conversation; the answer arrives as btw.complete. */
   'prompt.btw': { params: SideAgentParams; result: TaskIdResult }
+  /** Classify the attached conversation without sending input. */
+  'prompt.forward_probe': { params: ForwardProbeParams; result: ForwardProbeResult }
+  /** Forward one typed input to its verified durable owner. */
+  'prompt.forward_submit': { params: ForwardSubmitParams; result: ForwardSubmitResult }
   /** Send a user turn to a live session; busy sessions queue / steer / redirect instead of refusing. */
   'prompt.submit': { params: PromptSubmitParams; result: PromptSubmitResult }
   /** Re-read ~/.hermes/.env (CLI /reload parity); built agents keep their pool until /new. */
@@ -6721,6 +6759,8 @@ export const RPC_METHODS = [
   'projects.update',
   'prompt.background',
   'prompt.btw',
+  'prompt.forward_probe',
+  'prompt.forward_submit',
   'prompt.submit',
   'reload.env',
   'reload.mcp',
@@ -7133,6 +7173,8 @@ export interface BackendGatewayEventMap {
   'subagent.thinking': SubagentEventPayload
   /** A child called a tool. */
   'subagent.tool': SubagentEventPayload
+  /** A Desktop viewer can present this pending Symphony plan. */
+  'symphony.plan': SymphonyPlanPayload
   /** An agent-owned background process closed. */
   'terminal.close': TerminalClosePayload
   /** Legacy thinking-text chunk (thinking_callback). */
@@ -7228,6 +7270,7 @@ export const GATEWAY_EVENT_TYPES = [
   'subagent.start',
   'subagent.thinking',
   'subagent.tool',
+  'symphony.plan',
   'terminal.close',
   'thinking.delta',
   'tip.show',

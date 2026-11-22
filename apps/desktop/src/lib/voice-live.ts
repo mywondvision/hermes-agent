@@ -1,5 +1,6 @@
 import { type OwnerScope, ownerScoped, profileScoped } from '@/api/client'
 import { hermesApi } from '@/hermes'
+import { setLiveVoiceOutput } from '@/store/voice-playback'
 
 /**
  * GPT-Live voice chat: the full-duplex voice frontend that DELEGATES to Hermes.
@@ -291,7 +292,9 @@ export class VoiceLiveSession {
     this.peer = connection
 
     connection.addEventListener('track', event => {
+      if (this.finalized) { return }
       const stream = new MediaStream([event.track])
+      setLiveVoiceOutput(this.audio, true)
       this.audio.srcObject = stream
       void this.audio.play().catch(() => undefined)
       this.armSpeakingProbe(stream)
@@ -544,6 +547,7 @@ export class VoiceLiveSession {
     this.peer?.close()
     this.audio.srcObject = null
     this.audio.pause()
+    setLiveVoiceOutput(this.audio, false)
     this.handlers.onClosed(reason, usageSeconds)
   }
 }

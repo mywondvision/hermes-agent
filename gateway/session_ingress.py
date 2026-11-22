@@ -16,6 +16,7 @@ admission_author = ContextVar('admission_author', default=None)
 executing_admission = ContextVar('executing_admission', default=False)
 # The live session while the executing turn is one its viewer submitted (``is_viewer_input``), else None.
 viewer_turn: ContextVar = ContextVar('viewer_turn', default=None)
+viewer_admission_id: ContextVar = ContextVar('viewer_admission_id', default=None)
 # Set by a busy-path caller that must be released once its input is durably queued.
 busy_acceptance = ContextVar('busy_acceptance', default=None)
 # Set beside it by a caller that must also know when the row is durably committed (a busy burst's
@@ -279,6 +280,7 @@ async def execute_admission(authority, ref, row):
     author_token = admission_author.set(author if author is not None else row_turn_author(local_policy, row))
     from gateway.session_operator import is_viewer_input
     viewer_token = viewer_turn.set(live if is_viewer_input(row) else None)
+    input_token = viewer_admission_id.set(row['admission_id'] if viewer_turn.get() is not None else None)
     api_token = api_execution.set(None)
     captured = {}
     result_token = execution_result.set(captured)
@@ -340,6 +342,7 @@ async def execute_admission(authority, ref, row):
         api_execution.reset(api_token)
         admission_author.reset(author_token)
         viewer_turn.reset(viewer_token)
+        viewer_admission_id.reset(input_token)
 
 
 def _launch_body_if_launch_owner(authority):

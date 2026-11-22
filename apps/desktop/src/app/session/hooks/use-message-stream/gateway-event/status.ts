@@ -16,6 +16,7 @@ import { requestDesktopOnboarding } from '@/store/onboarding'
 import { flashPetActivity, setPetActivity } from '@/store/pet'
 import { clearAllPrompts } from '@/store/prompts'
 import { setTurnStartedAt } from '@/store/session'
+import { signalSymphonyPlan } from '@/store/symphony-plan'
 import { clearActiveSessionTodos } from '@/store/todos'
 
 import type { GatewayEventContext } from './types'
@@ -66,6 +67,13 @@ function toastGatewayError(
  *  error — the status-and-notice tail of the dispatcher. */
 export function handleStatusEvent(ctx: GatewayEventContext): boolean {
   const { deps, event, payload, sessionId, isActiveEvent, occurredAt } = ctx
+  if (event.type === 'symphony.plan') {
+    if (ctx.explicitSid && ctx.fromActiveSource() && event.payload && 'plan_digest' in event.payload &&
+        typeof event.payload.plan_digest === 'string') {
+      signalSymphonyPlan(ctx.explicitSid, event.payload.plan_digest)
+    }
+    return true
+  }
 
   const {
     compactedTurnRef,

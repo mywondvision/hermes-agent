@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
     start: vi.fn(async () => undefined),
     stop: vi.fn(async () => ({
       audio: new Blob(['fixture']),
+      utteranceId: 'test-recording',
       heardSpeech: true,
       durationMs: 900
     }))

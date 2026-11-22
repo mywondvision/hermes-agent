@@ -5,11 +5,15 @@ import hashlib
 import json
 from pathlib import Path
 import re
+from threading import Lock
+from weakref import WeakValueDictionary
 
 from .qualification import _open_denying_writers
 from .types import Refused, digest
 
 PROFILE = 'symphony-owner-check'
+_WORKSPACE_LOCKS = WeakValueDictionary()
+_WORKSPACE_REGISTRY_LOCK = Lock()
 
 
 @dataclass(frozen=True)
@@ -18,6 +22,9 @@ class CheckCommand:
     tool: str
     arguments: tuple
     requires_git: bool = False
+
+
+DIFF_CHECK = CheckCommand("git-diff-check", "git", ("diff", "--check", "<source_sha>", "<candidate_sha>"), True)
 
 
 def check_plan_fingerprint(profile, commands):
@@ -29,7 +36,7 @@ def check_plan_fingerprint(profile, commands):
         if (not isinstance(command, CheckCommand) or not isinstance(command.name, str)
                 or not re.fullmatch(r'[a-zA-Z0-9][a-zA-Z0-9_-]{0,80}', command.name)
                 or command.name in names or type(command.requires_git) is not bool
-                or command.tool not in ('python', 'ruff') or type(command.arguments) is not tuple
+                or (command.tool not in ('python', 'ruff') and command != DIFF_CHECK) or type(command.arguments) is not tuple
                 or not all(isinstance(arg, str) for arg in command.arguments)):
             raise Refused('CHECK_COMMAND_POLICY')
         names.add(command.name)
@@ -97,7 +104,7 @@ class OwnerCheckProfile:
         return selected
 
     @contextmanager
-    def qualified(self, git, *, outside):
+    def qualified(self, git, *, outside, workspace=True):
         pins = [(self.client, self.client_sha256), (self.python, self.python_sha256),
                 (self.ruff, self.ruff_sha256), (self.git, self.git_sha256),
                 (self.home/'config.toml', self.config_sha256)]
@@ -109,6 +116,13 @@ class OwnerCheckProfile:
                 or any(self.root.is_relative_to(p) or p.is_relative_to(self.root) for p in outside)):
             raise Refused('CHECK_PROFILE_BINDING')
         with ExitStack() as held:
+            if workspace:
+                # Distinct profile objects for this single-owner workspace share the same lane.
+                with _WORKSPACE_REGISTRY_LOCK:
+                    lane = _WORKSPACE_LOCKS.setdefault(self.root, Lock())
+                held.enter_context(lane)
+                if self.active.exists():
+                    raise Refused('CHECK_WORKSPACE_UNSETTLED')
             for path, expected in pins:
                 stream = held.enter_context(_open_denying_writers(str(path)))
                 if hashlib.file_digest(stream, 'sha256').hexdigest() != expected:

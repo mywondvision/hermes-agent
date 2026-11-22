@@ -6,7 +6,7 @@ import { useComposerVoice } from './use-composer-voice'
 
 const mocks = vi.hoisted(() => ({
   clearDraft: vi.fn(),
-  conversationSubmits: [] as Array<(text: string) => Promise<void>>,
+  conversationSubmits: [] as Array<(text: string, utteranceId: string) => Promise<void>>,
   onSubmit: vi.fn(async () => true),
   resetBrowseState: vi.fn(),
   triggerHaptic: vi.fn()
@@ -96,7 +96,7 @@ vi.mock('./use-auto-speak-replies', () => ({
 }))
 
 vi.mock('./use-voice-conversation', () => ({
-  useVoiceConversation: ({ onSubmit }: { onSubmit: (text: string) => Promise<void> }) => {
+  useVoiceConversation: ({ onSubmit }: { onSubmit: (text: string, utteranceId: string) => Promise<void> }) => {
     mocks.conversationSubmits.push(onSubmit)
 
     return {
@@ -120,6 +120,17 @@ vi.mock('./use-voice-recorder', () => ({
 }))
 
 describe('useComposerVoice voice submission', () => {
+  it('routes the original synthetic FINAL to the plan without creating another prompt', async () => {
+    const decide = vi.fn(() => true)
+    renderHook(() => useComposerVoice({
+      busy:false, clearDraft:mocks.clearDraft, disabled:false, focusInput:vi.fn(), insertText:vi.fn(),
+      maxRecordingSeconds:60, onSubmit:mocks.onSubmit, onTranscribeAudio:vi.fn(async ()=>''),
+      sessionId:'runtime', target:'main', onDecisionFinal:decide
+    }))
+    await act(async () => mocks.conversationSubmits[0]('отклоняю','utterance-stable'))
+    expect(decide).toHaveBeenCalledWith('отклоняю','utterance-stable')
+    expect(mocks.onSubmit).not.toHaveBeenCalled()
+  })
   afterEach(() => {
     cleanup()
     vi.clearAllMocks()
@@ -147,15 +158,15 @@ describe('useComposerVoice voice submission', () => {
     const retainedSubmit = mocks.conversationSubmits[0]
 
     hook.rerender({ busy: false })
-    await act(async () => retainedSubmit('change direction'))
+    await act(async () => retainedSubmit('change direction', 'test-recording'))
 
-    expect(mocks.onSubmit).toHaveBeenCalledWith('change direction', { voiceTurn: true })
+    expect(mocks.onSubmit).toHaveBeenCalledWith('change direction', { voiceTurn: true, submission_id: 'test-recording' })
     expect(mocks.clearDraft).toHaveBeenCalledTimes(1)
     expect(mocks.resetBrowseState).toHaveBeenCalledWith('session-1')
     expect(mocks.triggerHaptic).toHaveBeenCalledWith('submit')
 
     hook.rerender({ busy: true })
-    await act(async () => retainedSubmit('do not double-submit'))
+    await act(async () => retainedSubmit('do not double-submit', 'test-recording'))
 
     expect(mocks.onSubmit).toHaveBeenCalledTimes(1)
     expect(mocks.clearDraft).toHaveBeenCalledTimes(1)

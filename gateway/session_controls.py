@@ -438,7 +438,9 @@ class AuthorityConnection:
 
     async def command_dispatch(self, ref, params):
         from gateway.session_commands import execute_command
-        return await execute_command(self, ref, params, dispatch=True)
+        from gateway.session_viewer_command import viewer_command
+        with viewer_command(self, ref, params):
+            return await execute_command(self, ref, params, dispatch=True)
 
     async def command_observe(self, ref, params):
         from gateway.session_commands import observe_command
@@ -855,8 +857,21 @@ class AuthorityConnection:
         return result
 
     async def receipt(self, ref, params):
-        receipt = await self.authority.receipt(self.actor, ref, params.get('admission_id'))
+        admission_id, submission_id = params.get('admission_id'), params.get('submission_id')
+        if bool(admission_id) == bool(submission_id):
+            raise RuntimeStoreError('invalid_params')
+        if submission_id:
+            from hermes_state_runtime import find_session_admission
+            self.authority.authorize(self.actor, ref, 'session:submit')
+            row = find_session_admission(self.authority.db, principal_id=self.actor.subject,
+                                         session_id=ref.session_id, request_id=submission_id)
+            if row is None:
+                raise RuntimeStoreError('not_found')
+            admission_id = row['admission_id']
+        receipt = await self.authority.receipt(self.actor, ref, admission_id)
         out = asdict(receipt)
+        if submission_id:
+            out['submission_id'] = submission_id
         if params.get('include_result') is True and receipt.status == 'terminal':
             # The exact structured result the turn committed with settlement (`finish_result`):
             # a finite viewer reads its ledger (tokens, cost, model, exit reason) from here, the same

@@ -30,6 +30,7 @@ class AdmissionStatus(Result):
     """``gateway/session_contract.py::AdmissionReceipt`` as ``dataclasses.asdict`` sends it."""
 
     admission_id: str
+    submission_id: str | None = None
     ref: CanonicalSessionRef
     sequence: int
     status: Literal["queued", "started", "unknown", "terminal"]
@@ -39,8 +40,11 @@ class AdmissionStatus(Result):
 
 
 class PromptReceiptParams(Params):
+    # Select one identity: the admission or the original submission by this principal.
+
     session_id: str
-    admission_id: str
+    admission_id: str | None = None
+    submission_id: str | None = None
     include_result: bool | None = None
 
 

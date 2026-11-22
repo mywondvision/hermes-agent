@@ -1006,6 +1006,8 @@ _SLASH_BUILTINS = {
 
 @method("command.dispatch")
 def _(rid, params: dict) -> dict:
+    if params.get("interaction") is not None:
+        return _err(rid, 4018, "A displayed plan requires an attached native Desktop session")
     name, arg = _resolve_name(params.get("name", "").lstrip("/")), params.get("arg", "")
     session = _sessions.get(params.get("session_id", ""))
 

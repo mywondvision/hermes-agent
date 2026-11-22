@@ -32,6 +32,15 @@ class OpenPayload(Payload):
 # ── gateway lifecycle ─────────────────────────────────────────────────────────────────────────
 
 
+class SymphonyPlanPayload(Payload):
+    request_id: str
+    plan_digest: str
+    plan: dict[str, JsonValue]
+
+
+event("symphony.plan", SymphonyPlanPayload, doc="A Desktop viewer can present this pending Symphony plan.")
+
+
 class SkinPayload(OpenPayload):
     """``tui_gateway/change_watcher.py::resolve_skin`` — the resolved active skin (``HermesSkin``).
     ``{}`` when the skin engine failed to load. Colour maps are token → colour string."""
