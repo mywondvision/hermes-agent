@@ -6,7 +6,7 @@ replacement launch/cancel ticket. OS ownership is established by LifecycleOwner.
 """
 from __future__ import annotations
 
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from dataclasses import asdict
 import json
 from pathlib import Path
@@ -17,11 +17,12 @@ import uuid
 from hermes_cli.plugin_request_binding import RequestIdentity, canonical_home
 from hermes_dir_acl import make_user_dir
 from plugins.symphony_pm import adapter as pm
+from plugins.symphony_pm.contracts import LaunchExpired
 from .schema import initialize
 from .recovery import PROVEN_STOP, PredecessorProof, recovered_state
 from .types import (
-    ExecutionPlan, LaunchTicket, Permit, ProcessIdentity, Refused, ServingIdentity, WriterToken,
-    binding_from_json, digest, finite, identifier, sha,
+    LaunchTicket, Permit, ProcessIdentity, Refused, ServingIdentity, WriterToken,
+    binding_from_json, digest, finite, identifier, plan_from_json, sha,
 )
 
 
@@ -32,13 +33,13 @@ def encode(value):
 def permit_from_json(value):
     value = dict(value)
     value['identity'] = RequestIdentity(**value['identity'])
-    value['plan'] = ExecutionPlan(**value['plan'])
+    value['plan'] = plan_from_json(value['plan'])
     return Permit(**value)
 
 
 def ticket_from_json(value):
     value = dict(value)
-    value['plan'] = ExecutionPlan(**value['plan'])
+    value['plan'] = plan_from_json(value['plan'])
     return LaunchTicket(**value)
 
 
@@ -70,6 +71,9 @@ class Journal:
             raise Refused('NAMESPACE')
         self.home, self.namespace = canonical_home(home), namespace
         self._transaction_lock = threading.RLock()
+        self._typed_writer = None
+        self._verify_submit_session = None
+        self._typed_refs = set()
         self.ownership_contract, self.host_id, self.workspace_clear = ownership_contract, host_id, workspace_clear
         self.path = Path(self.home)/'plugin-data'/'symphony_pm'/digest(namespace)[:32]/'journal.sqlite3'
         if not self.path.resolve().is_relative_to(Path(self.home)):
@@ -99,9 +103,10 @@ class Journal:
                 if token is not _BOOTSTRAP:
                     self._authorize(db, token)
                 yield db
-                if authorize_commit is not None:
-                    authorize_commit()
-                db.commit()
+                # A connection-bound decision serializes disconnect with the durable commit.
+                fence = authorize_commit() if authorize_commit is not None else None
+                with fence if fence is not None else nullcontext():
+                    db.commit()
             except BaseException:
                 db.rollback()
                 raise
@@ -193,20 +198,155 @@ class Journal:
             raise Refused('OBSERVER_UNAVAILABLE')
         return row['observer_generation']
 
-    def record_permit(self, token, permit: Permit, approval_id, approval_digest, now):
+    def restrict_permits(self, verify_submit_session):
+        with self._transaction_lock:
+            if self._typed_writer is not None:
+                raise Refused('TYPED_WRITER_ALREADY_INSTALLED')
+            self._typed_writer = object()
+            self._verify_submit_session = verify_submit_session
+            return self._typed_writer
+
+    def launch_reserved(self, token, ref):
+        with self._transaction(token) as db:
+            row = db.execute('SELECT used FROM serving_permits WHERE ref=?', (ref,)).fetchone()
+            return row is not None and row['used'] == 1
+
+    def retire_typed_session(self, writer):
+        with self._transaction_lock:
+            if writer is None or writer is not self._typed_writer:
+                raise Refused('TYPED_OWNER_DECISION_REQUIRED')
+            self._typed_refs.clear()
+
+    def has_approved_request(self, token, project, request_id):
+        with self._transaction(token) as db:
+            return db.execute("SELECT 1 FROM serving_permits WHERE json_extract(body,'$.project_ref')=? "
+                              "AND json_extract(body,'$.identity.request_id')=? LIMIT 1",
+                              (project, request_id)).fetchone() is not None
+
+    @contextmanager
+    def _plan_audit(self, token, permit, writer, *, authorize_commit=None):
+        if (writer is None or writer is not self._typed_writer or (permit is not None and
+                (permit.identity.namespace != self.namespace or permit.identity.profile_home != self.home))):
+            raise Refused('TYPED_PLAN_EVENT_SCOPE')
+        path = self.path.with_name('typed-plan-audit.sqlite3')
+        if path.resolve().parent != self.path.parent.resolve():
+            raise Refused('JOURNAL_PATH')
+        # Keep the versioned execution journal readable by the prior release. The same writer
+        # transaction fences the attached audit, including if the serving controller changes.
+        with self._transaction(token, authorize_commit=authorize_commit) as db:
+            db.execute('ATTACH DATABASE ? AS plan_audit', (str(path),))
+            yield db
+
+    def admit_plan_input(self, token, permit, route, voice_id, *, writer):
+        """A committed claim precedes the first delivery. An uncertain delivery stays reserved."""
+        if voice_id is None and not self.path.with_name('typed-plan-audit.sqlite3').exists():
+            return True
+        with self._plan_audit(token, permit, writer) as db:
+            db.execute('CREATE TABLE IF NOT EXISTS plan_audit.voice_inputs('
+                       'route TEXT NOT NULL,message_id TEXT NOT NULL,session_id TEXT NOT NULL,request_id TEXT NOT NULL,'
+                       'plan_digest TEXT NOT NULL,PRIMARY KEY(route,message_id),UNIQUE(session_id,request_id))')
+            session, request = permit.identity.session_id, permit.identity.request_id
+            if voice_id is None:
+                return db.execute('SELECT 1 FROM plan_audit.voice_inputs WHERE session_id=? AND request_id=?',
+                                  (session, request)).fetchone() is None
+            result = db.execute('INSERT INTO plan_audit.voice_inputs VALUES(?,?,?,?,?) ON CONFLICT DO NOTHING',
+                                (route, str(voice_id), session, request, permit.contract_digest))
+            return result.rowcount == 1
+
+    def telegram_denial(self, token, session_id, route, *, writer, message_id=None, request_id=None):
+        if (message_id is None) == (request_id is None):
+            raise Refused('TYPED_PLAN_EVENT_SCOPE')
+        with self._plan_audit(token, None, writer) as db:
+            if not db.execute("SELECT 1 FROM plan_audit.sqlite_master WHERE name='telegram_denials'").fetchone():
+                return None
+            column, lookup = ('message_id', message_id) if message_id is not None else ('request_id', request_id)
+            row = db.execute('SELECT plan_digest FROM plan_audit.telegram_denials '
+                             f'WHERE namespace=? AND route=? AND session_id=? AND {column}=?',
+                             (self.namespace, route, session_id, lookup)).fetchone()
+            return row['plan_digest'] if row else None
+
+    def record_telegram_denial(self, token, permit, route, message_id, *, writer, authorize_commit):
+        with self._plan_audit(token, permit, writer, authorize_commit=authorize_commit) as db:
+            db.execute('CREATE TABLE IF NOT EXISTS plan_audit.telegram_denials('
+                       'namespace TEXT NOT NULL,route TEXT NOT NULL,session_id TEXT NOT NULL,'
+                       'request_id TEXT NOT NULL,message_id TEXT NOT NULL,plan_digest TEXT NOT NULL,'
+                       'PRIMARY KEY(namespace,route,message_id),UNIQUE(namespace,route,session_id,request_id))')
+            inserted = db.execute('INSERT INTO plan_audit.telegram_denials VALUES(?,?,?,?,?,?) ON CONFLICT DO NOTHING',
+                                  (self.namespace, route, permit.identity.session_id, permit.identity.request_id,
+                                   message_id, permit.contract_digest))
+            if inserted.rowcount != 1:
+                raise Refused('NO_MATCHING_TYPED_PLAN')
+
+    def desktop_receipt(self, token, session_id, key, *, writer, by_plan=False):
+        if writer is None or writer is not self._typed_writer:
+            raise Refused('TYPED_OWNER_DECISION_REQUIRED')
+        with self._plan_audit(token, None, writer) as db:
+            if not db.execute("SELECT 1 FROM plan_audit.sqlite_master WHERE name='desktop_plan_decisions'").fetchone():
+                return None
+            column = 'plan_digest' if by_plan else 'input_id'
+            row = db.execute('SELECT receipt FROM plan_audit.desktop_plan_decisions WHERE namespace=? AND session_id=? '
+                             f'AND {column}=?', (self.namespace, session_id, key)).fetchone()
+            receipt = json.loads(row['receipt']) if row else None
+            if receipt and 'shown_plan' in receipt and digest(receipt['shown_plan']) != receipt['plan_digest']:
+                raise Refused('DESKTOP_RECEIPT_PLAN_MISMATCH')
+            return receipt
+
+    def record_desktop_decision(self, token, permit, receipt, *, writer, authorize_commit):
+        if writer is None or writer is not self._typed_writer:
+            raise Refused('TYPED_OWNER_DECISION_REQUIRED')
+        if (receipt['plan_digest'] != permit.contract_digest or receipt['request_id'] != permit.identity.request_id
+                or receipt['session_id'] != permit.identity.session_id or receipt['namespace'] != self.namespace
+                or receipt['profile'] != self.home or permit.identity.namespace != self.namespace
+                or permit.identity.profile_home != self.home or receipt['decision'] not in ('APPROVED', 'DENIED')):
+            raise Refused('DESKTOP_DECISION_BINDING')
+        with self._plan_audit(token, permit, writer, authorize_commit=authorize_commit) as db:
+            # The permit and receipt share a SQLite super-journal on disk.
+            for schema in ('main', 'plan_audit'):
+                if db.execute(f'PRAGMA {schema}.journal_mode').fetchone()[0] not in ('delete', 'persist', 'truncate'):
+                    raise Refused('ATOMIC_DECISION_JOURNAL_REQUIRED')
+                if db.execute(f'PRAGMA {schema}.synchronous').fetchone()[0] < 2:
+                    raise Refused('ATOMIC_DECISION_JOURNAL_REQUIRED')
+            db.execute('CREATE TABLE IF NOT EXISTS plan_audit.desktop_plan_decisions(namespace TEXT,session_id TEXT,'
+                       'input_id TEXT,plan_digest TEXT,receipt TEXT,PRIMARY KEY(namespace,session_id,input_id),'
+                       'UNIQUE(namespace,session_id,plan_digest))')
+            inserted = db.execute('INSERT INTO plan_audit.desktop_plan_decisions VALUES(?,?,?,?,?) ON CONFLICT DO NOTHING',
+                                  (self.namespace, receipt['session_id'], receipt['input_id'], permit.contract_digest,
+                                   encode(receipt)))
+            if inserted.rowcount != 1:
+                raise Refused('DESKTOP_DECISION_RECORDED')
+            if receipt['decision'] == 'APPROVED':
+                self._insert_permit(db, permit, receipt['input_id'], permit.contract_digest)
+        if receipt['decision'] == 'APPROVED':
+            self._typed_refs.add(permit.ref)
+
+    def record_permit(self, token, permit: Permit, approval_id, approval_digest, now, *, writer=None,
+                      authorize_commit=None):
         permit.validate(now)
         if (permit.identity.profile_home != self.home or permit.identity.namespace != self.namespace
                 or not approval_id or not approval_digest):
             raise Refused('PERMIT_SCOPE')
+        with self._transaction(token, authorize_commit=authorize_commit) as db:
+            if (writer is not self._typed_writer or (writer is not None and not callable(authorize_commit))
+                    or (getattr(permit.plan, 'typed_details', '') and writer is None)):
+                raise Refused('TYPED_OWNER_DECISION_REQUIRED')
+            self._insert_permit(db, permit, approval_id, approval_digest)
+        if writer is not None:
+            self._typed_refs.add(permit.ref)
+
+    def _insert_permit(self, db, permit, approval_id, approval_digest):
         body = encode(asdict(permit))
-        with self._transaction(token) as db:
-            old = db.execute('SELECT * FROM serving_permits WHERE ref=?', (permit.ref,)).fetchone()
-            if old:
-                if (old['body'], old['approval_id'], old['approval_digest']) != (body, approval_id, approval_digest):
-                    raise Refused('PERMIT_CONFLICT')
-                return
-            db.execute('INSERT INTO serving_permits VALUES(?,?,?,?,?,?,0)',
-                       (permit.ref, body, permit.binding_digest, digest(asdict(permit.identity)), approval_id, approval_digest))
+        old = db.execute('SELECT * FROM serving_permits WHERE ref=?', (permit.ref,)).fetchone()
+        if old:
+            if (old['body'], old['approval_id'], old['approval_digest']) != (body, approval_id, approval_digest):
+                raise Refused('PERMIT_CONFLICT')
+            return
+        db.execute('INSERT INTO serving_permits VALUES(?,?,?,?,?,?,0)',
+                   (permit.ref, body, permit.binding_digest, digest(asdict(permit.identity)), approval_id, approval_digest))
+
+    def _current_permit(self, permit):
+        if self._typed_writer is not None or getattr(permit.plan, 'typed_details', ''):
+            return permit.ref in self._typed_refs
+        return True
 
     def find_permit(self, token, identity, now):
         with self._transaction(token) as db:
@@ -215,7 +355,7 @@ class Journal:
             for row in db.execute('SELECT body FROM serving_permits WHERE identity_binding=?',
                                   (digest(asdict(identity)),)):
                 permit = permit_from_json(json.loads(row['body']))
-                if permit.identity == identity:
+                if permit.identity == identity and self._current_permit(permit):
                     permit.validate(now)
                     found.append(permit)
             if len(found) != 1:
@@ -227,6 +367,8 @@ class Journal:
         if row is None:
             raise Refused('PERMIT_ABSENT')
         permit = permit_from_json(json.loads(row['body']))
+        if not self._current_permit(permit):
+            raise Refused('TYPED_OWNER_DECISION_REQUIRED')
         permit.validate(now)
         if (permit.binding_digest != row['binding'] or permit.identity.profile_home != self.home
                 or permit.identity.namespace != self.namespace or permit.project_ref != request.project_ref
@@ -243,7 +385,9 @@ class Journal:
             raise Refused('WORKSPACE_HELD')
 
     def reserve_launch(self, token, request, context, now):
-        with self._transaction(token) as db:
+        def authorize_commit():
+            self._verify_submit_session(permit.identity)
+        with self._transaction(token, authorize_commit=authorize_commit if self._verify_submit_session else None) as db:
             self._healthy(db, token)
             permit, permit_row = self._permit(db, request, context, now)
             binding = digest([request.operation, request.payload_digest, permit.binding_digest])
@@ -338,6 +482,69 @@ class Journal:
                         return capture, {}
                     return capture, observation['check']
             return capture, {}
+
+    def checked_apply_capture(self, ticket, captures):
+        return captures[-1]['seq'], json.loads(captures[-1]['body'])
+
+    def _checked_apply_input(self, db, ticket, captures):
+        if not captures:
+            raise Refused('ROBOT_CAPTURE_IDENTITY')
+        capture_seq, capture = self.checked_apply_capture(ticket, captures)
+        last = db.execute("SELECT seq,body FROM serving_observations WHERE attempt=? AND kind='CHECK' "
+                          "ORDER BY seq DESC LIMIT 1", (ticket.attempt,)).fetchone()
+        if last is None:
+            raise Refused("ROBOT_CHECK_REQUIRED")
+        check = json.loads(last['body'])
+        self._verify_check_capture(db, ticket, check)
+        if check['capture_ref']['seq'] != capture_seq:
+            raise Refused("ROBOT_CHECK_REQUIRED")
+        return capture, check['check'], capture_seq, last['seq']
+
+    def apply_candidate(self, token, project, job, revision):
+        """Read the current checked result of one exact launch, before the Desktop asks the owner."""
+        with self._transaction(token) as db:
+            ticket, launch = self._launch(db, project, job, revision)
+            captures = db.execute("SELECT seq,body FROM serving_observations WHERE attempt=? AND kind='CAPTURE' "
+                                  "ORDER BY seq", (ticket.attempt,)).fetchall()
+            return ticket, launch, *self._checked_apply_input(db, ticket, captures)
+
+    def apply_records(self, token, project, job, prefix, *, saved_failure=False):
+        """Read the ticket, exact checked capture and prior apply in one fenced snapshot."""
+        with self._transaction(token) as db:
+            revision = db.execute("SELECT revision FROM jobs WHERE namespace=? AND project=? AND job=?",
+                                  (self.namespace, project, job)).fetchone()
+            if revision is None:
+                raise Refused("JOB_IDENTITY")
+            ticket, launch = self._launch(db, project, job, revision[0])
+            previous = db.execute("SELECT body FROM serving_observations WHERE attempt=? AND kind='APPLY' "
+                                  "ORDER BY seq DESC LIMIT 1", (ticket.attempt,)).fetchone()
+            previous = json.loads(previous[0]) if previous else None
+            captures = db.execute("SELECT seq,body FROM serving_observations WHERE attempt=? AND kind='CAPTURE' "
+                                  "ORDER BY seq", (ticket.attempt,)).fetchall()
+            matching = set()
+            for entry in captures:
+                capture = json.loads(entry['body'])
+                value = capture.get('patch', {}).get('sha256')
+                if sha(value, 64) and value.startswith(prefix):
+                    matching.add(value)
+            if len(matching) != 1:
+                raise Refused("ROBOT_CAPTURE_IDENTITY")
+            if previous and (previous.get('state') in ('PUBLISHING', 'APPLIED') or
+                             (saved_failure and previous.get('state') in ('CHECK_FAILED', 'CHECK_FAILED_SHOWN'))):
+                anchor = previous['identity']
+                if anchor['patch_sha256'] not in matching:
+                    raise Refused("ROBOT_APPLY_BINDING_CHANGED")
+                old_check = None
+                if not saved_failure and 'git_reader' not in previous:
+                    row = db.execute("SELECT body FROM serving_observations WHERE attempt=? AND seq=? AND kind='CHECK'",
+                                     (ticket.attempt, anchor['check_seq'])).fetchone()
+                    old_check = json.loads(row[0])['check'] if row else None
+                return ticket, launch, None, old_check, anchor['capture_seq'], anchor['check_seq'], previous, self._next_seq(db, ticket)
+            if capture.get('patch', {}).get('sha256') not in matching:
+                raise Refused("ROBOT_CAPTURE_IDENTITY")
+            capture, check, capture_seq, check_seq = self._checked_apply_input(db, ticket, captures)
+            return (ticket, launch, capture, check, capture_seq, check_seq,
+                    previous, self._next_seq(db, ticket))
 
     def save_status(self, token, ticket, body, seq, *, authorize_commit):
         with self._transaction(token, authorize_commit=authorize_commit) as db:
@@ -446,7 +653,7 @@ class Journal:
     def check_resume_effects(self, db, row):
         """Synchronous single-gate transports complete under the owner's lock."""
 
-    def dispatch_resume(self, token, ticket, generation, now, action):
+    def dispatch_resume(self, token, ticket, generation, clock, action):
         """Fence resume against writer rotation as well as the durable resume intent."""
         with self._transaction(token) as db:
             if self._healthy(db, token) != generation:
@@ -458,8 +665,26 @@ class Journal:
             permit_row = db.execute('SELECT body FROM serving_permits WHERE ref=?', (ticket.permit_ref,)).fetchone()
             if permit_row is None:
                 raise Refused('PERMIT_ABSENT')
-            permit_from_json(json.loads(permit_row['body'])).validate(now)
+            self._valid_for_launch(permit_from_json(json.loads(permit_row['body'])), clock())
             return action()
+
+    @staticmethod
+    def _valid_for_launch(permit, now):
+        if finite(now) and finite(permit.expires_at) and now >= permit.expires_at:
+            raise LaunchExpired('PERMIT_EXPIRED_BEFORE_RESUME')
+        permit.validate(now)
+
+    def suspended_expired(self, token, ticket, binding):
+        """Only after closing the exact suspended receiver whose resume action was never entered."""
+        with self._transaction(token) as db:
+            actual, row = self._launch(db, ticket.project, ticket.job, ticket.revision)
+            if (actual != ticket or row['state'] not in ('BOUND', 'RESUME_INTENT')
+                    or row['binding'] != encode(asdict(binding)) or binding.ticket != ticket):
+                raise Refused('SUSPENDED_BINDING_CHANGED')
+            hold = 'WORKSPACE_HELD' if self.workspace_clear and not self.workspace_clear() else None
+            db.execute("UPDATE serving_launches SET state='NOT_STARTED',hold_reason=? WHERE attempt=?",
+                       (hold, ticket.attempt))
+            self._append(db, ticket, {'kind': 'NOT_STARTED', 'reason': 'PERMIT_EXPIRED_BEFORE_RESUME'}, None)
 
     def bind_native(self, token, ticket, binding):
         binding.validate()
@@ -494,7 +719,7 @@ class Journal:
             if row is None:
                 raise Refused('PERMIT_ABSENT')
             permit = permit_from_json(json.loads(row['body']))
-            permit.validate(now)
+            self._valid_for_launch(permit, now)
             if (permit.binding_digest != row['binding'] or permit.plan != ticket.plan
                     or permit.request_digest != ticket.request_digest
                     or permit.identity.session_id != ticket.session or row['used'] != 1):
@@ -685,7 +910,11 @@ class Journal:
             self._verify_check_capture(db, ticket, observation)
         seq = self._next_seq(db, ticket)
         if expected_seq is not None and expected_seq != seq:
-            raise Refused('OBSERVATION_SEQUENCE_CHANGED')
+            # A status read during a long check cannot change its inputs or publication intent.
+            if observation['kind'] != 'APPLY' or expected_seq > seq or db.execute(
+                    "SELECT 1 FROM serving_observations WHERE attempt=? AND seq>=? AND kind!='STATUS' LIMIT 1",
+                    (ticket.attempt, expected_seq)).fetchone():
+                raise Refused('OBSERVATION_SEQUENCE_CHANGED')
         db.execute('INSERT INTO serving_observations VALUES(?,?,?,?)',
                    (ticket.attempt, seq, observation['kind'], encode(observation)))
         return seq

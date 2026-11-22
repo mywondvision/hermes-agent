@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from pathlib import PurePosixPath
 import re
 
-from .types import ExecutionPlan, LaunchTicket, ProcessIdentity, Refused, digest, sha
+from .types import LaunchTicket, ProcessIdentity, Refused, digest, plan_from_json, sha
 
 CONTRACT = 'linux-systemd-cgroup-v2/1'
 
@@ -53,7 +53,7 @@ def linux_binding_from_json(value):
             raise Refused('LINUX_NATIVE_BINDING')
         body = dict(value)
         ticket = dict(body['ticket'])
-        ticket['plan'] = ExecutionPlan(**ticket['plan'])
+        ticket['plan'] = plan_from_json(ticket['plan'])
         body.update(ticket=LaunchTicket(**ticket), root=ProcessIdentity(**body['root']),
                     known_processes=tuple(ProcessIdentity(**item) for item in body['known_processes']))
         binding = LinuxBinding(**body)

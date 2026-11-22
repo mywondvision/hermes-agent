@@ -129,7 +129,7 @@ ADMISSION_QUEUE_MAX = 32
 
 def admit_session_input(db, *, epoch: int, principal_id: str, session_id: str,
                         request_id: str, payload: dict, intent: str = 'queue',
-                        _authorize_write=None, _replay_guard=None) -> dict:
+                        _authorize_write=None, _replay_guard=None, _desktop_binding=None, _commit_guard=None) -> dict:
     """Admit input; the trusted private guard raises to refuse a NEW write.
 
     The guard receives the owning transaction connection, must not commit it or
@@ -144,17 +144,27 @@ def admit_session_input(db, *, epoch: int, principal_id: str, session_id: str,
         raise RuntimeStoreError('invalid_params')
     encoded = _json(payload)
     from hermes_state_terminal import retry_terminal_admission
+    from gateway.session_desktop_operator_store import binding_key
+    private_key = binding_key(session_id, request_id)
+    if _desktop_binding is None and db.get_meta(private_key) is not None:
+        raise RuntimeStoreError('permission_denied')
     retired = retry_terminal_admission(db, epoch=epoch, principal_id=principal_id, session_id=session_id,
         request_id=request_id, payload=payload, intent=intent)
     if retired is not None:
+        if _desktop_binding is not None:
+            raise RuntimeStoreError('permission_denied')
         return retired
     digest = admission_fingerprint(canonical_target=session_id, payload={'input': json.loads(encoded), 'intent': intent})
     def write(conn):
         _epoch(conn, epoch)
         _session(conn, session_id)
+        if _desktop_binding is None and conn.execute('SELECT 1 FROM state_meta WHERE key=?', (private_key,)).fetchone():
+            raise RuntimeStoreError('permission_denied')
         old = conn.execute('''SELECT * FROM session_admissions
             WHERE principal_id=? AND target_session_id=? AND request_id=?''', (principal_id, session_id, request_id)).fetchone()
         if old is not None:
+            if _desktop_binding is not None:
+                _desktop_binding(conn, old['admission_id'], replay=True)
             if old['payload_digest'] != digest:
                 raise RuntimeStoreError('admission_conflict', **ADMITTED_REQUEST_CONFLICT)
             if _replay_guard is not None:
@@ -169,12 +179,14 @@ def admit_session_input(db, *, epoch: int, principal_id: str, session_id: str,
         if _authorize_write is not None:
             _authorize_write(conn)
         admission_id = uuid.uuid4().hex
+        if _desktop_binding is not None:
+            _desktop_binding(conn, admission_id, replay=False)
         conn.execute('''INSERT INTO session_admissions(admission_id,request_id,principal_id,
             target_session_id,lineage_json,payload_json,payload_digest,intent,status,owner_epoch)
             VALUES(?,?,?,?,?,?,?,?,'queued',?)''',
             (admission_id, request_id, principal_id, session_id, json.dumps([session_id]), encoded, digest, intent, epoch))
         return _row(_admission(conn, admission_id))
-    return db._execute_write(write)
+    return db._execute_write(write, commit_guard=_commit_guard) if _commit_guard else db._execute_write(write)
 
 
 def get_session_admission(db, *, admission_id: str) -> dict | None:

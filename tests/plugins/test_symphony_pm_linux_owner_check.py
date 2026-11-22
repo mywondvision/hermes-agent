@@ -67,7 +67,11 @@ class OfflineLauncher(LinuxLauncher):
 
 @pytest.fixture
 def checker_stand(tmp_path_factory, monkeypatch):
-    def build(fault, home=None, namespace='symphony-linux'):
+    return make_checker_stand(tmp_path_factory, monkeypatch)
+
+
+def make_checker_stand(tmp_path_factory, monkeypatch):
+    def build(fault, home=None, namespace='symphony-linux', *, clone=False, project_test=None):
         base = tmp_path_factory.mktemp('lc')
         repo, attempts, state_dir, scratch = (base/name for name in ('r', 'a', 's', 'c'))
         for directory in (repo, attempts, state_dir, scratch):
@@ -78,7 +82,14 @@ def checker_stand(tmp_path_factory, monkeypatch):
         run('init', '-q')
         (repo/'task.txt').write_bytes(b'base\n')
         run('add', 'task.txt')
+        if project_test is not None:
+            (repo/'test_revision.py').write_text(project_test, encoding='utf8')
+            run('add', 'test_revision.py')
         run('-c', 'user.name=Checker', '-c', 'user.email=fixture@invalid', 'commit', '-q', '-m', 'source')
+        if clone:
+            destination = base/'clone'
+            run('clone', '--no-local', str(repo), str(destination))
+            repo = destination
         source = run('rev-parse', 'HEAD').decode().strip()
         (repo/'local.txt').write_bytes(b'owner staged')
         run('add', 'local.txt')

@@ -29,6 +29,12 @@ class LinuxCheckProfile:
     def fingerprint(self):
         return digest(asdict(self))
 
+    def primary_commands(self):
+        active = tuple(command for command in self.commands if not command.requires_git)
+        if not active:
+            raise Refused('CHECK_NO_COMMANDS_EXECUTED')
+        return active
+
     def validate(self):
         if (not all(sha(v, 64) for v in (self.launch_fingerprint, self.evidence_sha256, self.git_sha256))
                 or type(self.commands) is not tuple or not finite(self.timeout) or self.timeout <= 0

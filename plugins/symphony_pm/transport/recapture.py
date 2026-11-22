@@ -59,6 +59,26 @@ def _verify_archive(row, data, workspace, saved_index, legacy):
             raise Refused('ATTEMPT_BASELINE_MISMATCH')
 
 
+def read_bound_patch(directory, patch):
+    from .attempt_workspace import PATCH_LIMIT
+    if not isinstance(patch.get('path'), str):
+        raise Refused("ROBOT_PATCH_LOCATION")
+    path = Path(patch['path'])
+    try:
+        if not path.is_absolute() or path.resolve(strict=True) != path or not path.is_relative_to(directory):
+            raise Refused("ROBOT_PATCH_LOCATION")
+        info = path.lstat()
+        if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
+            raise Refused("ROBOT_PATCH_LOCATION")
+        with path.open('rb') as stream:
+            content = stream.read(PATCH_LIMIT + 1)
+    except OSError as exc:
+        raise Refused("ROBOT_PATCH_UNAVAILABLE") from exc
+    if len(content) > PATCH_LIMIT or hashlib.sha256(content).hexdigest() != patch['sha256']:
+        raise Refused("ROBOT_PATCH_DIGEST")
+    return content
+
+
 def recapture(launcher, journal, token, ticket, row):
     """The owner lock and a fenced append bind each immutable patch to its observation sequence."""
     if ticket.namespace != launcher.qualification.namespace or token.profile_home != launcher.qualification.profile_home:

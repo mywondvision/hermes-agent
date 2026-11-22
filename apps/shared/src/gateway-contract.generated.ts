@@ -3827,6 +3827,7 @@ export interface CommandResolveResult {
   category: string
 }
 export interface CommandDispatchParams {
+  interaction?: 'displayed-plan' | null
   name: string
   arg?: string | null
   session_id?: string | null
@@ -4616,6 +4617,79 @@ export interface GroupsDiscardResult {
   discarded?: boolean
   task: RoomTaskReceipt
 }
+export interface ForwardProbeParams {
+  session_id: string
+}
+export interface ForwardProbeResult {
+  version: 1
+  route: 'ordinary' | 'forward' | 'hold'
+  ref?: CanonicalSessionRef | null
+  generation?: string | null
+  mode?: 'shared' | 'personal' | null
+}
+export interface CanonicalSessionRef {
+  profile_id: string
+  session_id: string
+}
+export interface ForwardSubmitParams {
+  session_id: string
+  ref: CanonicalSessionRef
+  generation: string
+  submission_id: string
+  text: string
+}
+export interface ForwardSubmitResult {
+  ref: CanonicalSessionRef
+  submission_id: string
+  admission_id: string
+  status: 'queued' | 'started' | 'unknown' | 'terminal'
+}
+export interface OperatorChallengeParams {
+  session_id: string
+  action: 'submit' | 'receipt' | 'status' | 'stop' | 'stop_result' | 'recover' | 'stop_reconcile' | 'stop_replace' | 'apply_info' | 'apply' | 'archive' | 'apply_result'
+  submission_id: string
+  installation_key: string
+  window_key: string
+  window_generation: number
+  payload_sha256: string
+}
+export interface OperatorChallengeResult {
+  version: 1
+  challenge_id: string
+  message: string
+  ref: CanonicalSessionRef
+  window_generation: number
+}
+export interface OperatorExecuteParams {
+  session_id: string
+  challenge_id: string
+  installation_signature: string
+  window_signature: string
+  payload: Record<string, string | number>
+}
+export interface OperatorExecuteResult {
+  ref?: CanonicalSessionRef | null
+  submission_id?: string | null
+  admission_id?: string | null
+  status?: 'queued' | 'started' | 'unknown' | 'terminal' | null
+  attempt?: Record<string, string> | null
+  window_generation?: number | null
+  attempt_id?: string | null
+  phase?: string | null
+  observed_at?: number | null
+  evidence?: string | null
+  command_id?: string | null
+  previous_command_id?: string | null
+  state?: string | null
+  dispatched?: boolean | null
+  local_stopped?: boolean | null
+  project?: string | null
+  job?: string | null
+  capture_seq?: number | null
+  check_seq?: number | null
+  patch_sha256?: string | null
+  commit?: string | null
+}
 export interface CanonicalShellExecParams {
   session_id: string
   command: string
@@ -4623,12 +4697,14 @@ export interface CanonicalShellExecParams {
 }
 export interface PromptReceiptParams {
   session_id: string
-  admission_id: string
+  admission_id?: string | null
+  submission_id?: string | null
   include_result?: boolean | null
 }
 /** ``result`` / ``usage``: the structured turn result committed at settlement, only with ``include_result`` on a terminal admission that saved one. */
 export interface PromptReceiptResult {
   admission_id: string
+  submission_id?: string | null
   ref: CanonicalSessionRef
   sequence: number
   status: 'queued' | 'started' | 'unknown' | 'terminal'
@@ -4638,10 +4714,6 @@ export interface PromptReceiptResult {
   result?: unknown | null
   usage?: Record<string, unknown> | null
 }
-export interface CanonicalSessionRef {
-  profile_id: string
-  session_id: string
-}
 export interface PromptCancelParams {
   session_id: string
   admission_id: string
@@ -4649,6 +4721,7 @@ export interface PromptCancelParams {
 /** ``gateway/session_contract.py::AdmissionReceipt`` as ``dataclasses.asdict`` sends it. */
 export interface AdmissionStatus {
   admission_id: string
+  submission_id?: string | null
   ref: CanonicalSessionRef
   sequence: number
   status: 'queued' | 'started' | 'unknown' | 'terminal'
@@ -4902,6 +4975,7 @@ export interface A2aForwardParams {
 }
 export interface A2aForwardResult {
   admission_id: string
+  submission_id?: string | null
   ref: CanonicalSessionRef
   sequence: number
   status: 'queued' | 'started' | 'unknown' | 'terminal'
@@ -5011,6 +5085,7 @@ export interface CanonicalSnapshot {
 }
 export interface CanonicalPendingAdmission {
   admission_id: string
+  submission_id?: string | null
   ref: CanonicalSessionRef
   sequence: number
   status: 'queued' | 'started' | 'unknown' | 'terminal'
@@ -6271,6 +6346,10 @@ export interface RpcMethods {
   'onboarding.start': { params: OnboardingStartParams; result: OnboardingStartResult }
   /** Whether desktop first-run onboarding is due, and the chat in progress; reads the root profile's config. */
   'onboarding.state': { params: OnboardingStateParams; result: OnboardingRunStateResult }
+  /** Issue a purpose- and connection-bound challenge for a registered Desktop operator. */
+  'operator.challenge': { params: OperatorChallengeParams; result: OperatorChallengeResult }
+  /** Accept a once-signed Desktop operator request through the verified owner. */
+  'operator.execute': { params: OperatorExecuteParams; result: OperatorExecuteResult }
   /** Spill a large paste to a file and hand back the inline placeholder. */
   'paste.collapse': { params: PasteCollapseParams; result: PasteCollapseResult }
   /** Render a PDF's pages to PNG and queue them as images for the next turn. */
@@ -6369,6 +6448,10 @@ export interface RpcMethods {
   'prompt.background': { params: SideAgentParams; result: TaskIdResult }
   /** Side question over a snapshot of the live conversation; the answer arrives as btw.complete. */
   'prompt.btw': { params: SideAgentParams; result: TaskIdResult }
+  /** Classify the attached conversation without sending input. */
+  'prompt.forward_probe': { params: ForwardProbeParams; result: ForwardProbeResult }
+  /** Forward one typed input to its verified durable owner. */
+  'prompt.forward_submit': { params: ForwardSubmitParams; result: ForwardSubmitResult }
   /** Send a user turn to a live session; busy sessions queue / steer / redirect instead of refusing. */
   'prompt.submit': { params: PromptSubmitParams; result: PromptSubmitResult }
   /** Re-read ~/.hermes/.env (CLI /reload parity); built agents keep their pool until /new. */
@@ -6672,6 +6755,8 @@ export const RPC_METHODS = [
   'onboarding.skip',
   'onboarding.start',
   'onboarding.state',
+  'operator.challenge',
+  'operator.execute',
   'paste.collapse',
   'pdf.attach',
   'pet.cancel',
@@ -6721,6 +6806,8 @@ export const RPC_METHODS = [
   'projects.update',
   'prompt.background',
   'prompt.btw',
+  'prompt.forward_probe',
+  'prompt.forward_submit',
   'prompt.submit',
   'reload.env',
   'reload.mcp',

@@ -146,7 +146,7 @@ def command_verdict(name, arg=''):
 
 
 def _parse(params, dispatch):
-    allowed = {'session_id', 'profile', 'name', 'arg'} if dispatch else {'session_id', 'profile', 'command'}
+    allowed = {'session_id', 'profile', 'name', 'arg', 'interaction'} if dispatch else {'session_id', 'profile', 'command'}
     if (set(params) - allowed or any(not isinstance(v, str) for v in params.values())):
         raise RuntimeStoreError('invalid_params')
     text = params.get('name', '') if dispatch else params.get('command', '')
@@ -214,8 +214,12 @@ async def _run_runner_command(runner, live, name, arg, kind, shell):
     # Plugin-only: the runner's quick commands are the launch profile's under multiplex, and this
     # session's own were already resolved above in its profile (``_resolve_alias``/``_runner_command``),
     # so is the registered name (``shell``) the handler is looked up by.
-    from hermes_cli.plugins import get_plugin_command_handler
-    handler = get_plugin_command_handler(shell)
+    from hermes_cli.plugins import get_plugin_command_handler, get_plugin_commands
+    if kind == 'displayed-plan':
+        entry = get_plugin_commands().get(shell) or {}
+        handler = entry.get('handler') if entry.get('plugin_key') == 'symphony_pm' else None
+    else:
+        handler = get_plugin_command_handler(shell)
     if handler is None:
         raise RuntimeStoreError('unsupported_command')
     event = MessageEvent(text='/' + name + (' ' + arg if arg else ''), source=live.source)
@@ -429,7 +433,13 @@ async def execute_command(connection, ref, params, *, dispatch=False):
     def resolve():
         with _profile_runtime_scope(home):
             return _resolve_alias(name, arg)
-    name, arg = await asyncio.to_thread(resolve)
+    interaction = params.get('interaction')
+    if interaction:
+        if (interaction != 'displayed-plan' or name != 'symphony'
+                or arg.partition(' ')[0] not in ('status', 'plan-presented', 'plan-answer', 'plan-receipt', 'plan-result')):
+            raise RuntimeStoreError('invalid_params')
+    else:
+        name, arg = await asyncio.to_thread(resolve)
     definition = resolve_command(name)
     canonical = definition.name if definition else name
     verdict = command_verdict(canonical, arg) if definition else None
@@ -443,7 +453,9 @@ async def execute_command(connection, ref, params, *, dispatch=False):
     if definition is not None and (tui := await _tui_read(authority, actor, ref, canonical, arg, before)) is not None:
         return tui
     runner_command = None
-    if definition is None:
+    if interaction:
+        runner_command = (interaction, name)
+    elif definition is None:
         def lookup():
             with _profile_runtime_scope(home):
                 return _runner_command(name)

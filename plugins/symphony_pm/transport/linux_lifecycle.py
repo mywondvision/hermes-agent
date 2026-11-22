@@ -1,6 +1,8 @@
 """Single-writer Linux lifecycle, including query-only takeover of a surviving service."""
 from collections import Counter
+from contextlib import contextmanager
 from dataclasses import asdict
+import hashlib
 import json
 
 from .lifecycle import LifecycleOwner, ProcessReadback
@@ -98,8 +100,44 @@ class LinuxLifecycleOwner(LifecycleOwner):
                 and check.get('revisions') == {'profile': profile.fingerprint, 'evidence': profile.evidence_sha256}
                 and 'plan_sha256' not in check and saved_commands(self.launcher, ticket, epoch, patch, check))
 
+    def robot_check_plan(self, ticket, paths):
+        profile = self.launcher.owner_check.profile
+        if not getattr(ticket.plan, 'typed_details', ''):
+            raise Refused('LINUX_TYPED_PLAN_REQUIRED')
+        if json.loads(ticket.plan.typed_details).get('git_check_profile') != self.launcher.git_check_policy():
+            raise Refused('LINUX_GIT_CHECK_QUALIFICATION_CHANGED')
+        return profile, profile.commands, profile.fingerprint, profile.timeout
+
+    @contextmanager
+    def robot_check_context(self, profile, repository, workspace):
+        if profile is not self.launcher.owner_check.profile:
+            raise Refused('LINUX_GIT_CHECK_NOT_QUALIFIED')
+        self.launcher.require_check_slot_clear()
+        self.launcher.owner_check.verify(self.launcher)
+        with self.open_robot_git(profile.git) as image:
+            if hashlib.file_digest(image, 'sha256').hexdigest() != profile.git_sha256:
+                raise Refused('ROBOT_GIT_READER_CHANGED')
+            yield
+
+    def robot_project_check(self, ticket, record, repository, command, timeout, starting, fence, settle):
+        pin = json.loads(ticket.plan.typed_details)['git_check_profile']
+        with self.launcher.git_lane:
+            return self.launcher.git_checks.run(self.launcher, pin, record, repository, command, timeout,
+                                                fence, starting, settle)
+
+    def open_robot_git(self, path):
+        from .linux_sandbox import protected
+        if str(path) != str(self.launcher.owner_check.profile.git):
+            raise Refused('ROBOT_GIT_READER_CHANGED')
+        return protected(path).open('rb')
+
     def _finished_client_job(self, row):
         return self.journal.proven_stop(row)
+
+    def _record_suspended_expiry(self, token, ticket, binding):
+        # Closing a Linux receiver leaves the unit alive. Preserve its reservation
+        # and workspace until a read of this cgroup independently proves empty.
+        self.journal.finish_job_stop(token, ticket, self.generation, stopped=False)
 
     def _job_accounting(self, binding):
         if not self._observer_available or not self._coverage_verified():

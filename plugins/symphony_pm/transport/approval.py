@@ -35,6 +35,8 @@ class ApprovalSource:
         One exact execution plan is displayed through the existing selected human
         channel. Permission to develop/test this code cannot reach this method.
         """
+        if getattr(self.owner, 'typed_approval', None) is not None:
+            raise Refused('TYPED_OWNER_DECISION_REQUIRED')
         now = self.clock()
         permit.validate(now)
         if (permit.identity.profile_home != self.owner.journal.home

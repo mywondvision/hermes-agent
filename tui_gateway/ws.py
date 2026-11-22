@@ -635,6 +635,9 @@ async def handle_ws(ws: Any, *, auth_identity: dict | None = None, subprotocol: 
         _log.info("ws accepted peer=%s", peer)
         transport = WSTransport(ws, asyncio.get_running_loop(), peer=peer, auth_identity=auth_identity)
         authority_connection = _authority_connection(ws, transport, auth_identity, operator)
+        if authority_connection is None and (getattr(ws, 'scope', None) or {}).get('hermes.forward_shared_token') is True:
+            from tui_gateway.prompt_forward import ForwardClient
+            transport.prompt_forward = ForwardClient(ws.scope.get('hermes.forward_home'))
         # resolve_skin() is sync I/O + CPU; pooled so the read loop can drain the frontend's initial RPC burst.
         skin_payload = await asyncio.to_thread(server.resolve_skin)
         # change_events: this backend broadcasts pet/cron/sessions.changed, so clients can demote legacy
@@ -702,6 +705,11 @@ async def handle_ws(ws: Any, *, auth_identity: dict | None = None, subprotocol: 
         pass
     finally:
         _client_left()
+        forward = getattr(transport, 'prompt_forward', None)
+        if forward is not None:
+            forward.operator_closed = True
+            with contextlib.suppress(OSError, ValueError, KeyError):
+                await asyncio.to_thread(forward.close_operator)
         if dispatcher is not None:
             # Finish the in-flight handler and the frames read before the disconnect (as the serial read loop
             # did) before the teardown below parks this transport's sessions. A cancelled connection (server

@@ -4,15 +4,18 @@ import os
 from pathlib import Path
 import time
 
-from .linux_check_config import CheckConfiguration, CheckManager, MANIFEST, STATE, strict_json
+from .linux_check_config import CheckConfiguration, CheckManager, GitCheckConfiguration, GitCheckManager, MANIFEST, STATE, strict_json
 from .linux_check_host import LinuxCheckHost, LinuxCheckInvocation, LinuxOwnerCheck
-from .linux_check_wire import CheckGroup, check_copy, read_request, terminal_from_proof, unit_name
+from .linux_check_wire import CheckGroup, verify_copy, read_request, terminal_from_proof, unit_name
 from .linux_control import publish
 from .linux_host import boot_identity, host_identity, private_directory, process_identity
 from .types import Refused, digest, finite
+from .linux_robot_check import GitCheckInvocation, LinuxGitCheckHost, LinuxGitChecks
 
 
 class LinuxSystemdCheckHost(LinuxCheckHost):
+    invocation_type = LinuxCheckInvocation
+
     def __init__(self, configuration):
         self.config = configuration
 
@@ -20,11 +23,19 @@ class LinuxSystemdCheckHost(LinuxCheckHost):
         return self._attest(None)
 
     def _attest(self, deadline):
-        if CheckConfiguration.load() != self.config:
+        if type(self.config).load() != self.config:
             raise Refused('CHECK_MANIFEST_CHANGED')
         self.config.verify()
-        CheckManager(self.config.installation, MANIFEST, deadline=deadline).verify_configuration(unit_name('0'*64))
-        return self.config.profile.fingerprint
+        self._manager(deadline).verify_configuration(unit_name('0'*64, self.config.prefix))
+        return self.config.invocation_profile
+
+    def _manager(self, deadline):
+        return CheckManager(self.config.installation, MANIFEST, deadline=deadline)
+
+    def _check_intent(self, invocation):
+        marker = strict_json(Path(self.config.installation.owner_state)/'owner-check.active')
+        if marker['key'] != invocation.key or LinuxCheckInvocation.from_record(marker['invocation']) != invocation:
+            raise Refused('CHECK_INTENT_CHANGED')
 
     def _directory(self, key):
         return private_directory(STATE)/unit_name(key)
@@ -53,7 +64,7 @@ class LinuxSystemdCheckHost(LinuxCheckHost):
             if (meta['InvocationID'], meta['ControlGroup']+'/payload') != (bound.service_id, bound.cgroup):
                 raise Refused('CHECK_SERVICE_REPLACED')
             self._root_member(bound)
-            check_copy(invocation, self.config.profile)
+            verify_copy(self.config, invocation)
             if time.monotonic() >= deadline:
                 break
             publish(directory, 'grant', {'key': invocation.key, 'binding': digest(asdict(bound))})
@@ -61,17 +72,15 @@ class LinuxSystemdCheckHost(LinuxCheckHost):
         raise TimeoutError('CHECK_START_TIMEOUT')
 
     def start(self, invocation, *, timeout):
-        if type(invocation) is not LinuxCheckInvocation or not finite(timeout) or timeout != self.config.profile.timeout:
+        if type(invocation) is not self.invocation_type or not finite(timeout) or timeout != self.config.profile.timeout:
             raise Refused('CHECK_SERVICE_REQUEST')
         started = time.monotonic()
         deadline = started + timeout
         invocation.validate()
         if (self._attest(deadline) != invocation.profile or invocation.command not in self.config.profile.commands):
             raise Refused('CHECK_SERVICE_REQUEST')
-        marker = strict_json(Path(self.config.installation.owner_state)/'owner-check.active')
-        if marker['key'] != invocation.key or LinuxCheckInvocation.from_record(marker['invocation']) != invocation:
-            raise Refused('CHECK_INTENT_CHANGED')
-        check_copy(invocation, self.config.profile)
+        self._check_intent(invocation)
+        verify_copy(self.config, invocation)
         directory = self._directory(invocation.key)
         try:
             directory.mkdir(mode=0o700)
@@ -81,12 +90,12 @@ class LinuxSystemdCheckHost(LinuxCheckHost):
         _sync_directory(directory.parent)
         publish(directory, 'request', {'schema': 1, 'key': invocation.key, 'invocation': asdict(invocation),
                                         'started': started, 'expires': deadline})
-        manager = CheckManager(self.config.installation, MANIFEST, deadline=deadline)
-        manager.start(unit_name(invocation.key))
+        manager = self._manager(deadline)
+        manager.start(unit_name(invocation.key, self.config.prefix))
         self._authorize(invocation, directory, manager, deadline)
 
     def observe(self, invocation, *, timeout):
-        if type(invocation) is not LinuxCheckInvocation or not finite(timeout) or not 0 <= timeout <= self.config.profile.timeout:
+        if type(invocation) is not self.invocation_type or not finite(timeout) or not 0 <= timeout <= self.config.profile.timeout:
             raise Refused('CHECK_SERVICE_OBSERVATION')
         deadline = time.monotonic() + timeout
         config = self.config.installation
@@ -121,6 +130,42 @@ class LinuxSystemdCheckHost(LinuxCheckHost):
             if not finite(stop.get('observed')) or stop['observed'] > time.monotonic():
                 raise Refused('CHECK_GROUP_STOP_UNPROVEN')
             return terminal_from_proof(stop, invocation, bound, request)
+
+
+class LinuxSystemdGitCheckHost(LinuxSystemdCheckHost, LinuxGitCheckHost):
+    invocation_type = GitCheckInvocation
+
+    @property
+    def export_root(self):
+        return Path(self.config.profile.root)
+
+    def _manager(self, deadline):
+        return GitCheckManager(self.config.installation, self.config.manifest, deadline=deadline)
+
+    def _directory(self, key):
+        return private_directory(self.config.state)/unit_name(key, self.config.prefix)
+
+    def _check_intent(self, invocation):
+        marker = Path(self.config.installation.owner_state)/'robot-git-check.active'/'invocation.json'
+        if GitCheckInvocation.from_record(strict_json(marker)) != invocation:
+            raise Refused('CHECK_INTENT_CHANGED')
+
+
+def systemd_git_check(qualification, primary, settings):
+    from .check_command import DIFF_CHECK
+    config = GitCheckConfiguration.load()
+    profile = config.profile
+    system = config.installation
+    if (system.installation_id, system.host_id, system.boot_id) != (
+            qualification.installation_id, qualification.host_id, qualification.boot_id):
+        raise Refused('CHECK_SERVICE_HOST_CHANGED')
+    expected = tuple(c for c in primary.profile.commands if c.requires_git and c != DIFF_CHECK)
+    if (not expected or profile.commands != expected or profile.launch_fingerprint != primary.profile.fingerprint
+            or (profile.git, profile.git_sha256, profile.timeout) !=
+               (primary.profile.git, primary.profile.git_sha256, primary.profile.timeout)
+            or config.installation.owner_state != settings.state):
+        raise Refused('LINUX_GIT_CHECK_QUALIFICATION_CHANGED')
+    return LinuxGitChecks(profile.evidence_sha256, LinuxSystemdGitCheckHost(config))
 
 
 def systemd_owner_check(qualification, *, manifest=MANIFEST):

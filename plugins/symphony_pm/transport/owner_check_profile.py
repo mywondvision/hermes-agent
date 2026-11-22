@@ -4,12 +4,17 @@ from dataclasses import asdict, dataclass
 import hashlib
 import json
 from pathlib import Path
+from threading import Lock
+from weakref import WeakValueDictionary
 
-from .check_command import CheckCommand, validated_commands
+from .check_command import CheckCommand, DIFF_CHECK, validated_commands
 from .qualification import _open_denying_writers
 from .types import Refused, digest
 
-__all__ = ['PROFILE', 'CheckCommand', 'OwnerCheckProfile']
+__all__ = ['PROFILE', 'CheckCommand', 'DIFF_CHECK', 'OwnerCheckProfile']
+_WORKSPACE_LOCKS = WeakValueDictionary()
+_WORKSPACE_REGISTRY_LOCK = Lock()
+
 
 PROFILE = 'symphony-owner-check'
 
@@ -87,7 +92,7 @@ class OwnerCheckProfile:
         return selected
 
     @contextmanager
-    def qualified(self, git, *, outside):
+    def qualified(self, git, *, outside, workspace=True):
         pins = [(self.client, self.client_sha256), (self.python, self.python_sha256),
                 (self.ruff, self.ruff_sha256), (self.git, self.git_sha256),
                 (self.home/'config.toml', self.config_sha256)]
@@ -99,6 +104,13 @@ class OwnerCheckProfile:
                 or any(self.root.is_relative_to(p) or p.is_relative_to(self.root) for p in outside)):
             raise Refused('CHECK_PROFILE_BINDING')
         with ExitStack() as held:
+            if workspace:
+                # Distinct profile objects for this single-owner workspace share the same lane.
+                with _WORKSPACE_REGISTRY_LOCK:
+                    lane = _WORKSPACE_LOCKS.setdefault(self.root, Lock())
+                held.enter_context(lane)
+                if self.active.exists():
+                    raise Refused('CHECK_WORKSPACE_UNSETTLED')
             for path, expected in pins:
                 stream = held.enter_context(_open_denying_writers(str(path)))
                 if hashlib.file_digest(stream, 'sha256').hexdigest() != expected:

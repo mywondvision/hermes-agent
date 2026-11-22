@@ -735,7 +735,7 @@ def _submit_to_ledger_owner(rid, sid, session, text, params, refusal) -> dict:
     with the reason and the advice to send when the turn ends."""
     from tui_gateway import owner_forward
     not_owned = _err(rid, 4090, str(refusal), {"reason": getattr(refusal, "reason", None) or "SESSION_NOT_OWNED"})
-    if getattr(refusal, "ledger_status", None) == "unknown":
+    if getattr(current_transport(), 'prompt_forward', None) or getattr(refusal, "ledger_status", None) == "unknown":
         return not_owned
     why = None
     if not owner_forward.forwardable(refusal, session, text, params):
@@ -817,10 +817,69 @@ def _lock_in_submit_turn(
 from gateway.session_surface import SURFACES as _CLIENT_SURFACES
 
 
+@method("prompt.forward_probe")
+def _(rid, params: dict) -> dict:
+    transport = current_transport()
+    client = getattr(transport, 'prompt_forward', None)
+    sid = params.get('session_id')
+    if not isinstance(sid, str) or not sid:
+        return _err(rid, 4006, 'session_id required')
+    return _ok(rid, client.probe(sid, transport) if client else {'version': 1, 'route': 'hold'})
+
+
+@method("prompt.forward_submit")
+def _(rid, params: dict) -> dict:
+    from tui_gateway.prompt_forward import ForwardConflict, ForwardHeld
+    transport = current_transport()
+    client = getattr(transport, 'prompt_forward', None)
+    if client is None:
+        return _err(rid, 4090, 'FORWARD_HOLD')
+    try:
+        return _ok(rid, client.submit(params, transport))
+    except ForwardConflict:
+        return _err(rid, 4090, 'admission_conflict')
+    except ForwardHeld:
+        return _err(rid, 4090, 'FORWARD_HOLD')
+    except Exception:
+        return _err(rid, 4090, 'FORWARD_UNKNOWN')
+
+
+def _operator_request(rid, params, verb):
+    from tui_gateway.prompt_forward import ForwardHeld
+
+    transport = current_transport()
+    client = getattr(transport, 'prompt_forward', None)
+    if client is None:
+        return _err(rid, 4090, 'OPERATOR_HOLD')
+    try:
+        result = client.operator(verb, params, transport)
+    except ForwardHeld:
+        return _err(rid, 4090, 'OPERATOR_HOLD')
+    except (OSError, ValueError, PermissionError, KeyError):
+        return _err(rid, 4090, 'OPERATOR_UNKNOWN')
+    if 'operator_error' in result:
+        return _err(rid, 4090, result['operator_error'])
+    return _ok(rid, result)
+
+
+@method('operator.challenge')
+def _(rid, params):
+    return _operator_request(rid, params, 'operator-challenge')
+
+
+@method('operator.execute')
+def _(rid, params):
+    return _operator_request(rid, params, 'operator-execute')
+
+
 @method("prompt.submit")
 def _(rid, params: dict) -> dict:
     from hermes_cli.input_sanitize import sanitize_user_prompt_text
     sid = params.get("session_id", "")
+    transport = current_transport()
+    forward = getattr(transport, 'prompt_forward', None)
+    if forward and not forward.permits_legacy(sid, transport):
+        return _err(rid, 4090, 'FORWARD_HOLD')
     raw_text = params.get("text", "")
     text = sanitize_user_prompt_text(raw_text) if isinstance(raw_text, str) else raw_text
     # Off-screen sends (widget intents) type the row so no client renders a bubble;

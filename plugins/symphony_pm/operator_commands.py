@@ -48,6 +48,14 @@ def _authorized(config, source, session_key, platform):
             and session_key == config.get('session_key'))
 
 
+def viewer_job_controls_held(scope):
+    if scope.namespace != 'symphony_pm:ingress-linux':
+        return False
+    from gateway.session_ingress import adapter_admission, executing_admission
+    from gateway.session_viewer_command import is_viewer_command
+    return is_viewer_command() or (executing_admission.get() and not adapter_admission.get())
+
+
 def _dispatch(owner, config, args):
     words = args.strip().split()
     if not words:
@@ -73,7 +81,11 @@ def _dispatch(owner, config, args):
     row = matches[0]
     target = (row['project'], row['job'], row['revision'])
     if action == 'status' and options == ['--saved']:
-        return {'view': summary(row)['view']}
+        result = {'view': summary(row)['view']}
+        apply = next((obs['body'] for obs in reversed(row.get('observations', [])) if obs['kind'] == 'APPLY'), None)
+        if apply is not None:
+            result['apply'] = apply
+        return result
     if options and action != 'release':
         raise Refused('UNEXPECTED_ARGUMENT')
     if action == 'status':
@@ -88,19 +100,76 @@ def _dispatch(owner, config, args):
 
 
 def register_operator(ctx, *references):
-    def command(raw_args, *, source=None, session_key='', platform=''):
+    def active_ingress():
+        home = canonical_home(get_hermes_home())
+        services = [service for ref in references if ref is not None and (service := ref.get()) is not None
+                    if (owner := _owner_from(service)) is not None and owner.scope.active
+                    and owner.scope.profile_home == home]
+        return services[0] if len(services) == 1 else None
+
+    if getattr(ctx, 'register_hook', None):
+        from asyncio import to_thread
+        from .typed_approval import witness
+        def active_approval():
+            service = active_ingress()
+            return getattr(service, 'typed_approval', None)
+
+        def observe_typed_input(event, gateway):
+            approval = active_approval()
+            if approval is not None:
+                # Witness must bind the gateway caller's context before any executor hop.
+                witness(event, gateway)
+                return to_thread(approval.expire)
+
+        def session_reset(session_id='', reason='', platform='', old_session_id='', new_session_id=''):
+            approval = active_approval()
+            if approval is not None:
+                approval.rotated(session_id, reason, platform, old_session_id, new_session_id)
+        ctx.register_hook('pre_gateway_dispatch', observe_typed_input)
+        ctx.register_hook('on_session_reset', session_reset)
+
+    def command(raw_args, *, source=None, session_key='', session_id='', platform=''):
         config = operator_config(ctx)
         if not _authorized(config, source, session_key, platform):
             return 'OWNER_SENDER_REQUIRED'
-        home = canonical_home(get_hermes_home())
-        owners = [owner for ref in references if ref is not None
-                  if (owner := _owner_from(ref.get())) is not None and owner.scope.active
-                  and owner.scope.profile_home == home]
-        if len(owners) != 1:
+        ingress = active_ingress()
+        owner = _owner_from(ingress)
+        if owner is None or not owner.scope.active or owner.scope.profile_home != canonical_home(get_hermes_home()):
             return 'OWNER_UNAVAILABLE'
         try:
-            return json.dumps(_dispatch(owners[0], config, raw_args), ensure_ascii=False, sort_keys=True)
+            verb = raw_args.split()[:1]
+            if verb in (['plan-presented'], ['plan-answer'], ['plan-receipt'], ['plan-result']):
+                from .desktop_approval import viewer_action
+                return json.dumps(viewer_action(getattr(ingress, 'typed_approval', None), source, session_id, raw_args),
+                                  ensure_ascii=False)
+            if verb in (['approve'], ['deny'], ['apply']):
+                approval = getattr(ingress, 'typed_approval', None)
+                if approval is None:
+                    raise Refused('TYPED_APPROVAL_UNAVAILABLE')
+                if verb == ['apply']:
+                    return json.dumps(approval.apply(raw_args, source, session_key, session_id), sort_keys=True)
+                return approval.decide(raw_args, source, session_key, session_id)
+            if platform == 'local' and verb in (['release'], ['prune']):
+                raise Refused('ORIGINAL_TYPED_COMMAND_REQUIRED')
+            # The local gateway gives the handler the conversation source. It does not
+            # authenticate the remote SSH participant as the operator of a job.
+            controls_held = viewer_job_controls_held(owner.scope)
+            if controls_held and verb in (['stop'], ['release'], ['prune'], ['recapture']):
+                raise Refused('TASK_OPERATOR_REQUIRED')
+            if controls_held and verb == ['status'] and raw_args.strip() != 'status':
+                raise Refused('TASK_OPERATOR_REQUIRED')
+            result = ({'jobs': []} if controls_held and verb == ['status']
+                      else _dispatch(owner, config, raw_args))
+            approval = getattr(ingress, 'typed_approval', None)
+            if platform == 'local' and raw_args.strip() == 'status' and approval is not None:
+                from .desktop_approval import pending_plan
+                from gateway.session_viewer_command import original_viewer_command
+                viewer = original_viewer_command(source, 'symphony', raw_args)
+                pending = pending_plan(approval, session_id) if viewer else None
+                if pending is not None:
+                    result['pending_plan'] = pending
+            return json.dumps(result, ensure_ascii=False, sort_keys=True)
         except Refused as exc:
             return str(exc)
     return ctx.register_command('symphony', command, description='Manage Symphony attempts in this profile',
-                                args_hint='status|stop|release|recapture|prune')
+                                args_hint='approve|deny|apply|status|stop|release|recapture|prune')

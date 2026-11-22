@@ -1046,8 +1046,10 @@ def _build_uvicorn_server(host: str, port: int, *, ssh_isolated: bool = False):
     ping_interval, ping_timeout = (None, None) if _is_loopback else (
         _ws_ping_setting("ws_ping_interval"), _ws_ping_setting("ws_ping_timeout"))
     if ssh_isolated:
+        from hermes_constants import get_routing_process_hermes_home
         from hermes_cli.web_server_idle_exit import (
             TUNNEL_WS_PING_INTERVAL_S, TUNNEL_WS_PING_TIMEOUT_S, IdleClientTracker, wrap_asgi_with_ws_tracking)
+        app.state.ssh_forward_home = get_routing_process_hermes_home().resolve()
         app.state.ssh_isolated_clients = IdleClientTracker()
         served_app = wrap_asgi_with_ws_tracking(app, app.state.ssh_isolated_clients)
         ping_interval, ping_timeout = TUNNEL_WS_PING_INTERVAL_S, TUNNEL_WS_PING_TIMEOUT_S

@@ -5,14 +5,14 @@ from pathlib import Path
 import signal
 import time
 
-from .linux_check_config import CheckConfiguration, MANIFEST, STATE, strict_json
-from .linux_check_wire import CheckGroup, check_copy, read_request, sandbox_argv, unit_name
+from .linux_check_config import CheckConfiguration, GIT_MANIFEST, GitCheckConfiguration, strict_json
+from .linux_check_wire import CheckGroup, verify_copy, read_request, sandbox_argv, unit_name
 from .linux_control import group_values, members, publish
 from .linux_host import private_directory, process_identity, require_fork
 from .types import Refused, digest, sha
 
 
-def _payload(read_fd, write_fd, config, invocation):
+def _payload(read_fd, write_fd, config, invocation, signal_fd):
     os.close(write_fd)
     try:
         if os.read(read_fd, 1) != b'1':
@@ -23,6 +23,9 @@ def _payload(read_fd, write_fd, config, invocation):
         with open(os.devnull, 'r+b', buffering=0) as null:
             for fd in (0, 1, 2):
                 os.dup2(null.fileno(), fd)
+        if signal_fd is not None:
+            os.dup2(signal_fd, 1)
+            os.close(signal_fd)
         argv = sandbox_argv(config, invocation)
         os.execve(argv[0], argv, {})
     finally:
@@ -54,16 +57,16 @@ def _seal_and_run(directory, group, child, pipe, config, invocation, request):
     if root is None or '0::/' + str(group.relative_to('/sys/fs/cgroup')) not in os.fsdecode(Path(f'/proc/{child}/cgroup').read_bytes()).splitlines():
         raise Refused('CHECK_ROOT_MEMBERSHIP')
     bound = CheckGroup(invocation.key, invocation.profile, invocation.epoch, config.installation.host_id,
-        config.installation.boot_id, unit_name(invocation.key), os.environ['INVOCATION_ID'],
+        config.installation.boot_id, unit_name(invocation.key, config.prefix), os.environ['INVOCATION_ID'],
         digest(request), '/' + str(group.relative_to('/sys/fs/cgroup')), info.st_dev, info.st_ino, root)
     CheckGroup.parse(asdict(bound), invocation, config)
     publish(directory, 'ready', asdict(bound))
     release = 'never_granted'
     if _wait_grant(directory, bound, request['expires']):
-        if CheckConfiguration.load(MANIFEST) != config:
+        if type(config).load() != config:
             raise Refused('CHECK_MANIFEST_CHANGED')
         config.verify()
-        check_copy(invocation, config.profile)
+        verify_copy(config, invocation)
         if time.monotonic() < request['expires']:
             os.write(pipe, b'1')
             release = 'started'
@@ -108,7 +111,7 @@ def _kill_bound(fd, group, bound):
         os.close(kill_fd)
 
 
-def supervise(directory, group, fd, bound, request, release):
+def supervise(directory, group, fd, bound, request, release, signal_fd=None):
     timed_out = killed = False
     sent_at = code = None
     known = {bound.root}
@@ -125,6 +128,8 @@ def supervise(directory, group, fd, bound, request, release):
         if now >= request['expires']:
             timed_out = True
         if code is not None and group_values(fd) == 0:
+            if signal_fd is not None and (os.read(signal_fd, 2) != b'G' or code not in (0, 1)):
+                code = -125  # The trusted probe or tool setup did not yield a project verdict.
             proof = _proof(bound, now, known, code, timed_out, release)
             _group_identity(fd, group, bound)
             if group_values(fd) != 0:
@@ -144,10 +149,11 @@ def supervise(directory, group, fd, bound, request, release):
 
 def serve(manifest, key):
     fork = require_fork()
-    config = CheckConfiguration.load(manifest)
+    kind = GitCheckConfiguration if manifest == GIT_MANIFEST else CheckConfiguration
+    config = kind.load(manifest)
     config.verify()
-    unit = unit_name(key)
-    directory = private_directory(private_directory(STATE)/unit)
+    unit = unit_name(key, config.prefix)
+    directory = private_directory(private_directory(config.state)/unit)
     invocation, request = read_request(directory, key, config)
     if not sha(os.environ.get('INVOCATION_ID'), 32) or not request['started'] <= time.monotonic() < request['expires']:
         raise Refused('CHECK_SERVICE_START_EXPIRED')
@@ -158,19 +164,26 @@ def serve(manifest, key):
     group.mkdir()
     if not (group/'cgroup.kill').is_file():
         raise Refused('CHECK_SERVICE_CGROUP')
-    check_copy(invocation, config.profile)
+    verify_copy(config, invocation)
     fd = os.open(group, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    signal_read, signal_write = os.pipe() if config.git_project else (None, None)
     try:
         read_fd, write_fd = os.pipe()
         child = fork()
         if child == 0:
-            _payload(read_fd, write_fd, config, invocation)
+            if signal_read is not None:
+                os.close(signal_read)
+            _payload(read_fd, write_fd, config, invocation, signal_write)
+        if signal_write is not None:
+            os.close(signal_write)
         os.close(read_fd)
         try:
             (group/'cgroup.procs').write_text(str(child), encoding='ascii')
             bound, release = _seal_and_run(directory, group, child, write_fd, config, invocation, request)
         finally:
             os.close(write_fd)
-        supervise(directory, group, fd, bound, request, release)
+        supervise(directory, group, fd, bound, request, release, signal_read)
     finally:
+        if signal_read is not None:
+            os.close(signal_read)
         os.close(fd)

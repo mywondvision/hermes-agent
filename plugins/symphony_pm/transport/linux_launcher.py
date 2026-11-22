@@ -8,6 +8,7 @@ from pathlib import Path
 import shutil
 import socket
 import threading
+import tomllib
 import uuid
 
 from .linux_control import message, publish
@@ -95,11 +96,13 @@ def canaries(launcher):
 
 
 class LinuxLauncher:
-    def __init__(self, qualification, settings, *, owner_check=None, provider_evidence_sha256=None):
+    def __init__(self, qualification, settings, *, owner_check=None, git_checks=None, provider_evidence_sha256=None):
         provider.require_sealed_primary(qualification, provider_evidence_sha256)
         qualification.validate()
         self.qualification, self.settings = qualification, settings
         self.owner_check = owner_check
+        self.git_checks = git_checks
+        self.git_lane = threading.Lock()
         self.calls, self.lock = {}, threading.RLock()
 
     @property
@@ -126,9 +129,13 @@ class LinuxLauncher:
     def reconcile_check(self, owner):
         from .linux_check import reconcile_check
         reconcile_check(self, owner)
+        from .linux_robot_check import reconcile_git_check
+        reconcile_git_check(self, owner)
 
     def require_check_slot_clear(self):
         from .linux_check import check_marker
+        if os.path.lexists(Path(self.settings.state)/'robot-git-check.active'):
+            raise Refused('CHECK_STOP_UNPROVEN')
         try:
             check_marker(self).lstat()
         except FileNotFoundError:
@@ -152,6 +159,40 @@ class LinuxLauncher:
     def require_project(self, project_ref):
         if project_ref != self.settings.project_ref:
             raise Refused('LINUX_PROJECT_BINDING')
+
+    def git_check_policy(self):
+        from .check_command import DIFF_CHECK
+        from .linux_robot_check import LinuxGitChecks
+        if any(c.requires_git and c != DIFF_CHECK for c in self.owner_check.profile.commands):
+            if type(self.git_checks) is not LinuxGitChecks:
+                raise Refused('LINUX_GIT_CHECK_NOT_QUALIFIED')
+            return self.git_checks.verify(self)
+        return None
+
+    def typed_plan(self):
+        from .linux_sandbox import in_image
+        q, s = self.qualification, self.settings
+        if self.owner_check is None:
+            raise Refused('QUALIFIED_CHECKER_REQUIRED')
+        self.owner_check.verify(self)
+        if digest(asdict(s)) != q.settings_sha256:
+            raise Refused('LINUX_QUALIFIED_SETTINGS_CHANGED')
+        raw = in_image(q.runtime, '/etc/symphony/codex/config.toml').read_bytes()
+        if hashlib.sha256(raw).hexdigest() != q.hashes[6]:
+            raise Refused('LINUX_QUALIFIED_BYTES_CHANGED')
+        config = tomllib.loads(raw.decode('utf8'))
+        model, effort = config.get('model'), config.get('model_reasoning_effort')
+        if 'profile' in config or not all(isinstance(v, str) and v.strip() for v in (model, effort)):
+            raise Refused('EXACT_EXECUTOR_SELECTION_REQUIRED')
+        profile = self.owner_check.profile
+        profile.primary_commands()
+        return dict(repository=str(Path(s.repository).resolve(strict=True)), workspace=str(s.active/'src'),
+                    project_ref=s.project_ref, model='codex-config', effort='codex-config',
+                    environment_ref=q.environment_ref, configured_model=model, configured_effort=effort,
+                    executor_sha256=q.hashes[4], config_sha256=q.hashes[6], qualification_sha256=q.fingerprint,
+                    checks=[asdict(c) for c in profile.commands], check_policy_sha256=profile.fingerprint,
+                    git_check_profile=self.git_check_policy(),
+                    exec_timeout=s.exec_timeout, precheck_timeout=s.probe_timeout, check_timeout=profile.timeout)
 
     def admission(self):
         self.require_check_slot_clear()
@@ -197,6 +238,11 @@ class LinuxLauncher:
         probe = (q.executable, 'sandbox', '-P', q.permission_profile, '-C', '/work', '--',
                  q.probe_python, '-I', '-B', '-c', PROGRAM, challenge, json.dumps(targets))
         argv = provider.primary_exec(q)
+        if getattr(getattr(ticket, 'plan', None), 'typed_details', ''):
+            reviewed = json.loads(ticket.plan.typed_details)
+            selection = ('-c', 'model=' + json.dumps(reviewed['configured_model']),
+                         '-c', 'model_reasoning_effort=' + json.dumps(reviewed['configured_effort']))
+            argv = (*argv[:-1], *selection, argv[-1])
         prompt = json.dumps({'goal': request.goal, 'raw_constraints': list(request.raw_constraints)},
                             ensure_ascii=False, allow_nan=False)
         return LinuxCall(ticket, argv, str(workspace.src), self.settings.exec_timeout, prompt,
@@ -211,6 +257,10 @@ class LinuxLauncher:
                 or (plan.model, plan.effort, plan.environment_ref) != ('codex-config', 'codex-config', q.environment_ref)):
             raise Refused('LINUX_PLAN_BINDING')
         self.admission()
+        if getattr(plan, 'typed_details', ''):
+            reviewed = json.loads(plan.typed_details)
+            if any(reviewed.get(k) != v for k, v in json.loads(json.dumps(self.typed_plan())).items()):
+                raise Refused('TYPED_EXECUTOR_CHANGED')
         self.settings.active.mkdir(mode=0o700, exist_ok=False)
         try:
             _, workspace, capture = linux_workspace.prepare(self, ticket)

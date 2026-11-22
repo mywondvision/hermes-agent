@@ -1,5 +1,6 @@
 """Linux reservation and terminal proof policy for an isolated v2 serving journal."""
 from contextlib import contextmanager
+from dataclasses import asdict
 from functools import partial
 import json
 import time
@@ -75,6 +76,18 @@ class LinuxJournal(Journal):
     primary_checks_only = True
     backend = CONTRACT
 
+    def checked_apply_capture(self, ticket, captures):
+        from .recapture import read_bound_patch
+        primary = json.loads(captures[0]['body'])
+        if len(captures) > 1:
+            latest = json.loads(captures[-1]['body'])
+            patch = latest['patch']
+            if (latest.get('source_sha') != ticket.plan.source_sha or latest.get('baseline_matches_source') is not True
+                    or any(patch.get(k) != primary['patch'].get(k) for k in ('sha256', 'paths'))):
+                raise Refused('ROBOT_RECAPTURE_CHANGED')
+            read_bound_patch(self.path.parent/'attempts'/digest(ticket.attempt)[:12], patch)
+        return captures[0]['seq'], primary
+
     def proven_stop(self, row, *, db=None):
         if db is not None:
             return saved_stop(db, row)
@@ -94,6 +107,28 @@ class LinuxJournal(Journal):
                 and row['host_id'] == proof.host_id):
             return 'NOT_STARTED', None, proof.source, None
         return _UNKNOWN
+
+    def settle_git_check(self, token, invocation, terminal):
+        from .linux_robot_check import settled_record
+        with self._transaction(token) as db:
+            rows = db.execute(
+                "SELECT DISTINCT l.project,l.job,j.revision FROM serving_observations o "
+                "JOIN serving_launches l USING(attempt) JOIN jobs j USING(namespace,project,job) "
+                "WHERE l.namespace=? AND o.kind='APPLY' AND json_extract(o.body,'$.git_invocation')=?",
+                (self.namespace, invocation.key)).fetchall()
+            if len(rows) != 1:
+                raise Refused('CHECK_INTENT_CHANGED')
+            ticket, _ = self._launch(db, *rows[0])
+            if digest(asdict(ticket)) != invocation.ticket_sha256:
+                raise Refused('CHECK_INTENT_CHANGED')
+            latest = db.execute("SELECT body FROM serving_observations WHERE attempt=? AND kind='APPLY' "
+                                "ORDER BY seq DESC LIMIT 1", (ticket.attempt,)).fetchone()
+            record = json.loads(latest[0])
+            if record['state'] not in ('CHECKING', 'CHECK_INCOMPLETE', 'CHECK_RECOVERED', 'CHECK_ABORTED'):
+                raise Refused('CHECK_INTENT_CHANGED')
+            observed = settled_record(record, invocation, terminal)
+            if observed != record:
+                self._append(db, ticket, observed, self._next_seq(db, ticket))
 
     check_slot = None
 

@@ -14,7 +14,7 @@ a native binding this launcher returns a result instead of raising, so the outco
 journal even when the run, capture or check failed.
 """
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, replace
 import hashlib
 import json
 import os
@@ -26,6 +26,7 @@ from types import MappingProxyType
 from hermes_cli.plugin_request_binding import canonical_home
 from hermes_dir_acl import make_user_dir
 from hermes_platform.resolver import locate_command
+from plugins.symphony_pm.contracts import LaunchExpired
 from . import attempt_workspace as ws
 from .codex_exec_check import capture_result, clean_artifacts as clean_artifacts
 from .codex_exec_probe import PROBE, _loopback, _ProbeWatch, precheck, probe_ok as probe_ok
@@ -210,6 +211,47 @@ class CodexExecLauncher:
             if self.commands.get(ticket.attempt) != (ticket, tuple(argv), str(Path(cwd).resolve()), timeout, stdin_text):
                 raise Refused('QUALIFIED_DRIVER_CALL_REQUIRED')
 
+    def typed_plan(self):
+        from .owner_check_profile import check_plan_fingerprint
+        from .types import digest
+        import tomllib
+        q, s = self.qualification, self.settings
+        config = (Path(q.codex_home)/'config.toml').read_bytes()
+        if hashlib.sha256(config).hexdigest() != q.config_sha256:
+            raise Refused('CODEX_CONFIG_CHANGED')
+        settings = tomllib.loads(config.decode('utf-8'))
+        if 'profile' in settings:
+            profile = settings.get('profiles', {}).get(settings['profile'])
+            if not isinstance(profile, dict):
+                raise Refused('EXACT_EXECUTOR_SELECTION_REQUIRED')
+            settings = dict(settings, **profile)
+        selected = (settings.get('model'), settings.get('model_reasoning_effort'))
+        if not all(isinstance(value, str) and value.strip() for value in selected):
+            raise Refused('EXACT_EXECUTOR_SELECTION_REQUIRED')
+        checks = tuple(s.checks(()))
+        return dict(repository=str(Path(s.repository).resolve()), workspace=str(s.active/'src'),
+                    model=CONFIG_SELECTED, effort=CONFIG_SELECTED, environment_ref=q.environment_ref,
+                    configured_model=selected[0], configured_effort=selected[1],
+                    executor_sha256=q.executable_sha256, config_sha256=q.config_sha256, qualification_sha256=digest(asdict(q)),
+                    checks=[asdict(c) for c in checks], check_policy_sha256=check_plan_fingerprint(s.owner_check, checks),
+                    exec_timeout=s.exec_timeout, precheck_timeout=s.precheck_timeout, check_timeout=s.check_timeout)
+
+    def _typed_settings(self, ticket):
+        s = self.settings
+        if not getattr(ticket.plan, 'typed_details', ''):
+            return s
+        from .owner_check_profile import check_plan_fingerprint
+        reviewed = json.loads(ticket.plan.typed_details)
+        current = json.loads(json.dumps(self.typed_plan()))
+        if any(reviewed.get(k) != v for k, v in current.items()):
+            raise Refused('TYPED_EXECUTOR_CHANGED')
+        def checks(paths):
+            commands = tuple(s.checks(paths))
+            if check_plan_fingerprint(s.owner_check, commands) != reviewed['check_policy_sha256']:
+                raise Refused('TYPED_CHECK_PLAN_CHANGED')
+            return commands
+        return replace(s, checks=checks)
+
     def _bind(self, ticket, runner):
         q, plan = self.qualification, ticket.plan
         owner = runner.owner
@@ -238,12 +280,12 @@ class CodexExecLauncher:
             # Before a create intent the workspace is ours alone. After that cut the journal
             # and a proven local stop govern recovery, including failures during capture.
             _, row = runner.owner.journal.read_launch(runner.token, ticket.project, ticket.job, ticket.revision)
-            if row['state'] == 'LAUNCH_INTENT':
+            if row['state'] in ('LAUNCH_INTENT', 'NOT_STARTED'):
                 self._settle(active, ticket.attempt)
             raise
 
     def _attempt(self, git, ticket, request, runner, active):
-        q, s = self.qualification, self.settings
+        q, s = self.qualification, self._typed_settings(ticket)
         data = attempt_data(q, ticket)
         make_user_dir(data, mode=0o700, parents=True, exist_ok=False)
         (data/'workspace-id.json').write_text(json.dumps(directory_identity(active)), encoding='utf-8')
@@ -267,10 +309,18 @@ class CodexExecLauncher:
                 self._write(data, record)
                 raise Refused('CODEX_PRECHECK_REFUSED')
             (active/'precheck-report.json').unlink()
-            prompt = PREAMBLE.format(probe=subprocess.list2cmdline(probe('inexec')), goal=request.goal)
+            task = request.goal
+            if getattr(ticket.plan, 'typed_details', ''):
+                task = json.dumps({'goal': task, 'raw_constraints': list(request.raw_constraints)}, ensure_ascii=False)
+            prompt = PREAMBLE.format(probe=subprocess.list2cmdline(probe('inexec')), goal=task)
             try:
                 record.update(self._exec(ticket, runner, data, workspace, prompt))
-            finally:
+            except LaunchExpired:
+                raise
+            except BaseException:
+                runner.owner.finish_client_job(runner.token, ticket)
+                raise
+            else:
                 stopped, causes = runner.owner.finish_client_job(runner.token, ticket)
         if 'PM_CANCEL' in causes and record['stop'] is None:
             record['stop'] = 'PM_CANCEL'
@@ -288,9 +338,14 @@ class CodexExecLauncher:
 
     def _exec(self, ticket, runner, data, workspace, prompt):
         q, s = self.qualification, self.settings
+        selection = ()
+        if getattr(ticket.plan, 'typed_details', ''):
+            reviewed = json.loads(ticket.plan.typed_details)
+            selection = ('-c', 'model=' + json.dumps(reviewed['configured_model'], ensure_ascii=False),
+                         '-c', 'model_reasoning_effort=' + json.dumps(reviewed['configured_effort'], ensure_ascii=False))
         argv = (q.executable, *s.command_prefix, 'exec', '--skip-git-repo-check', '--ephemeral', '--json',
                 '--strict-config', '-o', str(data/'last-message.txt'), '-C', str(workspace.src),
-                '-c', f'default_permissions="{q.permission_profile}"', '-')
+                '-c', f'default_permissions="{q.permission_profile}"', *selection, '-')
         cwd = str(workspace.src)
         with self.lock:
             if ticket.attempt in self.commands:
@@ -302,6 +357,8 @@ class CodexExecLauncher:
         try:
             with q.held_executable():
                 outcome = runner(list(argv), cwd=cwd, timeout=s.exec_timeout, stdin_text=prompt)
+        except LaunchExpired:
+            raise
         except Refused as exc:
             stop = str(exc)
         except Exception as exc:  # health: allow BLE001 -- a bound run's outcome must still reach the journal

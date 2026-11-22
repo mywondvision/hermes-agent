@@ -10,6 +10,10 @@ class Refused(RuntimeError):
     """A closed admission/reconciliation boundary, never permission to retry."""
 
 
+class LaunchExpired(Refused):
+    """The owner's clock crossed the deadline before native resume authority."""
+
+
 @dataclass(frozen=True)
 class ServingBinding:
     port: SymphonyPmPort

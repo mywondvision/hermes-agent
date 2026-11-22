@@ -39,12 +39,19 @@ class LinuxTransportBootstrap:
 
 
 def linux_exec_transport(*, profile_home, namespace, qualification, settings, approval_transport,
-                         scheduler_id, controller, trusted_issuers, owner_check=None, provider_evidence_sha256=None):
+                         scheduler_id, controller, trusted_issuers, owner_check=None, git_checks=None,
+                         provider_evidence_sha256=None, systemd_git_checks=False):
     if namespace != 'symphony_pm:ingress-linux':
         raise Refused('LINUX_PROFILE_BINDING')
     if type(qualification) is not LinuxQualification or type(settings) is not LinuxSettings:
         raise Refused('LINUX_QUALIFICATION')
-    launcher = LinuxLauncher(qualification, settings, owner_check=owner_check,
+    if systemd_git_checks:
+        from .linux_check_host import LinuxOwnerCheck
+        from .linux_systemd_check import systemd_git_check
+        if systemd_git_checks is not True or git_checks is not None or type(owner_check) is not LinuxOwnerCheck:
+            raise Refused('LINUX_GIT_CHECK_NOT_QUALIFIED')
+        git_checks = systemd_git_check(qualification, owner_check, settings)
+    launcher = LinuxLauncher(qualification, settings, owner_check=owner_check, git_checks=git_checks,
                              provider_evidence_sha256=provider_evidence_sha256)
     if (canonical_home(profile_home), namespace, scheduler_id, tuple(trusted_issuers)) != (
             qualification.profile_home, qualification.namespace, qualification.scheduler_id, qualification.issuer_refs):

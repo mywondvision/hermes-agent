@@ -7,12 +7,15 @@ installs its profile-bound worker; recovery never schedules a new attempt.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+from functools import partial
 import json
+from pathlib import Path
 import subprocess
 import threading
 import time
 from typing import Protocol
 
+from plugins.symphony_pm.contracts import LaunchExpired
 from .journal import Journal, encode
 from .types import (
     NativeBinding, ProcessIdentity, Refused, ServingIdentity,
@@ -169,6 +172,21 @@ class LifecycleOwner:
                       and check.get('revisions') == settings.owner_check.revisions()
                       and 'stop_receipts' not in check)
 
+    def robot_check_plan(self, ticket, paths):
+        from .owner_check_profile import checked_plan
+        settings = self.launcher.settings
+        profile = settings.owner_check
+        commands, fingerprint = checked_plan(profile, settings.checks(paths))
+        return profile, commands, fingerprint, settings.check_timeout
+
+    def robot_check_context(self, profile, repository, workspace):
+        return profile.qualified(profile.git, outside=(repository, Path(self.launcher.settings.attempts_root),
+                                 self.journal.path.parent), workspace=workspace)
+
+    def open_robot_git(self, path):
+        from .qualification import _open_denying_writers
+        return _open_denying_writers(str(path))
+
     def _finished_client_job(self, row):
         return (callable(getattr(self.launcher, 'job_coverage_for', None)) and row['state'] == 'STOPPED'
                 and row['stop_proof'] == 'JOB_EMPTY' and bool(row['proof_source']))
@@ -291,11 +309,14 @@ class LifecycleOwner:
                 raise Refused('LAUNCH_TICKET_SPENT')
             self._preparing[ticket.attempt] = False
         try:
+            self.journal.verify_launch_authority(token, ticket, self.clock())
             result = self.launcher(ticket, request, AttemptRunner(self, token, ticket))
         except (Exception, SystemExit) as exc:
             with self.lock:
                 self._check(token)
                 reason = 'LAUNCH_PREPARATION_FAILED'
+                if isinstance(exc, LaunchExpired):
+                    reason = str(exc)
                 if isinstance(exc, Refused) and str(exc) == 'CODEX_PRECHECK_REFUSED':
                     reason = 'CODEX_PRECHECK_REFUSED'
                 self.journal.mark_not_started(token, ticket, reason=reason, authorize_commit=lambda: self._check(token))
@@ -322,6 +343,7 @@ class LifecycleOwner:
             self.journal.claim_create(token, ticket)
             receiver = self.native.create_suspended(ticket, argv, cwd, stdin_text)
             self._receivers[ticket.attempt] = receiver
+            resume_entered = False
             try:
                 binding = receiver.binding
                 if type(binding) is not self.binding_type or binding.ticket != ticket:
@@ -335,16 +357,23 @@ class LifecycleOwner:
                     raise Refused('OBSERVER_LOST_RESUME_WITHHELD')
                 generation = self.generation
                 def authorize_resume(action):
+                    def dispatch():
+                        nonlocal resume_entered
+                        resume_entered = True
+                        return action()
                     with self.lock:
                         self._check(token)
                         if not self._observer_available:
                             raise Refused('OBSERVER_LOST_RESUME_WITHHELD')
-                        return self.journal.dispatch_resume(token, ticket, generation, self.clock(), action)
+                        return self.journal.dispatch_resume(token, ticket, generation, self.clock, dispatch)
                 receiver.resume(stdin_text, authorize=authorize_resume)
-            except BaseException:
+            except BaseException as exc:
                 # Close only these exact owned handles; do not mint a cancel ACK
                 # or release the durable launch reservation after an uncertain cut.
                 receiver.close_fail_safe(time.monotonic())
+                if isinstance(exc, LaunchExpired) and not resume_entered:
+                    self._record_suspended_expiry(token, ticket, receiver.binding)
+                    self._receivers.pop(ticket.attempt)
                 raise
         try:
             return receiver.wait_result(argv, timeout)
@@ -392,6 +421,11 @@ class LifecycleOwner:
     def _local_stop(self, binding):
         return self._job_accounting(binding) == 'STOPPED'
 
+    def _record_suspended_expiry(self, token, ticket, binding):
+        self.journal.suspended_expired(token, ticket, binding)
+        if ticket.attempt in self._preparing:
+            self._preparing[ticket.attempt] = True
+
     def finish_client_job(self, token, ticket):
         """Persist the local terminal before releasing the only owned Job handle or capturing."""
         with self.lock:
@@ -438,7 +472,7 @@ class LifecycleOwner:
                 return False
             time.sleep(min(0.05, remaining))
 
-    def cancel_internal(self, binding: NativeBinding, cause, *, request_id='', detail=''):
+    def cancel_internal(self, binding: NativeBinding, cause, *, request_id='', detail='', dispatch_guard=None):
         """PM, TIMEOUT and cleanup use this sole coordinator, even after grant expiry."""
         with self.lock:
             self.guard.assert_owned()
@@ -449,6 +483,8 @@ class LifecycleOwner:
                                                   binding.ticket.job, binding.ticket.revision)
             if actual != binding.ticket or row['binding'] != encode(asdict(binding)):
                 raise Refused('CANCEL_TARGET_BINDING')
+            if row['state'] == 'NOT_STARTED':
+                return CancelOutcome('NOT_STARTED')
             if self._finished_client_job(row):
                 return CancelOutcome('LOCAL_STOPPED_HOLD', local_stopped=True)
             self.journal.note_cancel_cause(self.token, binding, cause, request_id, detail, self.clock())
@@ -483,6 +519,8 @@ class LifecycleOwner:
                     self.guard.assert_owned()
                     if not self._observer_available:
                         raise Refused('OBSERVER_LOST_NATIVE_WITHHELD')
+                    if dispatch_guard is not None:
+                        action = partial(dispatch_guard, action)
                     return self.journal.dispatch_cancel(token, binding, generation, action)
                 acknowledged = receiver.cancel_once(binding, authorize=authorize)
             except Exception:  # health: allow BLE001 -- an exception cannot restore the send slot
@@ -509,21 +547,29 @@ class LifecycleOwner:
             ticket, row = self.journal.read_launch(self.token, project, job, revision)
             return observe(self, ticket, row)['view']
 
-    def stop_by_owner(self, project, job, revision, *, request_id, detail=''):
+    def stop_by_owner(self, project, job, revision, *, request_id, detail='', dispatch_guard=None, expected_attempt=None):
         with self.lock:
             self._check()
             ticket, row = self.journal.read_launch(self.token, project, job, revision)
+            if expected_attempt is not None and ticket.attempt != expected_attempt:
+                raise Refused('CANCEL_TARGET_BINDING')
             if row['binding'] is not None:
                 binding = self.journal.decode_binding(json.loads(row['binding']))
-                return self.cancel_internal(binding, 'PM_CANCEL', request_id=request_id, detail=detail)
-            preparing = ticket.attempt in self._preparing
-            if self.journal.mark_not_started(self.token, ticket, reason='PM_CANCEL', preparing=preparing):
-                if preparing and self.journal.workspace_clear is not None:
-                    self._preparing[ticket.attempt] = True
-                return CancelOutcome('CANCEL_REQUESTED')
-            if row['state'] == 'NOT_STARTED' and self.journal.cancelled_before_create(self.token, ticket):
-                return CancelOutcome('ALREADY_REQUESTED')
-            return CancelOutcome('NOT_STARTED' if row['state'] == 'NOT_STARTED' else 'UNKNOWN')
+                return self.cancel_internal(binding, 'PM_CANCEL', request_id=request_id, detail=detail,
+                                            dispatch_guard=dispatch_guard)
+            if dispatch_guard is not None:
+                return dispatch_guard(partial(self._stop_before_create, ticket, row))
+            return self._stop_before_create(ticket, row)
+
+    def _stop_before_create(self, ticket, row):
+        preparing = ticket.attempt in self._preparing
+        if self.journal.mark_not_started(self.token, ticket, reason='PM_CANCEL', preparing=preparing):
+            if preparing and self.journal.workspace_clear is not None:
+                self._preparing[ticket.attempt] = True
+            return CancelOutcome('CANCEL_REQUESTED')
+        if row['state'] == 'NOT_STARTED' and self.journal.cancelled_before_create(self.token, ticket):
+            return CancelOutcome('ALREADY_REQUESTED')
+        return CancelOutcome('NOT_STARTED' if row['state'] == 'NOT_STARTED' else 'UNKNOWN')
 
     def status(self, binding):
         with self.lock:

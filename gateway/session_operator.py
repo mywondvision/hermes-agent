@@ -5,12 +5,12 @@ It never claims unowned legacy history: that still requires the native migration
 path. Only SessionAuthority.submit writes this envelope after authorization;
 public submission parameters cannot supply it.
 """
-from gateway.owner_identity import same_owner
+from gateway.owner_identity import host_owner_subject, same_owner
 from hermes_state_runtime import RuntimeStoreError
 
 # Fields ``SessionAuthority.submit`` commits for a local session's input; producers commit their own envelope.
 LOCAL_INPUT_FIELDS = frozenset({'text', 'attachments_v1', 'finite', 'unattended', 'surface_v1', 'display_v1',
-                                'cli_turn_v1', 'kanban_card_v1'})
+                                'cli_turn_v1', 'kanban_card_v1', 'shared_forward_v1'})
 
 
 def is_viewer_input(row):
@@ -24,6 +24,10 @@ def is_viewer_input(row):
 def check_local_input(authority, ref, row, *, source=None):
     payload = row['payload']
     allowed = set(LOCAL_INPUT_FIELDS)
+    if 'shared_forward_v1' in payload and (
+            payload['shared_forward_v1'] is not True or set(payload) != {'text', 'shared_forward_v1'}
+            or row['principal_id'] != host_owner_subject()):
+        raise RuntimeStoreError('permission_denied')
     if 'local_operator_v1' in payload:
         allowed.add('local_operator_v1')
         if payload['local_operator_v1'] != {

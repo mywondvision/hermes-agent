@@ -65,6 +65,13 @@ class ServingIngress:
         self.adapter = SymphonyPmAdapter(
             _LivePort(scope, self.binding.port), trusted_issuers=self.binding.trusted_issuers,
             scheduler_id=self.binding.scheduler_id)
+        self.typed_approval = None
+        if getattr(ctx, 'get_config', lambda *_: None)('typed_approval', None) is not None:
+            from plugins.symphony_pm.typed_approval import TypedApproval
+            self.typed_approval = TypedApproval(ctx, scope, self.binding)
+            if scope.namespace == 'symphony_pm:ingress-linux':
+                from plugins.symphony_pm.desktop_route import register_route
+                register_route(self.typed_approval)
         self.handler = make_pm_tool_handler(self.adapter, lambda: current_authority(scope))
         self.without_authority = make_pm_tool_handler(self.adapter, lambda: None)
         register_pm_tool(_ServiceRegistry(ctx, self), adapter=self.adapter,
@@ -81,12 +88,18 @@ class ServingIngress:
         session_id = runtime.get('session_id')
         if type(session_id) is not str or not session_id:
             return self.without_authority(args, **runtime)
+        if intent.operation in ('get_status', 'request_cancel'):
+            from .operator_commands import viewer_job_controls_held
+            if viewer_job_controls_held(self.scope):
+                return self.without_authority(args, **runtime)
         identity = RequestIdentity(self.scope.profile_home, self.scope.namespace,
                                    session_id, intent.request_id, intent.payload_digest)
         try:
             source = self.binding.authority_source
             for_control = getattr(source, 'for_control', None)
-            if intent.operation in ('get_status', 'request_cancel') and callable(for_control):
+            if self.typed_approval is not None and intent.operation == 'submit_intent':
+                grant = self.typed_approval.for_submit(identity, intent)
+            elif intent.operation in ('get_status', 'request_cancel') and callable(for_control):
                 grant = for_control(identity, intent)
             else:
                 grant = source(identity)

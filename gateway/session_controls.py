@@ -434,11 +434,15 @@ class AuthorityConnection:
 
     async def slash_exec(self, ref, params):
         from gateway.session_commands import execute_command
-        return await execute_command(self, ref, params)
+        from gateway.session_viewer_command import viewer_command
+        with viewer_command(self, ref, {}):
+            return await execute_command(self, ref, params)
 
     async def command_dispatch(self, ref, params):
         from gateway.session_commands import execute_command
-        return await execute_command(self, ref, params, dispatch=True)
+        from gateway.session_viewer_command import viewer_command
+        with viewer_command(self, ref, params):
+            return await execute_command(self, ref, params, dispatch=True)
 
     async def command_observe(self, ref, params):
         from gateway.session_commands import observe_command
@@ -754,9 +758,10 @@ class AuthorityConnection:
             self._record_voice_stop(ref, params)
             return {'voice_stopped': True}
         # The interactive WS is the one surface a restart's after-turn wait admits (#139041).
-        receipt = await self.authority.submit(self.actor, self.submission(ref, params),
+        request = self.submission(ref, params)
+        receipt = await self.authority.submit(self.actor, request,
                                               queue_while_restarting=self._operator is True)
-        return asdict(receipt)
+        return {**asdict(receipt), 'submission_id': request.request_id}
 
     def _voice_stop_key(self, ref, params):
         request_id = params.get('submission_id') or params.get('input_id')
@@ -855,8 +860,31 @@ class AuthorityConnection:
         return result
 
     async def receipt(self, ref, params):
-        receipt = await self.authority.receipt(self.actor, ref, params.get('admission_id'))
+        admission_id = params.get('admission_id')
+        submission_id = params.get('submission_id')
+        if ('admission_id' in params) == ('submission_id' in params):
+            raise RuntimeStoreError('invalid_params')
+        if 'submission_id' in params:
+            if not isinstance(submission_id, str) or not submission_id:
+                raise RuntimeStoreError('invalid_params')
+            # Dashboard logins and the shared SSH server token all act as the host owner.
+            # A submission ID cannot distinguish one holder of that credential from another.
+            from gateway.owner_identity import host_owner_subject
+            if not self.native_owner or self.actor.subject == host_owner_subject():
+                raise RuntimeStoreError('permission_denied')
+            from hermes_state_runtime import find_session_admission
+            self.authority.authorize(self.actor, ref, 'session:submit')
+            row = find_session_admission(self.authority.db, principal_id=self.actor.subject,
+                                         session_id=ref.session_id, request_id=submission_id)
+            if row is None:
+                raise RuntimeStoreError('not_found')
+            admission_id = row['admission_id']
+        elif not isinstance(admission_id, str) or not admission_id:
+            raise RuntimeStoreError('invalid_params')
+        receipt = await self.authority.receipt(self.actor, ref, admission_id)
         out = asdict(receipt)
+        if submission_id is not None:
+            out['submission_id'] = submission_id
         if params.get('include_result') is True and receipt.status == 'terminal':
             # The exact structured result the turn committed with settlement (`finish_result`):
             # a finite viewer reads its ledger (tokens, cost, model, exit reason) from here, the same

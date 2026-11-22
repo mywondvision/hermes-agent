@@ -264,9 +264,7 @@ def check_patch(launcher, ticket, runner, capture, patch, *, completed):
         commands = checker.profile.commands
         outcome['revisions'] = {'profile': checker.profile.fingerprint, 'evidence': checker.profile.evidence_sha256}
         outcome['deferred'] = [c.name for c in commands if c.requires_git]
-        active = [c for c in commands if not c.requires_git]
-        if not active:
-            raise Refused('CHECK_NO_COMMANDS_EXECUTED')
+        active = checker.profile.primary_commands()
         data = attempt_data(launcher.qualification, ticket)
         outcome['stop_receipts'] = {}
         outcome['runs'] = {}

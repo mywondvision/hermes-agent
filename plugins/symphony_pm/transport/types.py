@@ -89,6 +89,16 @@ class ExecutionPlan:
 
 
 @dataclass(frozen=True)
+class TypedExecutionPlan(ExecutionPlan):
+    # Canonical JSON keeps the human-reviewed fields immutable through reserve/recovery.
+    typed_details: str = ''
+
+
+def plan_from_json(value):
+    return TypedExecutionPlan(**value) if 'typed_details' in value else ExecutionPlan(**value)
+
+
+@dataclass(frozen=True)
 class Permit:
     ref: str
     identity: RequestIdentity
@@ -170,7 +180,7 @@ class NativeBinding:
 def binding_from_json(value):
     value = dict(value)
     ticket = dict(value['ticket'])
-    ticket['plan'] = ExecutionPlan(**ticket['plan'])
+    ticket['plan'] = plan_from_json(ticket['plan'])
     value['ticket'] = LaunchTicket(**ticket)
     value['root'] = ProcessIdentity(**value['root'])
     value['known_processes'] = tuple(ProcessIdentity(**p) for p in value['known_processes'])

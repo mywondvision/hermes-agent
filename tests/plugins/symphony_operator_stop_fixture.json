@@ -1,0 +1,67 @@
+{
+  "draft_sha256": "9e26669d8c46b146bc0066bcae2c190071ac765d0ee394f29766b71c657c2d1f",
+  "kind": "synthetic signing reference, not a live challenge",
+  "cases": [
+    {
+      "action": "stop_reconcile",
+      "payload": {
+        "attempt_id": "test-attempt",
+        "command_id": "test-stop-original",
+        "reason": "owner_requested · сверка \"STOP\" 😺"
+      },
+      "payload_bytes_base64": "WyJzdG9wX3JlY29uY2lsZSIsInRlc3QtYXR0ZW1wdCIsInRlc3Qtc3RvcC1vcmlnaW5hbCIsIm93bmVyX3JlcXVlc3RlZCDCtyDRgdCy0LXRgNC60LAgXCJTVE9QXCIg8J+YuiJd",
+      "payload_sha256": "cb9dc37f8e1676e6765152853fa678e46d52e3b89b773151ad7cf4924b6e2fcb",
+      "fields": [
+        "hermes.desktop.operator",
+        1,
+        "stop_reconcile",
+        "test-owner",
+        "test-forward",
+        "test-socket",
+        "test-profile",
+        "test-session",
+        "test-submission",
+        "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w=",
+        "gTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5Q=",
+        2,
+        "test-nonce-stop_reconcile",
+        "cb9dc37f8e1676e6765152853fa678e46d52e3b89b773151ad7cf4924b6e2fcb",
+        1924992000000
+      ],
+      "message": "WyJoZXJtZXMuZGVza3RvcC5vcGVyYXRvciIsMSwic3RvcF9yZWNvbmNpbGUiLCJ0ZXN0LW93bmVyIiwidGVzdC1mb3J3YXJkIiwidGVzdC1zb2NrZXQiLCJ0ZXN0LXByb2ZpbGUiLCJ0ZXN0LXNlc3Npb24iLCJ0ZXN0LXN1Ym1pc3Npb24iLCJpb2pqM1hRSjhaWDlVdHN0UExwZGNzcG5DYjhkbEJJYjgzU0lBYlFQYjF3PSIsImdUbDNEcWg5RjE5V28xUm13MHgrek11TmlwRzA3amVpWGZZUFc0L0pzNVE9IiwyLCJ0ZXN0LW5vbmNlLXN0b3BfcmVjb25jaWxlIiwiY2I5ZGMzN2Y4ZTE2NzZlNjc2NTE1Mjg1M2ZhNjc4ZTQ2ZDUyZTNiODliNzczMTUxYWQ3Y2Y0OTI0YjZlMmZjYiIsMTkyNDk5MjAwMDAwMF0=",
+      "installation_signature": "bx7Dy5WwHjA9TQJDkVrH3dW1IyS5UUTeaQO3zxYTxYoJ/0w+L+TN1I9v47t+0piV63o3OZ5DdzYFRs9+Rux7BA==",
+      "window_signature": "9Fxvl+/UjnHlazepNXO4oCIG1+OjJJAtpEe4GzgZ7LVX+sVkpfM+ATZnfyis9/jJiz66nN8H58Y2oLzPOCSQBA=="
+    },
+    {
+      "action": "stop_replace",
+      "payload": {
+        "attempt_id": "test-attempt",
+        "previous_command_id": "test-stop-original",
+        "command_id": "test-stop-explicit",
+        "reason": "owner_requested · сверка \"STOP\" 😺"
+      },
+      "payload_bytes_base64": "WyJzdG9wX3JlcGxhY2UiLCJ0ZXN0LWF0dGVtcHQiLCJ0ZXN0LXN0b3Atb3JpZ2luYWwiLCJ0ZXN0LXN0b3AtZXhwbGljaXQiLCJvd25lcl9yZXF1ZXN0ZWQgwrcg0YHQstC10YDQutCwIFwiU1RPUFwiIPCfmLoiXQ==",
+      "payload_sha256": "3108154823211353ad68ae3e40f8bc3745766c2eccfbc8e53893ea33cca46bdd",
+      "fields": [
+        "hermes.desktop.operator",
+        1,
+        "stop_replace",
+        "test-owner",
+        "test-forward",
+        "test-socket",
+        "test-profile",
+        "test-session",
+        "test-submission",
+        "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w=",
+        "gTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5Q=",
+        2,
+        "test-nonce-stop_replace",
+        "3108154823211353ad68ae3e40f8bc3745766c2eccfbc8e53893ea33cca46bdd",
+        1924992000000
+      ],
+      "message": "WyJoZXJtZXMuZGVza3RvcC5vcGVyYXRvciIsMSwic3RvcF9yZXBsYWNlIiwidGVzdC1vd25lciIsInRlc3QtZm9yd2FyZCIsInRlc3Qtc29ja2V0IiwidGVzdC1wcm9maWxlIiwidGVzdC1zZXNzaW9uIiwidGVzdC1zdWJtaXNzaW9uIiwiaW9qajNYUUo4Wlg5VXRzdFBMcGRjc3BuQ2I4ZGxCSWI4M1NJQWJRUGIxdz0iLCJnVGwzRHFoOUYxOVdvMVJtdzB4K3pNdU5pcEcwN2plaVhmWVBXNC9KczVRPSIsMiwidGVzdC1ub25jZS1zdG9wX3JlcGxhY2UiLCIzMTA4MTU0ODIzMjExMzUzYWQ2OGFlM2U0MGY4YmMzNzQ1NzY2YzJlY2NmYmM4ZTUzODkzZWEzM2NjYTQ2YmRkIiwxOTI0OTkyMDAwMDAwXQ==",
+      "installation_signature": "cikbImHmwU097ohRXNKN+btxjg9G1N6LXvqDIcZnYzupjLA8zsjiYySDlE073bBECHRJD+SrqKyYCPlPNy/RBQ==",
+      "window_signature": "xZuLpT0xEECcyX4Sjt6K6AIksy4YNVQr1CUO5ok8FYd8XASdo9ib4cJonR974a6mAYFS0B6pxSaG/UvjyZ7NAA=="
+    }
+  ]
+}

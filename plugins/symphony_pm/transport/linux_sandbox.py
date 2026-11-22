@@ -113,6 +113,11 @@ class LinuxQualification:
     image_inode: int
     service_limits: tuple
 
+    def valid_command_environment(self):
+        return (bool(self.command_environment)
+                and tuple(sorted(set(self.command_environment))) == self.command_environment
+                and set(self.command_environment) <= ENVIRONMENT.keys())
+
     def validate(self):
         if (self.profile_home != canonical_home(self.profile_home) or not Path(self.profile_home).is_absolute()
                 or not all(identifier(x) for x in (self.namespace, self.environment_ref, self.scheduler_id,
@@ -124,8 +129,7 @@ class LinuxQualification:
                 or not all(sha(v, 64) for v in (self.image_sha256, self.controller_image_sha256, self.settings_sha256))
                 or not all(identifier(x) and x not in ('0', 'root') for x in (self.service_user, self.service_group))
                 or not self.systemd_version
-                or not self.command_environment or tuple(sorted(set(self.command_environment))) != self.command_environment
-                or not set(self.command_environment) <= ENVIRONMENT.keys()
+                or not self.valid_command_environment()
                 or self.image_device <= 0 or self.image_inode <= 0 or len(self.service_limits) != 4
                 or not all(type(v) is str and v not in ('', 'infinity', '[not set]', '0')
                            for v in self.service_limits)):

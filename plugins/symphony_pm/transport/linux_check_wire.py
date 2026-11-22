@@ -4,26 +4,30 @@ import json
 import os
 from pathlib import Path, PurePosixPath
 
-from .linux_check_config import PREFIX, RUNTIME, STATE, checked_arguments, strict_json
+from .linux_check_config import PREFIX, checked_arguments, strict_json
 from .linux_check_host import LinuxCheckInvocation, LinuxCheckTerminal
-from .linux_check_probe import PROGRAM
+from .linux_check_probe import GIT_ENV, GIT_PROGRAM, PROGRAM
 from .linux_sandbox import GUEST_HOME, GUEST_SCRATCH
 from .recapture import directory_identity
 from .types import ProcessIdentity, Refused, digest, finite, sha
 
 
-def unit_name(key):
+def unit_name(key, prefix=PREFIX):
     if not sha(key, 64):
         raise Refused('CHECK_SERVICE_INSTANCE')
-    return PREFIX + key + '.service'
+    return prefix + key + '.service'
 
 
 def read_request(directory, key, config):
     raw = strict_json(directory/'request')
     if type(raw) is not dict or set(raw) != {'schema', 'invocation', 'key', 'started', 'expires'} or raw['schema'] != 1:
         raise Refused('CHECK_SERVICE_REQUEST')
-    invocation = LinuxCheckInvocation.from_record(raw['invocation'])
-    if (raw['key'] != invocation.key or key != invocation.key or invocation.profile != config.profile.fingerprint
+    if config.git_project:
+        from .linux_robot_check import GitCheckInvocation
+        invocation = GitCheckInvocation.from_record(raw['invocation'])
+    else:
+        invocation = LinuxCheckInvocation.from_record(raw['invocation'])
+    if (raw['key'] != invocation.key or key != invocation.key or invocation.profile != config.invocation_profile
             or invocation.command not in config.profile.commands or not finite(raw['started']) or not finite(raw['expires'])
             or not 0 < raw['expires'] - raw['started'] <= config.profile.timeout + 0.001):
         raise Refused('CHECK_SERVICE_REQUEST')
@@ -39,20 +43,32 @@ def check_copy(invocation, profile):
         raise Refused('CHECK_SERVICE_COPY')
 
 
+def verify_copy(config, invocation):
+    if not config.git_project:
+        return check_copy(invocation, config.profile)
+    src = Path(invocation.directory)
+    expected = Path(config.profile.root)/('g-' + invocation.nonce)/'src'
+    if src != expected or src.resolve(strict=True) != src or tuple(directory_identity(src)) != invocation.directory_id:
+        raise Refused('CHECK_SERVICE_COPY')
+
+
 def sandbox_argv(config, invocation):
-    check_copy(invocation, config.profile)
-    # PATH deliberately has no tools. Approved tools are selected by absolute path. Writable
-    # space is anonymous tmpfs charged to this service; the input is mounted read-only.
+    verify_copy(config, invocation)
+    # Commands use absolute paths. Project checks also resolve Git in the measured image.
+    # Writable space is a private tmpfs. The input is mounted read-only.
     namespaces = {kind: os.readlink('/proc/self/ns/' + kind) for kind in ('net', 'pid', 'mnt')}
-    hidden = (STATE, config.installation.owner_state, config.profile.root, str(Path(invocation.directory).parent),
+    hidden = (config.state, config.installation.owner_state, config.profile.root, str(Path(invocation.directory).parent),
               str(Path(config.installation.owner_state)/'owner-check.active'), '/sys/fs/cgroup/cgroup.procs')
+    env = [item for k, v in GIT_ENV.items() for item in ('--setenv', k, v)] if config.git_project else []
+    program = GIT_PROGRAM if config.git_project else PROGRAM
+    target = [invocation.commit, invocation.source_sha] if config.git_project else []
     return [config.installation.bwrap, '--unshare-all', '--disable-userns', '--new-session', '--die-with-parent',
             '--cap-drop', 'ALL',
-            '--clearenv', '--ro-bind', RUNTIME, '/', '--proc', '/proc', '--dev', '/dev', '--tmpfs', GUEST_SCRATCH,
+            '--clearenv', '--ro-bind', config.runtime, '/', '--proc', '/proc', '--dev', '/dev', '--tmpfs', GUEST_SCRATCH,
             '--dir', GUEST_HOME, '--ro-bind', invocation.directory, '/work', '--chdir', '/work',
-            '--setenv', 'HOME', GUEST_HOME, '--setenv', 'TMPDIR', GUEST_SCRATCH, '--setenv', 'PATH', '/nonexistent',
+            '--setenv', 'HOME', GUEST_HOME, '--setenv', 'TMPDIR', GUEST_SCRATCH, '--setenv', 'PATH', '/usr/bin' if config.git_project else '/nonexistent',
             '--setenv', 'LANG', 'C', '--setenv', 'LC_ALL', 'C', '--setenv', 'PYTEST_DISABLE_PLUGIN_AUTOLOAD', '1',
-            '--', '/usr/bin/python3', '-I', '-B', '-c', PROGRAM, json.dumps(namespaces), json.dumps(hidden),
+            *env, '--', '/usr/bin/python3', '-I', '-B', '-c', program, json.dumps(namespaces), json.dumps(hidden), *target,
             *checked_arguments(invocation.command)]
 
 
@@ -80,7 +96,7 @@ class CheckGroup:
         install = config.installation
         if ((bound.key, bound.profile, bound.epoch, bound.host, bound.boot, bound.unit) != (
                 invocation.key, invocation.profile, invocation.epoch, install.host_id,
-                install.boot_id, unit_name(invocation.key))
+                install.boot_id, unit_name(invocation.key, config.prefix))
                 or type(bound.epoch) is not int or not sha(bound.service_id, 32) or not sha(bound.request_sha256, 64)
                 or not path.is_absolute() or str(path) != bound.cgroup or '..' in path.parts
                 or path.parts[-2:] != (bound.unit, 'payload') or not bound.root.valid()
