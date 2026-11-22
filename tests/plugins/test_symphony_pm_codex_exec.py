@@ -18,18 +18,19 @@ import pytest
 
 from hermes_cli.plugin_request_binding import RequestIdentity, canonical_home
 from hermes_platform.resolver import locate_command
+from plugins.symphony_pm import adapter as pm
 from plugins.symphony_pm import status_cli
 from plugins.symphony_pm.transport.codex_client import command_outcome
 from plugins.symphony_pm.transport.codex_exec_launcher import (
-    CONFIG_SELECTED, AttemptSettings, CodexExecLauncher, CodexExecQualification, client_environment,
+    CONFIG_SELECTED, AttemptSettings, ClientJobCoverage, CodexExecLauncher, CodexExecQualification, client_environment,
     file_sha256,
 )
 from plugins.symphony_pm.transport.lifecycle import LifecycleOwner
 from plugins.symphony_pm.transport.qualification import environment_digest
 from plugins.symphony_pm.transport.types import ExecutionPlan, NativeBinding, Permit, ProcessIdentity, Refused
 from tests.plugins.symphony_serving_support import Guard, Observer
-from tests.tools.test_symphony_pm_adapter import ctx, submit_payload
-from tools import symphony_pm_adapter as pm
+from tests.plugins.symphony_owner_check_support import owner_client
+from tests.plugins.test_symphony_pm_adapter import ctx, submit_payload
 
 pytestmark = pytest.mark.platforms('windows')  # the qualified executable is held through a Windows handle
 
@@ -41,7 +42,8 @@ mode = os.environ['FAKE_CODEX_MODE']
 if args[0] == 'sandbox':
     command = args[args.index('--')+1:]
     report = Path(command[5])
-    steps = [{'name': 'env', 'ok': True, 'secret_like_names': [], 'suspicious_values': []}]
+    names = ['SYSTEMROOT', 'SYSTEMDRIVE', 'TEMP', 'TMP']
+    steps = [{'name': 'env', 'ok': True, 'names': names, 'name_count': len(names)}]
     for name in ('read-auth', 'list-codex-home', 'read-outside', 'write-outside', 'loopback'):
         steps.append({'name': name, 'ok': mode == 'leaky' and name == 'read-outside', 'errno': 13})
     report.write_text(json.dumps({'mode': 'precheck', 'steps': steps}), encoding='utf-8')
@@ -86,6 +88,7 @@ class FixtureReceiver:
 
 
 class FixtureNative:
+    ownership_contract = 'fixture-contained-process'
     def __init__(self, launcher):
         self.launcher, self.created, self.unbound = launcher, [], []
 
@@ -136,22 +139,26 @@ def rig(tmp_path, mode='clean'):
     environment = {k: v for k, v in os.environ.items() if k.upper() in ('SYSTEMROOT', 'PATH', 'WINDIR', 'TEMP', 'TMP')}
     environment['FAKE_CODEX_MODE'] = mode
     scope = SimpleNamespace(profile_home=canonical_home(home), namespace='symphony_pm:ingress', active=True)
+    exehash, confighash = file_sha256(executable), file_sha256(codex_home/'config.toml')
+    coverage = ClientJobCoverage(Guard.recovery_host_id, exehash, confighash, 'symphony-pilot', 'f'*64)
     q = CodexExecQualification(scope.profile_home, scope.namespace, 'serving-test', executable,
-                               file_sha256(executable), str(codex_home), file_sha256(codex_home/'config.toml'),
-                               'symphony-pilot', 'fixture-client', environment_digest(environment), ('issuer',))
+                               exehash, str(codex_home), confighash, 'symphony-pilot', 'fixture-client',
+                               environment_digest(environment), ('issuer',), coverage)
     checks = lambda paths: (('value', [sys.executable, '-c', 'import pkg.value as v; assert v.VALUE == 2']),)
     settings = AttemptSettings(str(tmp_path/'repo'), str(attempts), sys.executable, checks, dict(os.environ),
                                command_prefix=(str(fake),))
     launcher = CodexExecLauncher(q, settings, environment=environment)
     native, now = FixtureNative(launcher), [1000.0]
-    owner = LifecycleOwner(scope, Guard(scope), Observer(now), native, launcher, scheduler_id='serving-test',
+    observer = Observer(now)
+    observer.stopped = True  # the stand-in has completed before the launcher asks for stop evidence
+    owner = LifecycleOwner(scope, Guard(scope), observer, native, launcher, scheduler_id='serving-test',
                            controller='controller-1', clock=lambda: now[0])
     return SimpleNamespace(owner=owner, native=native, scope=scope, now=now, source=source, home=home,
                            attempts=attempts, launcher=launcher)
 
 
-def submit(r, *, workspace=None):
-    payload = submit_payload()
+def submit(r, *, workspace=None, request_id='req-1', reserve_only=False):
+    payload = submit_payload(request_id=request_id)
     request, _, _ = pm.parse_intent(payload)
     identity = RequestIdentity(r.scope.profile_home, r.scope.namespace, 'session-1', request.request_id,
                                request.payload_digest)
@@ -163,11 +170,14 @@ def submit(r, *, workspace=None):
     context = ctx(payload, issuer_ref='issuer', policy_ref='policy', grant_ref=permit.ref,
                   approved_scope_revision='scope', contract_digest='b'*64, scheduler_id='serving-test',
                   scheduler_epoch=r.owner.token.epoch, now=r.now[0], expires_at=permit.expires_at)
+    if reserve_only:
+        return r.owner.journal.reserve_launch(r.owner.token, request, context, r.now[0])
     return r.owner.submit(request, context)
 
 
 def launches(r):
-    return [dict(row) for row in r.owner.journal.unfinished(r.owner.token)]
+    return [r.owner.journal.read_launch(r.owner.token, t.project, t.job, t.revision)[1]
+            for t in (receiver.binding.ticket for receiver in r.native.created)]
 
 
 def status(home, monkeypatch, capsys):
@@ -195,17 +205,21 @@ def tree_digest(root):
 
 def test_full_path_records_patch_check_and_status_reads_it_without_writing(tmp_path, monkeypatch, capsys):
     r = rig(tmp_path)
-    ticket, fresh = submit(r)
+    with owner_client(r):
+        ticket, fresh = submit(r)
     assert fresh and len(r.native.unbound) == 1 and len(r.native.created) == 1
     assert r.native.unbound[0][2:4] == ['sandbox', '-C']
     [row] = launches(r)
     result = json.loads(row['result'])
-    assert row['state'] == 'RESUME_INTENT' and result['stop'] is None and result['precheck']['verdict'] == 'PROBE_OK'
+    assert (row['state'], row['stop_proof']) == ('STOPPED', 'JOB_EMPTY')
+    assert result['stop'] is None and result['precheck']['verdict'] == 'PROBE_OK'
     patch = Path(result['patch']['path'])
     assert result['patch']['paths'] == ['pkg/value.py']
     assert hashlib.sha256(patch.read_bytes()).hexdigest() == result['patch']['sha256']
     assert result['cleaned'] == ['pkg/__pycache__']
-    assert result['check'] == {'apply': 0, 'commands': {'value': 0}, 'ok': True}
+    check = result['check']
+    assert (check['apply'], check['commands'], check['ok']) == (0, {'value': 0}, True)
+    assert (check['attempt'], check['patch_sha256']) == (ticket.attempt, result['patch']['sha256'])
     assert result['usage'] == [{'input_tokens': 10, 'output_tokens': 2}] and result['commands'] == 1
     assert result['inexec_probe'] == 'PROBE_NOT_RUN'  # observed only; the stand-in never runs it
     assert result['workspace'] == {'path': str(r.attempts/ticket.attempt), 'renamed': True}
@@ -221,25 +235,29 @@ def test_full_path_records_patch_check_and_status_reads_it_without_writing(tmp_p
         ticket.attempt, result['patch']['sha256'], True, 'PROBE_OK')
 
 
-def test_precheck_refusal_starts_no_model_and_keeps_the_ticket_held(tmp_path):
+def test_precheck_refusal_spends_the_permit_without_starting_the_model(tmp_path):
     r = rig(tmp_path, mode='leaky')
     with pytest.raises(Refused, match='CODEX_PRECHECK_REFUSED'):
         submit(r)
     assert len(r.native.unbound) == 1 and r.native.created == []
-    [row] = launches(r)
-    assert row['state'] == 'LAUNCH_INTENT' and row['binding'] is None and row['result'] is None
+    assert launches(r) == []
+    ticket, fresh = submit(r)
+    _, row = r.owner.journal.read_launch(r.owner.token, ticket.project, ticket.job, ticket.revision)
+    assert row['state'] == 'NOT_STARTED' and row['binding'] is None and row['result'] is None
     [kept] = [p for p in r.attempts.iterdir()]
     assert kept.name == row['attempt'] and not (kept/'exec-ran').exists()
-    ticket, fresh = submit(r)  # the same request is a duplicate of the held ticket, never a second launch
     assert not fresh and ticket.attempt == row['attempt'] and len(r.native.unbound) == 1
 
 
 def test_failed_owner_check_is_recorded_not_raised(tmp_path):
     r = rig(tmp_path, mode='wrong')
-    submit(r)
+    with owner_client(r):
+        submit(r)
     [row] = launches(r)
     result = json.loads(row['result'])
-    assert result['check'] == {'apply': 0, 'commands': {'value': 1}, 'ok': False}
+    check = result['check']
+    assert (check['apply'], check['commands'], check['ok']) == (0, {'value': 1}, False)
+    assert check['reason'] == 'CHECK_COMMAND_FAILED'
 
 
 def test_plan_outside_the_active_attempt_is_refused_before_anything_is_created(tmp_path):

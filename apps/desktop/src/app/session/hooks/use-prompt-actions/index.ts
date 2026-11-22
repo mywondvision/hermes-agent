@@ -696,6 +696,8 @@ export function usePromptActions({
 
   const submitText = useCallback(
     async (rawText: string, options?: SubmitTextOptions) => {
+      if (options?.restoredSubmission) { return submitPromptText(rawText, options) }
+
       const visibleText = sanitizeComposerInput(rawText).trim()
       const attachments = options?.attachments ?? $composerAttachments.get()
 

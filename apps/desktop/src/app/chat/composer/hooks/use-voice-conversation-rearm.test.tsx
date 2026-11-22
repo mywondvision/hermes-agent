@@ -39,6 +39,7 @@ const mocks = vi.hoisted(() => {
     }),
     stop: vi.fn(async () => ({
       audio: new Blob(['voice'], { type: 'audio/webm' }),
+      utteranceId: 'test-recording',
       heardSpeech: true
     }))
   }

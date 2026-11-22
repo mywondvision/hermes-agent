@@ -14,6 +14,7 @@ from unittest import mock
 
 import pytest
 
+from plugins.symphony_pm import adapter as pm
 from tests.fixtures.symphony_pm_ingress.owner import (
     CLAIMS,
     PRODUCER,
@@ -30,7 +31,7 @@ from tests.plugins.test_symphony_pm_plugin import (
     _call,
     _catalog_names,
 )
-from tests.tools.test_symphony_pm_adapter import (
+from tests.plugins.test_symphony_pm_adapter import (
     ISSUER,
     SCHED,
     ctx,
@@ -38,8 +39,7 @@ from tests.tools.test_symphony_pm_adapter import (
     load_frozen_s2,
     submit_payload,
 )
-from tests.tools.test_symphony_pm_adapter_cancel_s2 import S2CancelScheduler
-from tools import symphony_pm_adapter as pm
+from tests.plugins.test_symphony_pm_adapter_cancel_s2 import S2CancelScheduler
 
 pytest_plugins = ("tests.plugins.test_symphony_pm_plugin",)
 

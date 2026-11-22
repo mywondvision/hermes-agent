@@ -1,3 +1,4 @@
+import { LOCAL_CONNECTION_ID } from '@hermes/shared'
 import { $activeGatewayProfile } from '@/store/profile'
 import { $connection } from '@/store/session'
 import {
@@ -6,12 +7,16 @@ import {
   sessionRpcNeedsProfileRoute
 } from '@/store/session-request-router'
 import { knownOwnerForSession } from '@/store/session-states'
+import { sshTaskTransport } from '@/store/ssh-task-transport'
 
 import type { GatewayRequest } from './utils'
 
 const capturedRequests = new WeakMap<GatewayRequest, SubmissionDestination>()
 
 export interface SubmissionDestination {
+  readonly current?: () => boolean
+  readonly nativeLocal: boolean
+  readonly taskTransport?: 'ssh' | 'unresolved'
   readonly scopeKey: string
   readonly owner: SessionOwnerScope
   readonly requestGateway: GatewayRequest
@@ -72,13 +77,29 @@ export function captureSubmissionDestination(
       : [connection?.connectionId ?? connection?.baseUrl ?? null, profile]
   )
 
+  // A tile may belong to a different gateway than the foreground session.
+  const nativeLocal = owner && typeof owner === 'object' && owner.connectionId
+    ? owner.connectionId === LOCAL_CONNECTION_ID
+    : connection?.authMode === 'native'
+
+  const targetId = owner && typeof owner === 'object' ? owner.connectionId : connection?.connectionId
+  const transport = () => sshTaskTransport(targetId, nativeLocal)
+  const taskTransport = transport()
+
   const destination = Object.freeze({
+    current: () => connectionAuthority === authority() && profile === $activeGatewayProfile.get() && transport() === taskTransport,
+    nativeLocal,
+    taskTransport,
     scopeKey,
     owner,
-    requestGateway: <T>(method: string, params?: Record<string, unknown>, timeoutMs?: number) =>
-      typeof owner === 'object' && owner !== null
+    requestGateway: <T>(method: string, params?: Record<string, unknown>, timeoutMs?: number) => {
+      if (transport() !== taskTransport) {
+        return Promise.reject(new Error('Submission destination changed; check the original session'))
+      }
+      return typeof owner === 'object' && owner !== null
         ? requestForSessionProfile<T>(owner, guardedRequest, method, params, timeoutMs)
         : guardedRequest<T>(method, params, timeoutMs)
+    }
   })
 
   capturedRequests.set(destination.requestGateway, destination)

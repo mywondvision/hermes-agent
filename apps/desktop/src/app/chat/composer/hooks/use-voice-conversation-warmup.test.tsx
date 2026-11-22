@@ -122,7 +122,7 @@ describe('useVoiceConversation STT readiness barrier', () => {
     micHandle.start.mockClear()
     micHandle.cancel.mockClear()
     micHandle.stop.mockReset()
-    micHandle.stop.mockImplementation(async () => ({ audio: new Blob(), durationMs: 900, heardSpeech: true }))
+    micHandle.stop.mockImplementation(async () => ({ audio: new Blob(), durationMs: 900, utteranceId: 'test-recording', heardSpeech: true }))
     syncSttLeaseSpy.mockReset()
     syncSttLeaseSpy.mockImplementation(async () => undefined)
   })
@@ -175,7 +175,7 @@ describe('useVoiceConversation STT readiness barrier', () => {
     // The VAD silence callback fires a turn while the cold load is in flight.
     let turnPromise: Promise<void> = Promise.resolve()
     await act(async () => {
-      micHandle.stop.mockImplementation(async () => ({ audio: new Blob(), durationMs: 900, heardSpeech: true }))
+      micHandle.stop.mockImplementation(async () => ({ audio: new Blob(), durationMs: 900, utteranceId: 'test-recording', heardSpeech: true }))
       turnPromise = Promise.resolve(hook.result.current.stopTurn())
       await Promise.resolve()
       await Promise.resolve()
@@ -236,7 +236,8 @@ describe('useVoiceConversation STT readiness barrier', () => {
   // #128668 review: one owner per conversation, resolved at start().
   it('transcribes and releases on the start() owner across a mid-conversation switch', async () => {
     const transcribe = vi.fn(async (_audio: Blob, _owner?: unknown) => 'hello world')
-    const hook = renderConversation(transcribe)
+    const submit = vi.fn()
+    const hook = renderConversation(transcribe, submit)
 
     await act(async () => {
       await hook.result.current.start()
@@ -250,6 +251,7 @@ describe('useVoiceConversation STT readiness barrier', () => {
     })
     await waitFor(() => expect(transcribe).toHaveBeenCalledTimes(1))
     expect(transcribe.mock.calls[0][1]).toEqual(OWNER_A)
+    expect(submit).not.toHaveBeenCalled()
 
     await act(async () => {
       hook.result.current.end()

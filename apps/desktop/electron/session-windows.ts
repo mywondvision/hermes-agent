@@ -95,25 +95,28 @@ function buildSessionWindowUrl(
 // a peer keeps the already-running backend it joined during boot.
 interface InstanceWindowUrlOptions extends Partial<DesktopWindowLaunch> {
   devServer?: string
+  initialConversation?: string
   rendererIndexPath?: string
 }
 
 function buildInstanceWindowUrl({
   connectionId,
   devServer,
+  initialConversation,
   profile,
   profileWindow,
   rendererIndexPath
 }: InstanceWindowUrlOptions = {}) {
   const query = `?peer=1${profile ? `&profile=${encodeURIComponent(profile)}&connectionId=${encodeURIComponent(connectionId ?? '')}${profileWindow ? '&profileWindow=1' : ''}` : ''}`
+  const route = initialConversation ? `#/${encodeURIComponent(initialConversation)}` : ''
 
   if (devServer) {
     const base = devServer.endsWith('/') ? devServer.slice(0, -1) : devServer
 
-    return `${base}/${query}`
+    return `${base}/${query}${route}`
   }
 
-  return `${pathToFileURL(rendererIndexPath).toString()}${query}`
+  return `${pathToFileURL(rendererIndexPath).toString()}${query}${route}`
 }
 
 // Full "instance" windows (⌘⇧N / the "New Window" command) open a complete app

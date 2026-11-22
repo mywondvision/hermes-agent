@@ -8,6 +8,8 @@ known to emit plus ``extra="allow"`` so a new upstream key never trips the stric
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import Field
 
 from .base import JsonValue, Params, Result, WireEnum
@@ -275,6 +277,7 @@ class DispatchType(WireEnum):
 
 
 class CommandDispatchParams(Params):
+    interaction: Literal["displayed-plan"] | None = None
     name: str
     arg: str | None = None
     session_id: str | None = None

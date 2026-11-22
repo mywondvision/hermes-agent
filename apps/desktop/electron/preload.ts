@@ -3,6 +3,8 @@ import { contextBridge, ipcRenderer, webFrame, webUtils } from 'electron'
 import type { DesktopProfileRoute } from './desktop-profile'
 import type { HudModifierApi, HudModifierStatus } from './hud-modifier-types'
 import { customWindowControlsEnabled } from './window-controls'
+import { symphonyPlanBridge } from './symphony-plan-bridge'
+import { symphonyOperatorBridge } from './symphony-operator-bridge'
 
 // Which translucency the OS can back. Asked synchronously because the renderer
 // needs it before its first paint, and answered by main because deciding it
@@ -85,6 +87,9 @@ contextBridge.exposeInMainWorld('hermesDesktop', {
     return () => ipcRenderer.removeListener('hermes:browser-popout:closed', listener)
   },
   claimAmbientCue: key => ipcRenderer.invoke('hermes:ambient:claim', key),
+  voiceWindowGeneration: () => ipcRenderer.sendSync('hermes:voice:single-window-generation'),
+  symphonyPlan: symphonyPlanBridge(ipcRenderer),
+  ...(process.platform === 'win32' && { symphonyOperator: symphonyOperatorBridge(ipcRenderer) }),
   windowControls: {
     custom: customWindowControlsEnabled(),
     minimize: () => ipcRenderer.send('hermes:window-control', 'minimize'),

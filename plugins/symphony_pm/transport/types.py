@@ -8,11 +8,8 @@ from pathlib import Path
 import re
 
 from hermes_cli.plugin_request_binding import RequestIdentity, canonical_home
-from tools.symphony_pm_adapter import canonical_bytes
-
-
-class Refused(RuntimeError):
-    """A closed admission/reconciliation boundary, never permission to retry."""
+from plugins.symphony_pm.adapter import canonical_bytes
+from plugins.symphony_pm.contracts import Refused
 
 
 def digest(value) -> str:
@@ -89,6 +86,16 @@ class ExecutionPlan:
                 or self.driver != 'codex' or type(self.attempt_budget) is not int
                 or self.attempt_budget != 1):
             raise Refused('EXACT_NATIVE_PLAN_REQUIRED')
+
+
+@dataclass(frozen=True)
+class TypedExecutionPlan(ExecutionPlan):
+    # Canonical JSON keeps the human-reviewed fields immutable through reserve/recovery.
+    typed_details: str = ''
+
+
+def plan_from_json(value):
+    return TypedExecutionPlan(**value) if 'typed_details' in value else ExecutionPlan(**value)
 
 
 @dataclass(frozen=True)
@@ -173,7 +180,7 @@ class NativeBinding:
 def binding_from_json(value):
     value = dict(value)
     ticket = dict(value['ticket'])
-    ticket['plan'] = ExecutionPlan(**ticket['plan'])
+    ticket['plan'] = plan_from_json(ticket['plan'])
     value['ticket'] = LaunchTicket(**ticket)
     value['root'] = ProcessIdentity(**value['root'])
     value['known_processes'] = tuple(ProcessIdentity(**p) for p in value['known_processes'])

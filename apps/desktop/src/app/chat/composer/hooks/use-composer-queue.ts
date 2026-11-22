@@ -444,7 +444,7 @@ export function useComposerQueue({
           fromQueue: true,
           sessionId: sessionId ?? null,
           storedSessionId: activeQueueSessionKey,
-          ...(submissionId ? { submission_id: submissionId } : {})
+          ...(submissionId ? { submission_id: submissionId, restoredSubmission: true } : {})
         })
       )
         .then(accepted => {
@@ -464,7 +464,7 @@ export function useComposerQueue({
 
     if (
       !enqueueQueuedPrompt(activeQueueSessionKey, {
-        ...(submissionId ? { id: submissionId } : {}),
+        ...(submissionId ? { id: submissionId, restoredSubmission: true } : {}),
         text: frozen.text,
         attachments,
         ...(frozen.displayText ? { displayText: frozen.displayText } : {}),
@@ -527,6 +527,7 @@ export function useComposerQueue({
               ...(entry.displayKind ? { displayKind: entry.displayKind } : {}),
               fromQueue: true,
               submission_id: queuedSubmissionId(entry),
+              ...(entry.restoredSubmission && { restoredSubmission: true }),
               sessionId: drainRuntimeSessionId,
               storedSessionId: drainQueueSessionKey
             })
@@ -572,6 +573,11 @@ export function useComposerQueue({
         return false
       }
 
+      const entry = getQueuedPrompts(activeQueueSessionKey).find(row => row.id === id)
+      if (entry?.restoredSubmission && !entry.serverStatus) {
+        return runDrain(rows => rows.find(row => row.id === id && row.restoredSubmission))
+      }
+
       if (busy) {
         // Promote to the head, then interrupt. The gateway always emits a
         // settle (message.complete + session.info running:false) when the
@@ -612,6 +618,10 @@ export function useComposerQueue({
 
       const entry = getQueuedPrompts(activeQueueSessionKey).find(e => e.id === id)
 
+      if (entry?.restoredSubmission && !entry.serverStatus) {
+        return (await sendQueuedNow(id)) === true
+      }
+
       if (!entry || !isSteerableEntry(entry)) {
         return false
       }
@@ -647,7 +657,7 @@ export function useComposerQueue({
 
       return true
     },
-    [activeQueueSessionKey, busy, onSteer, queueEditRef, t.composer]
+    [activeQueueSessionKey, busy, onSteer, queueEditRef, sendQueuedNow, t.composer]
   )
 
   // Double-Enter while busy. The entry usually sits in the queue because the
@@ -663,7 +673,7 @@ export function useComposerQueue({
     async (id: string) => {
       const entry = activeQueueSessionKey ? getQueuedPrompts(activeQueueSessionKey).find(e => e.id === id) : undefined
 
-      if (!busy || !entry || entry.displayKind || entry.displayText || !isSteerableEntry(entry)) {
+      if (!busy || !entry || entry.restoredSubmission || entry.displayKind || entry.displayText || !isSteerableEntry(entry)) {
         return sendQueuedNow(id)
       }
 

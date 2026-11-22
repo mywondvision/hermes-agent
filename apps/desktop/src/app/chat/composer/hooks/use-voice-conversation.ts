@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { type ResolvedOwner, resolveOwnerNow } from '@/hermes'
 import { useI18n } from '@/i18n'
+import { recordingStream } from '@/lib/recording-stream'
 import { IncrementalSpeechSentenceBuffer } from '@/lib/speech-text'
 import { syncSttLease, VOICE_INPUT_LEASE } from '@/lib/stt-lease'
 import { startThinkingSound, stopThinkingSound } from '@/lib/thinking-sound'
@@ -33,6 +34,9 @@ interface PendingVoiceResponse {
 }
 
 interface VoiceConversationOptions {
+  onCaptureStart?: (id: string) => void
+  onCaptureEnd?: (id: string) => void
+  sessionId?: string | null
   busy: boolean
   enabled: boolean
   onFatalError?: () => void
@@ -40,7 +44,7 @@ interface VoiceConversationOptions {
    *  Fired when the user speaks while the model is still generating. */
   onInterrupt?: () => Promise<void> | void
   onStopWord?: () => void
-  onSubmit: (text: string) => Promise<void> | void
+  onSubmit: (text: string, utteranceId: string) => Promise<void> | void
   onTranscribeAudio?: (audio: Blob, owner?: ResolvedOwner) => Promise<string>
   pendingResponse: () => PendingVoiceResponse | null
   consumePendingResponse: () => void
@@ -62,6 +66,7 @@ interface VoiceConversationOptions {
  * request's decode budget (#105955).
  */
 interface Conversation {
+  sessionId?: string | null
   owner: ResolvedOwner
   warmup: Promise<void>
 }
@@ -79,6 +84,9 @@ const METER_FAILURE_MIN_CLIP_MS = 750
 const METER_FAILURE_LIMIT = 2
 
 export function useVoiceConversation({
+  onCaptureStart,
+  onCaptureEnd,
+  sessionId,
   busy,
   enabled,
   onFatalError,
@@ -92,6 +100,10 @@ export function useVoiceConversation({
   focusInput,
   beforeMicOpen
 }: VoiceConversationOptions) {
+  const captureStartRef = useRef(onCaptureStart)
+  captureStartRef.current = onCaptureStart
+  const captureEndRef = useRef(onCaptureEnd)
+  captureEndRef.current = onCaptureEnd
   const { t } = useI18n()
   const voiceCopy = t.notifications.voice
   const { handle, level } = useMicRecorder(voiceCopy)
@@ -101,6 +113,13 @@ export function useVoiceConversation({
   const { connectionId: ownerConnectionId, profile: ownerProfile } = useComposerScope()
   const ownerRef = useRef({ connectionId: ownerConnectionId, profile: ownerProfile })
   ownerRef.current = { connectionId: ownerConnectionId, profile: ownerProfile }
+  const sessionRef = useRef(sessionId)
+  sessionRef.current = sessionId
+  const sameDestination = useCallback((conversation: Conversation) => {
+    const owner = resolveOwnerNow(ownerRef.current)
+    return conversation.sessionId === sessionRef.current && owner.connectionId === conversation.owner.connectionId
+      && owner.profile === conversation.owner.profile
+  }, [])
   const [status, setStatus] = useState<ConversationStatus>('idle')
   const [muted, setMuted] = useState(false)
   const turnTimeoutRef = useRef<number | null>(null)
@@ -112,6 +131,7 @@ export function useVoiceConversation({
   // it is still this one: end() and unmount clear it (and a new start()
   // replaces it), so a warm-up or transcript settling afterwards cannot
   // transcribe, submit, or move status.
+  const recordingRef = useRef<ReturnType<typeof recordingStream> | null>(null)
   const conversationRef = useRef<Conversation | null>(null)
   const responseIdRef = useRef<string | null>(null)
   const spokenSourceLengthRef = useRef(0)
@@ -188,6 +208,8 @@ export function useVoiceConversation({
 
   useEffect(
     () => () => {
+      recordingRef.current?.cancel()
+      recordingRef.current = null
       const conversation = conversationRef.current
       conversationRef.current = null
 
@@ -227,7 +249,8 @@ export function useVoiceConversation({
       clearTurnTimeout()
       setStatus('transcribing')
       const conversation = conversationRef.current
-      const live = () => conversation !== null && conversationRef.current === conversation
+      const stream = recordingRef.current
+      const live = () => conversation !== null && conversationRef.current === conversation && recordingRef.current === stream
 
       try {
         const result = await handle.stop()
@@ -279,7 +302,11 @@ export function useVoiceConversation({
             return
           }
 
-          const transcript = (await onTranscribeAudio(result.audio, conversation.owner)).trim()
+          const socket = await stream?.session()
+          if (!live()) { return }
+          const transcript = socket
+            ? (await socket.stop()).trim()
+            : (await onTranscribeAudio(result.audio, conversation.owner)).trim()
 
           if (!live()) {
             return
@@ -316,7 +343,13 @@ export function useVoiceConversation({
           // the model is still thinking — the old answer plays until the new
           // one arrives and barges in.
           consumePendingResponse()
-          await onSubmit(transcript)
+          if (!sameDestination(conversation)) {
+            awaitingSpokenResponseRef.current = false
+            setStatus('idle')
+            onFatalError?.()
+            return
+          }
+          await onSubmit(transcript, result.utteranceId)
 
           if (live()) {
             setStatus('thinking')
@@ -335,6 +368,8 @@ export function useVoiceConversation({
           setStatus('idle')
         }
       } finally {
+        stream?.cancel()
+        if (recordingRef.current === stream) { recordingRef.current = null }
         turnClosingRef.current = false
       }
     },
@@ -343,6 +378,7 @@ export function useVoiceConversation({
       handle,
       onFatalError,
       onSubmit,
+      sameDestination,
       onTranscribeAudio,
       voiceCopy.microphoneFailed,
       voiceCopy.recordingFailed,
@@ -381,12 +417,20 @@ export function useVoiceConversation({
       return
     }
 
+    recordingRef.current?.cancel()
+    const stream = recordingStream(conversation.owner)
+    recordingRef.current = stream
+
     try {
       // VAD tuning mirrors `tools.voice_mode` defaults so the browser loop matches the CLI.
       // `silenceMs` honours `voice.silence_duration` (seeded by useHermesConfig): only a
       // user-set value overrides the desktop's tuned 1.25 s hold, which every turn sits
       // through as dead air.
       await handle.start({
+        onCaptureStart: id => captureStartRef.current?.(id),
+        onCaptureEnd: id => captureEndRef.current?.(id),
+        onPcm: stream.push,
+        onPcmRate: stream.open,
         silenceLevel: 0.075,
         silenceMs: $voiceSilenceMs.get(),
         idleSilenceMs: 12_000,
@@ -414,6 +458,7 @@ export function useVoiceConversation({
       clearTurnTimeout()
       turnTimeoutRef.current = window.setTimeout(() => void handleTurn(), 60_000)
     } catch (error) {
+      stream.cancel()
       notifyError(error, voiceCopy.couldNotStartSession)
       pendingStartRef.current = false
       setStatus('idle')
@@ -467,7 +512,7 @@ export function useVoiceConversation({
    * fall back to normal listening.
    */
   const submitCapturedUtterance = useCallback(
-    async (audio: Blob | null) => {
+    async (audio: Blob | null, utteranceId?: string) => {
       const echoSource = bargeEchoTextRef.current
       const conversation = conversationRef.current
       const live = () => conversation !== null && conversationRef.current === conversation
@@ -568,7 +613,18 @@ export function useVoiceConversation({
         awaitingSpokenResponseRef.current = true
         dropSpeechSession()
         consumePendingResponse()
-        await onSubmitRef.current(transcript)
+        if (!utteranceId) {
+          parkText?.(transcript)
+          resumeListening()
+          return
+        }
+        if (!conversation || !sameDestination(conversation)) {
+          awaitingSpokenResponseRef.current = false
+          setStatus('idle')
+          onFatalError?.()
+          return
+        }
+        await onSubmitRef.current(transcript, utteranceId)
 
         if (live()) {
           setStatus('thinking')
@@ -580,7 +636,7 @@ export function useVoiceConversation({
         }
       }
     },
-    [consumePendingResponse, focusInput, onTranscribeAudio, parkText, voiceCopy.transcriptionFailed]
+    [consumePendingResponse, focusInput, onFatalError, onTranscribeAudio, parkText, sameDestination, voiceCopy.transcriptionFailed]
   )
 
   /**
@@ -609,6 +665,7 @@ export function useVoiceConversation({
     }
 
     stopBargeMonitorRef.current = monitorSpeechDuringPlayback({
+      onSegmentStart: id => captureStartRef.current?.(id),
       isPlaying: () => $voicePlayback.get().status === 'speaking',
       thresholdMultiplier: $bargeInThresholdMultiplier.get(),
       onSpeech: () => {
@@ -626,10 +683,11 @@ export function useVoiceConversation({
           void onInterruptRef.current?.()
         }
       },
-      onUtterance: audio => {
+      onUtterance: (audio, utteranceId) => {
+        if (utteranceId) { captureEndRef.current?.(utteranceId) }
         bargeCapturePendingRef.current = false
         stopBargeMonitorRef.current = null
-        void submitCapturedUtterance(audio)
+        void submitCapturedUtterance(audio, utteranceId)
       }
     })
   }, [pendingResponse, submitCapturedUtterance])
@@ -956,7 +1014,7 @@ export function useVoiceConversation({
     consumePendingResponse()
     // A fresh conversation: its owner is resolved now and kept to the end.
     // Replacing the ref also fences any continuation of a previous one.
-    conversationRef.current = { owner: resolveOwnerNow(ownerRef.current), warmup: Promise.resolve() }
+    conversationRef.current = { sessionId: sessionRef.current, owner: resolveOwnerNow(ownerRef.current), warmup: Promise.resolve() }
     pendingStartRef.current = true
     await startListening()
   }, [
@@ -972,6 +1030,8 @@ export function useVoiceConversation({
     pendingStartRef.current = false
     clearTurnTimeout()
     stopVoicePlayback()
+    recordingRef.current?.cancel()
+    recordingRef.current = null
     handle.cancel()
     turnClosingRef.current = false
     awaitingSpokenResponseRef.current = false
@@ -1005,6 +1065,8 @@ export function useVoiceConversation({
 
       if (next) {
         clearTurnTimeout()
+        recordingRef.current?.cancel()
+        recordingRef.current = null
         handle.cancel()
         setStatus('idle')
       } else if (enabledRef.current && !busyRef.current && statusRef.current === 'idle') {

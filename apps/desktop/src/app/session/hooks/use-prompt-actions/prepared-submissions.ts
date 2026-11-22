@@ -26,6 +26,12 @@ export interface PreparedSubmission {
   text: string
   displayText?: string
   params: Record<string, unknown>
+  nativeLocal?: boolean
+  taskTransport?: 'ssh' | 'unresolved'
+  profileId?: string
+  forwardSessionId?: string
+  personalForward?: true
+  forwardConflict?: boolean
   legacyAttempted?: boolean
 }
 
@@ -269,7 +275,8 @@ const sameDestination = (intent: string, key: string) => {
  *  uncertain one. With Web Locks, a live other window's uncertain send is never adopted. */
 export async function adoptPreparedSubmission(
   intent: string,
-  submissionId: string
+  submissionId: string,
+  strictContent = false
 ): Promise<{ key: string; entry: PreparedSubmission } | undefined> {
   const journal = await readJournal()
 
@@ -278,9 +285,19 @@ export async function adoptPreparedSubmission(
     .sort()
 
   for (const key of keys) {
+    if (strictContent || journal[key].taskTransport) {
+      const [, , text, attachments] = JSON.parse(intent)
+      const [, , originalText, originalAttachments] = JSON.parse(key)
+      if (text !== originalText || JSON.stringify(attachments) !== JSON.stringify(originalAttachments)) {
+        throw new Error('Submission ID already belongs to different content')
+      }
+    }
     if (await holdPreparedSubmission(key)) { return { key, entry: journal[key] } }
   }
 
+  if (keys.length && (strictContent || keys.some(key => journal[key].taskTransport))) {
+    throw new Error('Submission is held by another window. Check the original session.')
+  }
   return undefined
 }
 

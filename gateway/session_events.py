@@ -22,6 +22,7 @@ class SessionEvents:
         # Synchronous same-thread recipients (API run projections): unlike fanout peers they
         # cannot lose a frame to a detach that races the writer thread.
         self.observers = set()
+        self.private_subscribers = {}
         # Set by the authority that attaches transports: retires the subscription of a
         # peer whose bounded backlog overflowed, so it cannot linger looking subscribed.
         self.on_overflow = None

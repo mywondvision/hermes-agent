@@ -6,6 +6,8 @@ import { translateNow, type Translations } from '@/i18n'
 import { type ChatMessage, finalizeInterruptedMessages, textPart } from '@/lib/chat-messages'
 import { optimisticAttachmentRef } from '@/lib/chat-runtime'
 import { sanitizeComposerInput } from '@/lib/composer-input-sanitize'
+import { ForwardBeforeSend, ForwardConflict, isForwardRoute, probedRoute, sendForwardInput, type ForwardRoute } from '@/api/forward-probe'
+import { reconcileSymphonyInput, requestSymphonyOperator, showSymphonyOperatorNotice } from '@/api/symphony-operator'
 import { setMutableRef } from '@/lib/mutable-ref'
 import {
   isVoicePlaybackActive,
@@ -22,7 +24,7 @@ import {
   patchMainComposerAttachmentOccurrence,
   revokeDiscardedAttachmentPreviews
 } from '@/store/composer'
-import { serverOwnsComposerQueue } from '@/store/composer-queue'
+import { enqueueQueuedPrompt, markQueuedSubmissionAttempted, serverOwnsComposerQueue } from '@/store/composer-queue'
 import { noteMessageSent } from '@/store/desktop-metrics'
 import { $hudMode } from '@/store/hud'
 import { clearNotifications, notify, notifyError } from '@/store/notifications'
@@ -41,7 +43,8 @@ import {
 } from '@/store/session'
 import { profileScopeForSessionOwner } from '@/store/session-request-router'
 import { $sessionStates, $sessionTiles } from '@/store/session-states'
-import type { SessionInfo } from '@/types/hermes'
+import { needsSshProbe } from '@/store/ssh-task-transport'
+import type { SessionInfo, SessionResumeResult } from '@/types/hermes'
 
 import { cronRunWriteGateApplies, refreshCronRunWriteGate } from '../../../cron/open-cron-run'
 import type { ClientSessionState } from '../../../types'
@@ -194,12 +197,92 @@ export function rebindPaneToResumedRuntime({
 /** The prompt submit pipeline, extracted from usePromptActions. */
 /** Canonical admission receipt; `user_row_id` binds the optimistic bubble to its durable row. */
 type SubmitReceipt = Pick<PromptSubmitResult, 'forwarded' | 'user_row_id'> & {
+  ref?: { profile_id?: string; session_id?: string }
   admission_id?: string
   submission_id?: string
   session_id?: string
   status?: string
   /** TUI-26: the owner ended the session's voice chat on a typed stop phrase and admitted nothing. */
   voice_stopped?: boolean
+}
+
+function validAdmissionStatus(result: SubmitReceipt) {
+  return ['queued', 'started', 'terminal', 'unknown'].includes(result.status ?? '')
+}
+
+function matchesSshAdmission(receipt: SubmitReceipt, submissionId: string, sessionId: string, profileId?: string) {
+  return receipt.submission_id === submissionId && receipt.ref?.session_id === sessionId
+    && Boolean(profileId) && receipt.ref.profile_id === profileId
+    && (receipt.session_id === undefined || receipt.session_id === sessionId)
+    && typeof receipt.admission_id === 'string' && Boolean(receipt.admission_id.trim())
+}
+
+function displayAdmission(update: SubmitPromptDeps['updateSessionState'], sessionId: string,
+  storedId: string | null | undefined, submissionId: string, admissionId?: string) {
+  const id = admissionId ? `hermes-admission-${submissionId}` : `hermes-chat-send-${submissionId}`
+  const text = admissionId ? `Hermes принял сообщение · admission_id: ${admissionId}`
+    : 'Hermes принял сообщение в обычном чате. Квитанция постановки в Symphony недоступна.'
+  update(sessionId, state => state.messages.some(message => message.id === id) ? state : {
+    ...state,
+    messages: [...state.messages, { id, role: 'system', timestamp: Date.now() / 1000,
+      parts: [textPart(text)] }]
+  }, storedId)
+}
+
+async function sshProfile(request: GatewayRequest) {
+  const runtime = await request<{ profile_id?: string }>('runtime.describe', {}, PROMPT_SUBMIT_REQUEST_TIMEOUT_MS)
+  if (typeof runtime?.profile_id !== 'string' || !runtime.profile_id.trim()) {
+    throw new Error('HOLD · Профиль соединения не подтверждён.')
+  }
+  return runtime.profile_id
+}
+
+/** Read the original admission instead of issuing another write after a lost ACK. */
+async function submitWithReceiptLookup(request: GatewayRequest, prepared: PreparedSubmission, sessionId: string,
+  retained: boolean, transport: PreparedSubmission['taskTransport']) {
+  if (prepared.params.session_id !== sessionId) {
+    throw new Error('Submission belongs to another session')
+  }
+  if (transport === 'unresolved') throw new Error('HOLD · Тип соединения не подтверждён.')
+  if (!retained) {
+    try {
+      const result = await request<SubmitReceipt>('prompt.submit', prepared.params, PROMPT_SUBMIT_REQUEST_TIMEOUT_MS)
+      if (transport === 'ssh' && isVoiceStoppedReceipt(result) && !result.ref && !result.admission_id
+          && (result.session_id === undefined || result.session_id === sessionId)
+          && (result.submission_id === undefined || result.submission_id === prepared.id)) return { result, sessionId }
+      const bound = transport === 'ssh' ? result && matchesSshAdmission(result, prepared.id, sessionId, prepared.profileId)
+        : result?.submission_id === prepared.id && result.session_id === sessionId
+      if (bound && (isVoiceStoppedReceipt(result) || validAdmissionStatus(result))) {
+        return { result, sessionId }
+      }
+    } catch (error) {
+      if (isPreAdmissionRefusal(error)) {
+        throw error
+      }
+      if (transport && isAdmittedSubmissionConflict(error)) throw error
+    }
+  }
+
+  return readOriginalReceipt(request, prepared.id, sessionId, transport === 'ssh', prepared.profileId)
+}
+
+async function readOriginalReceipt(request: GatewayRequest, submissionId: string, sessionId: string, ssh = false, originalProfile?: string) {
+  if (ssh && !originalProfile) throw new Error('UNKNOWN · В записи отправки отсутствует исходный профиль.')
+  const currentProfile = ssh ? await sshProfile(request).catch(() => undefined) : undefined
+  if (ssh && originalProfile !== currentProfile) {
+    throw new Error('UNKNOWN · Профиль исходного разговора изменился.')
+  }
+  const result = await request<SubmitReceipt>(
+    'prompt.receipt', { session_id: sessionId, submission_id: submissionId }, PROMPT_SUBMIT_REQUEST_TIMEOUT_MS
+  ).catch(() => null)
+
+  if (!result || result.ref?.session_id !== sessionId || result.submission_id !== submissionId || !result.admission_id
+      || (ssh && !matchesSshAdmission(result, submissionId, sessionId, currentProfile)) || !validAdmissionStatus(result)) {
+    throw new Error(ssh ? 'UNKNOWN · Приём сообщения Hermes не подтверждён. Отправка удержана.'
+      : `Submission ${submissionId}: admission unknown. Check the original session.`)
+  }
+
+  return { result: { ...result, session_id: sessionId }, sessionId }
 }
 
 /** A refusal the backend issued before admitting anything, so an identityless retry cannot duplicate a turn. */
@@ -234,6 +317,49 @@ export function useSubmitPrompt(deps: SubmitPromptDeps) {
 
   return useCallback(
     async (rawText: string, options?: SubmitTextOptions) => {
+      if (options?.restoredSubmission) {
+        const id = options.submission_id
+        if (!id) { return false }
+
+        const stored = options.storedSessionId ?? options.composerScope ?? selectedStoredSessionIdRef.current
+        const runtime = stored
+          ? getRuntimeIdForStoredSession(stored) ?? (options.sessionId === stored ? stored : null)
+          : options.sessionId ?? activeSessionIdRef.current
+        const destination = options.destination ?? captureSubmissionDestination(stored ?? runtime, ambientRequestGateway)
+        try {
+          const key = preparedSubmissionKey(resolveComposerSessionKey(stored ?? runtime, $sessions.get()),
+            destination, rawText, options.attachments ?? [], options)
+          const saved = await adoptPreparedSubmission(key, id, Boolean(destination.taskTransport))
+          const route = saved
+            ? captureSubmissionDestination(stored ?? runtime, ambientRequestGateway, saved.entry)
+            : destination
+          if (saved?.entry.forwardConflict) throw new ForwardConflict()
+          if (saved?.entry.personalForward && saved.entry.forwardSessionId) {
+            await reconcileSymphonyInput(route, saved.entry.forwardSessionId, id)
+            await removePreparedSubmission(saved.key, id).catch(error => console.warn('[prepared-submission-retire]', error))
+            return true
+          }
+          if (saved?.entry.forwardSessionId) throw new Error('UNKNOWN · Ответ владельца журнала не подтверждён.')
+          const originalSession = saved?.entry.params.session_id ?? runtime ?? stored
+          if ((saved?.entry.taskTransport && route.taskTransport !== 'ssh')
+              || !(saved?.entry.nativeLocal || route.nativeLocal || route.taskTransport === 'ssh') || typeof originalSession !== 'string' || !originalSession) {
+            throw new Error(`Submission ${id}: admission unknown. Check the original session.`)
+          }
+          const { result } = await readOriginalReceipt(route.requestGateway, id, originalSession, route.taskTransport === 'ssh', saved?.entry.profileId)
+          if (route.taskTransport === 'ssh' && result.admission_id) {
+            displayAdmission(updateSessionState, originalSession, stored, id, result.admission_id)
+          }
+          if (saved) {
+            await removePreparedSubmission(saved.key, id).catch(error => console.warn('[prepared-submission-retire]', error))
+          }
+          return true
+        } catch (error) {
+          notifyError(error, copy.promptFailed)
+          return false
+        }
+      }
+
+      options?.onAdmissionPhase?.('preparing')
       const usingComposerAttachments = !options?.attachments
 
       // Drop undefined/null holes a session switch or draft restore can leave in
@@ -317,13 +443,14 @@ export function useSubmitPrompt(deps: SubmitPromptDeps) {
       const guardSessionId = options?.sessionId ?? activeSessionIdRef.current
       const serverQueue = serverOwnsComposerQueue(options?.storedSessionId ?? guardSessionId)
 
+      const sshBusy = needsSshProbe(options?.storedSessionId ?? guardSessionId)
       const queueAdmission =
-        serverQueue &&
+        (serverQueue || sshBusy) &&
         Boolean(options?.fromQueue || isTargetSessionBusy($sessionStates.get(), guardSessionId, busyRef.current))
 
       if (
         !hasSendable ||
-        (!serverQueue &&
+        (!serverQueue && !sshBusy &&
           !options?.fromQueue &&
           isTargetSessionBusy($sessionStates.get(), guardSessionId, busyRef.current))
       ) {
@@ -487,17 +614,31 @@ export function useSubmitPrompt(deps: SubmitPromptDeps) {
         // Only an explicit retry (the caller names the uncertain send's identity) reuses a
         // retained entry; a new message with the same text is a new turn.
         const adopted = options?.submission_id
-          ? await adoptPreparedSubmission(retryKeyForTarget(), options.submission_id)
+          ? await adoptPreparedSubmission(retryKeyForTarget(), options.submission_id, Boolean(captured.taskTransport))
           : undefined
 
         retained = adopted?.entry
         retainedKey = adopted?.key
+        if (retained?.forwardConflict) throw new ForwardConflict()
+        if (retained?.personalForward && retained.forwardSessionId && retainedKey) {
+          const route = captureSubmissionDestination(targetStoredSessionId ?? sessionId, ambientRequestGateway, retained)
+          await reconcileSymphonyInput(route, retained.forwardSessionId, retained.id)
+          await removePreparedSubmission(retainedKey, retained.id).catch(error => console.warn('[prepared-submission-retire]', error))
+          return true
+        }
+        if (retained?.forwardSessionId) throw new Error('UNKNOWN · Ответ владельца журнала не подтверждён.')
+        if (retained?.taskTransport && captured.taskTransport !== 'ssh') {
+          throw new Error('UNKNOWN · Исходное SSH-соединение не подтверждено.')
+        }
 
         // A legacy send has no deduplication identity. After an ambiguous ACK
         // even an upgraded server cannot safely admit it under the saved ID, so
         // the retry is refused once, visibly, and the entry is retired: sending
         // the words again afterwards is the user's informed new turn.
         if (retained?.legacyAttempted && retainedKey) {
+          if (retained.taskTransport || captured.taskTransport) {
+            throw new Error('UNKNOWN · Приём сообщения прежним сервером не подтверждён.')
+          }
           await removePreparedSubmission(retainedKey, retained.id).catch(error => console.warn('[prepared-submission-retire]', error))
           notify({ kind: 'warning', title: copy.promptFailed, message: translateNow('promptNotices.legacySendUnconfirmed') })
 
@@ -515,6 +656,14 @@ export function useSubmitPrompt(deps: SubmitPromptDeps) {
 
       let requestGateway = destination.requestGateway
       const submissionId = retained?.id ?? options?.submission_id ?? randomUuid()
+      const sshViewCurrent = () => Boolean(targetStoredSessionId) &&
+        routeTargetFromToken(getRouteToken()) === targetStoredSessionId &&
+        selectedStoredSessionIdRef.current === targetStoredSessionId && destination.current?.() !== false
+      if (!retained && destination.taskTransport && (!targetStoredSessionId ||
+          routeTargetFromToken(getRouteToken()) !== targetStoredSessionId || destination.taskTransport === 'unresolved')) {
+        notifyError(new Error('HOLD · Назначение или существующий разговор SSH не подтверждены. Текст сохранён.'), copy.promptFailed)
+        return false
+      }
 
       let startingStoredSessionId = routedSessionNeedsResume
         ? routedStoredSessionId
@@ -852,12 +1001,14 @@ export function useSubmitPrompt(deps: SubmitPromptDeps) {
           // exact stored session is reused instead of resuming again.
           const cachedRuntimeId = takeRecoveredRuntime(storedId)
 
-          const resumed = cachedRuntimeId
+          type ResumeBinding = Pick<SessionResumeResult, 'session_id'> &
+            Partial<Pick<SessionResumeResult, 'session_key' | 'resumed'>> & { stored_session_id?: string }
+          const resumed: ResumeBinding = cachedRuntimeId
             ? { session_id: cachedRuntimeId }
             : await singleFlightSessionResume(storedId, async () => {
                 const resumeProfile = await resolveSessionProfile(storedId)
 
-                return requestGateway<{ session_id: string }>('session.resume', {
+                return requestGateway<ResumeBinding>('session.resume', {
                   session_id: storedId,
                   source: 'desktop',
                   omit_messages: true,
@@ -865,6 +1016,11 @@ export function useSubmitPrompt(deps: SubmitPromptDeps) {
                 })
               })
 
+          if (resumed && destination.taskTransport === 'ssh' &&
+              [resumed.stored_session_id, resumed.session_key, resumed.resumed].some(id => id != null && id !== storedId)) {
+            notifyError(new ForwardBeforeSend('HOLD · Сервер восстановил другой разговор.'), copy.promptFailed)
+            return abortForSessionSwitch(null)
+          }
           const resumeDrift = sessionDriftReason()
 
           if (resumeDrift) {
@@ -1022,6 +1178,11 @@ export function useSubmitPrompt(deps: SubmitPromptDeps) {
       }
 
       if (!sessionId) {
+        if (destination.taskTransport) {
+          releaseBusy()
+          notifyError(new Error('HOLD · Открытый SSH-разговор не связан с существующей сессией.'), copy.promptFailed)
+          return false
+        }
         const createdRuntimeId = await createSessionForSubmit()
 
         if (createdRuntimeId === false) {
@@ -1034,6 +1195,28 @@ export function useSubmitPrompt(deps: SubmitPromptDeps) {
       }
 
       try {
+        let forward: ForwardRoute | undefined
+        if (!retained && destination.taskTransport === 'ssh') {
+          const route = await requestGateway<ForwardRoute>('prompt.forward_probe', { session_id: sessionId },
+            PROMPT_SUBMIT_REQUEST_TIMEOUT_MS).catch(() => null)
+          if (!targetStoredSessionId || !isForwardRoute(route, targetStoredSessionId) || !sshViewCurrent() || sessionDriftReason()) {
+            throw new ForwardBeforeSend('HOLD · Маршрут SSH не подтверждён. Текст сохранён.')
+          }
+          if (route.route === 'ordinary' && options?.ordinaryBusyPolicy) {
+            if (options.ordinaryBusyPolicy === 'pending') throw new ForwardBeforeSend('HOLD · Режим занятого чата ещё не загружен.')
+            const queued = enqueueQueuedPrompt(options.composerScope ?? targetStoredSessionId, {
+              id: submissionId, text: bubbleOverride ?? rawText, attachments,
+              ...(bubbleOverride && { displayText: bubbleOverride, frozenTransport: transportRaw })
+            })
+            dropOptimistic(sessionId)
+            releaseBusy()
+            return Boolean(queued)
+          }
+          if (route.route === 'forward' && (attachments.length || options?.surface || options?.voiceTurn || options?.displayKind || $hudMode.get())) {
+            throw new ForwardBeforeSend('HOLD · FORWARD принимает только обычный текст.')
+          }
+          forward = route
+        }
         // Attach runs BEFORE prompt.submit, so a stale runtime id fails there
         // first and submit's own recovery never runs — that asymmetry is why
         // plain text survived sleep/wake but images reported "session not
@@ -1051,6 +1234,7 @@ export function useSubmitPrompt(deps: SubmitPromptDeps) {
         // `string | null` sessionId binding for prompt.submit.
         const liveSessionId = attachResult.sessionId
 
+        if (forward && liveSessionId !== sessionId) throw new ForwardBeforeSend()
         sessionId = liveSessionId
 
         const attachmentsDrift = sessionDriftReason()
@@ -1104,11 +1288,13 @@ export function useSubmitPrompt(deps: SubmitPromptDeps) {
           // the next turn untouched — without it, losing the settle race
           // (client saw idle, server still unwinding) redirects or interrupts
           // the live turn with text the user explicitly queued.
-          ...((options?.fromQueue || queueAdmission) && { queued: true }),
+          ...((options?.fromQueue || (queueAdmission && serverQueue)) && { queued: true }),
           ...(titlePreview && { title_preview: titlePreview })
         })
 
         const prepared: NonNullable<typeof retained> = retained ?? {
+          ...(destination.nativeLocal && { nativeLocal: true }),
+          ...(destination.taskTransport && { taskTransport: destination.taskTransport }),
           id: submissionId,
           owner: destination.owner ?? sameAuthorityPublishedOwner(destination, targetStoredSessionId, ambientRequestGateway),
           displayText: options?.displayText,
@@ -1117,10 +1303,16 @@ export function useSubmitPrompt(deps: SubmitPromptDeps) {
           params: submitParams(liveSessionId)
         }
 
+        if (forward) {
+          prepared.profileId = forward.ref.profile_id
+          if (forward.route === 'forward') prepared.forwardSessionId = forward.ref.session_id
+          if (forward.mode === 'personal') prepared.personalForward = true
+        }
         const retryKey = retainedKey ?? (await preparedSubmissionSlot(retryKeyForTarget()))
         await writePreparedSubmission(retryKey, prepared)
 
         if (sessionDriftReason()) {
+          if (forward) await removePreparedSubmission(retryKey, prepared.id)
           return abortForSessionSwitch(liveSessionId)
         }
 
@@ -1143,8 +1335,27 @@ export function useSubmitPrompt(deps: SubmitPromptDeps) {
           // A bot's chat is a tile scoped to the `bots` workspace; the primary chat is Sessions mode.
           noteMessageSent($sessionTiles.get().find(tile => tile.runtimeId === sessionId)?.workspaceMode ?? 'sessions')
 
-          const { result, sessionId: receiptSessionId } = await withSessionNotFoundResume<SubmitReceipt>(
-            sessionId,
+          const sendLegacy = async (params: Record<string, unknown>) => {
+            if (prepared.legacyAttempted) throw new Error('Legacy submission acknowledgement is unknown')
+            prepared.legacyAttempted = true
+            await writePreparedSubmission(retryKey, prepared)
+            const { submission_id: _id, ...legacyParams } = params
+            const result = await requestGateway<SubmitReceipt>('prompt.submit', legacyParams, PROMPT_SUBMIT_REQUEST_TIMEOUT_MS)
+              .catch(error => {
+                if (error instanceof ForwardBeforeSend) throw error
+                if (destination.taskTransport === 'ssh') throw new Error('UNKNOWN · Приём сообщения Hermes не подтверждён.')
+                throw error
+              })
+            if (destination.taskTransport === 'ssh' && !isVoiceStoppedReceipt(result)
+                && !['streaming', 'queued', 'steered', 'redirected'].includes(result?.status ?? '')) {
+              throw new Error('UNKNOWN · Приём сообщения Hermes не подтверждён.')
+            }
+            legacyAccepted = true
+            return result
+          }
+
+          const submitText = () => withSessionNotFoundResume<SubmitReceipt>(
+            liveSessionId,
             recoverStoredSessionId,
             liveId =>
               withSessionBusyRetry(async () => {
@@ -1174,19 +1385,7 @@ export function useSubmitPrompt(deps: SubmitPromptDeps) {
                     throw error
                   }
 
-                  prepared.legacyAttempted = true
-                  await writePreparedSubmission(retryKey, prepared)
-                  const { submission_id: _id, ...legacyParams } = params
-
-                  const result = await requestGateway<SubmitReceipt>(
-                    'prompt.submit',
-                    legacyParams,
-                    PROMPT_SUBMIT_REQUEST_TIMEOUT_MS
-                  )
-
-                  legacyAccepted = true
-
-                  return result
+                  return sendLegacy(params)
                 }
               }),
             {
@@ -1216,6 +1415,34 @@ export function useSubmitPrompt(deps: SubmitPromptDeps) {
             // instead of erroring out and losing the session binding.
             { alsoTimeout: true }
           )
+
+          if (options?.fromQueue && options.storedSessionId && (destination.nativeLocal || destination.taskTransport)) {
+            markQueuedSubmissionAttempted(options.storedSessionId, submissionId)
+          }
+          options?.onAdmissionPhase?.('attempted')
+          const sendProbed = async (route: ForwardRoute): Promise<{ result: SubmitReceipt; sessionId: string }> => {
+            const binding = { route, current: () => sshViewCurrent() && !sessionDriftReason() }
+            if (route.mode === 'personal') {
+              if (!binding.current()) throw new ForwardBeforeSend()
+              const verdict = await requestSymphonyOperator(destination, route.ref.session_id, { action: 'submit', submissionId, text })
+              if (!binding.current()) throw new Error('UNKNOWN · Разговор изменился до получения ответа.')
+              if (verdict.state === 'HOLD') throw new ForwardBeforeSend('HOLD · Персональный маршрут Symphony недоступен. Текст сохранён.')
+              if (verdict.state !== 'ADMITTED') throw new Error('UNKNOWN · Персональная квитанция не подтверждена.')
+              return { result: verdict.receipt, sessionId: liveSessionId }
+            }
+            if (route.route === 'ordinary') {
+              const result = await sendLegacy({ ...prepared.params, [probedRoute]: binding })
+              if (!binding.current()) throw new Error('UNKNOWN · Разговор изменился до получения ответа.')
+              return { result, sessionId: liveSessionId }
+            }
+            const result = await sendForwardInput(requestGateway, binding, liveSessionId, submissionId, text,
+              PROMPT_SUBMIT_REQUEST_TIMEOUT_MS)
+            return { result, sessionId: liveSessionId }
+          }
+          const { result, sessionId: receiptSessionId } = forward ? await sendProbed(forward)
+            : prepared.params.voice_turn || prepared.nativeLocal || destination.nativeLocal || prepared.taskTransport || destination.taskTransport
+            ? await submitWithReceiptLookup(requestGateway, prepared, liveSessionId, Boolean(retained), destination.taskTransport)
+            : await submitText()
 
           // Validate the admission receipt and bind it to the optimistic bubble.
           // Returns false when the receipt is not this send's admission.
@@ -1316,8 +1543,22 @@ export function useSubmitPrompt(deps: SubmitPromptDeps) {
             return false
           }
 
+          if (destination.taskTransport === 'ssh' && !isVoiceStoppedReceipt(result)) {
+            if (forward?.mode === 'personal') showSymphonyOperatorNotice(`Квитанция ${result.admission_id} · ${result.status}`)
+            else displayAdmission(updateSessionState, receiptSessionId, targetStoredSessionId, submissionId,
+              legacyAccepted ? undefined : result.admission_id)
+          }
+
           acceptedRuntimeSessionId = receiptSessionId
         } catch (firstErr) {
+          if (firstErr instanceof ForwardConflict) {
+            prepared.forwardConflict = true
+            await writePreparedSubmission(retryKey, prepared)
+          }
+          if (firstErr instanceof ForwardBeforeSend) {
+            options?.onAdmissionPhase?.('preparing')
+            await removePreparedSubmission(retryKey, prepared.id)
+          }
           if (firstErr instanceof SessionRecoveryAborted) {
             console.warn('[submit-drift-abort]', firstErr.reason, { phase: 'post-resume-retry' })
 
@@ -1360,6 +1601,7 @@ export function useSubmitPrompt(deps: SubmitPromptDeps) {
 
         return true
       } catch (err) {
+        if (err instanceof ForwardBeforeSend || err instanceof ForwardConflict) dropOptimistic(sessionId)
         releaseBusy()
 
         unstageRefusedImages(err, usingComposerAttachments, scope, attachments)
@@ -1378,6 +1620,8 @@ export function useSubmitPrompt(deps: SubmitPromptDeps) {
         }
 
         const message = inlineErrorMessage(err, copy.promptFailed)
+        const showForwardOutcome = destination.taskTransport === 'ssh' &&
+          (err instanceof ForwardConflict || err instanceof ForwardBeforeSend || message.startsWith('UNKNOWN ·'))
         const occurredAt = Date.now() / 1000
 
         updateSessionState(
@@ -1389,7 +1633,7 @@ export function useSubmitPrompt(deps: SubmitPromptDeps) {
               {
                 id: `assistant-error-${Date.now()}`,
                 role: 'assistant',
-                parts: [],
+                parts: showForwardOutcome ? [textPart(message)] : [],
                 error: message || copy.promptFailed,
                 ...ownershipErrorSurface(err),
                 branchGroupId: state.pendingBranchGroup ?? undefined,

@@ -211,7 +211,7 @@ class DenyEntries:
 
     def __init__(self, api, journal):
         self.api, self.journal = api, Path(journal)
-        self.state = json.loads(self.journal.read_text(encoding='utf-8')) if self.journal.exists() else {}
+        self.state = json.loads(self.journal.read_text(encoding='utf-8-sig')) if self.journal.exists() else {}
 
     def _save(self):
         temporary = self.journal.with_suffix('.tmp')

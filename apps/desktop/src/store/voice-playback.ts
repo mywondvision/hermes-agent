@@ -22,3 +22,16 @@ export const $voicePlayback = atom<VoicePlaybackState>({
 export function setVoicePlaybackState(next: VoicePlaybackState) {
   $voicePlayback.set(next)
 }
+
+// A remote audio track may speak at any time while attached, including during local dictation.
+const liveOutputs = new Set<HTMLAudioElement>()
+export const $liveVoiceOutput = atom(false)
+
+export function setLiveVoiceOutput(element: HTMLAudioElement, attached: boolean) {
+  if (attached) {
+    liveOutputs.add(element)
+  } else {
+    liveOutputs.delete(element)
+  }
+  $liveVoiceOutput.set(liveOutputs.size > 0)
+}

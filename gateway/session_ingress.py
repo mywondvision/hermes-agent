@@ -14,8 +14,12 @@ logger = logging.getLogger(__name__)
 
 admission_author = ContextVar('admission_author', default=None)
 executing_admission = ContextVar('executing_admission', default=False)
+# A restored native envelope retains the adapter's sender. Other admissions inherit the
+# conversation source, which cannot by itself authorize an operator command.
+adapter_admission = ContextVar('adapter_admission', default=False)
 # The live session while the executing turn is one its viewer submitted (``is_viewer_input``), else None.
 viewer_turn: ContextVar = ContextVar('viewer_turn', default=None)
+viewer_admission_id: ContextVar = ContextVar('viewer_admission_id', default=None)
 # Set by a busy-path caller that must be released once its input is durably queued.
 busy_acceptance = ContextVar('busy_acceptance', default=None)
 # Set beside it by a caller that must also know when the row is durably committed (a busy burst's
@@ -253,7 +257,8 @@ async def execute_admission(authority, ref, row):
     else:
         from gateway.session_ingress_media import restore_attachments
         event = MessageEvent(text=row['payload']['text'], source=live.source,
-                             message_id=row['admission_id'], **restore_attachments(row['payload']))
+                             message_id=row['admission_id'], allow_gateway_control='shared_forward_v1' not in row['payload'],
+                             **restore_attachments(row['payload']))
         if 'local_automation_v1' in row['payload']:
             from gateway.session_automation import restore_local_automation
             event = restore_local_automation(authority, ref, row)
@@ -279,10 +284,12 @@ async def execute_admission(authority, ref, row):
     author_token = admission_author.set(author if author is not None else row_turn_author(local_policy, row))
     from gateway.session_operator import is_viewer_input
     viewer_token = viewer_turn.set(live if is_viewer_input(row) else None)
+    input_token = viewer_admission_id.set(row['admission_id'] if viewer_turn.get() is not None else None)
     api_token = api_execution.set(None)
     captured = {}
     result_token = execution_result.set(captured)
     token = executing_admission.set(True)
+    adapter_token = adapter_admission.set('native_text_v1' in row['payload'])
     # This drain, not the handler's unwind, releases the turn's crash marker (see below).
     event._turn_marker_handoff = True
     handed = False
@@ -336,10 +343,12 @@ async def execute_admission(authority, ref, row):
         if not handed:
             await _release_turn_marker(authority, event)
         executing_admission.reset(token)
+        adapter_admission.reset(adapter_token)
         execution_result.reset(result_token)
         api_execution.reset(api_token)
         admission_author.reset(author_token)
         viewer_turn.reset(viewer_token)
+        viewer_admission_id.reset(input_token)
 
 
 def _launch_body_if_launch_owner(authority):

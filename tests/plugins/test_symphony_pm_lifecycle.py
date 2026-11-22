@@ -62,8 +62,13 @@ def test_recovery_never_creates_receiver_or_restores_spent_slot(tmp_path):
     first.owner.close(0)
     recovered = rig(tmp_path, incarnation='incarnation-2', predecessor_dead=True)
     try:
+        assert recovered.owner.status(binding)[0] == 'UNKNOWN'
         result = recovered.owner.cancel_internal(binding, 'TIMEOUT')
         assert result.state == 'UNKNOWN' and recovered.native.created == []
+        recovered.observer.stopped = True
+        assert recovered.owner.status(binding)[0] == 'LOCAL_STOPPED_HOLD'
+        observed = recovered.owner.cancel_internal(binding, 'TIMEOUT')
+        assert observed.local_stopped and not observed.dispatched and recovered.native.created == []
         row = recovered.owner.journal.effect(recovered.owner.token, binding)
         assert row['dispatch_epoch'] == 1 and row['state'] == 'CANCEL_REQUESTED'
     finally:

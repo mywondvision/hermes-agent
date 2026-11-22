@@ -1,7 +1,7 @@
 """Explicit assembly of the Codex client transport. Never registered automatically.
 
-Same owner, observer, journal and permits as `windows_transport`; only the native provider and the
-launcher differ. Constructing the declaration checks the qualification and starts nothing.
+The client observer accounts for MXC members via the owned Job. The worker transport retains its
+per-process observer. Constructing the declaration checks the qualification and starts nothing.
 """
 from dataclasses import dataclass
 from pathlib import Path
@@ -12,7 +12,7 @@ from .bootstrap import TransportBootstrap
 from .codex_client import CodexClientProvider
 from .codex_exec_launcher import CodexExecLauncher
 from .types import Refused, digest
-from .windows_observer import WindowsQueryObserver
+from .windows_client_observer import WindowsClientJobObserver
 from .windows_ownership import WindowsOwnershipGuard
 
 
@@ -32,7 +32,7 @@ class CodexClientFactory:
 
 
 def codex_exec_transport(*, profile_home, namespace, launcher, approval_transport, scheduler_id, controller,
-                         trusted_issuers):
+                         trusted_issuers, migrate_v1=False):
     """The host supplies a qualified launcher and an exact approval source; any mismatch refuses."""
     if type(launcher) is not CodexExecLauncher:
         raise Refused('CODEX_QUALIFICATION_RECORD')
@@ -43,5 +43,5 @@ def codex_exec_transport(*, profile_home, namespace, launcher, approval_transpor
         raise Refused('QUALIFICATION_BINDING')
     q.verify_executable()
     q.verify_config()
-    return TransportBootstrap(WindowsOwnershipGuard, WindowsQueryObserver, CodexClientFactory(home, namespace, launcher),
-                              launcher, approval_transport, scheduler_id, controller, tuple(trusted_issuers))
+    return TransportBootstrap(WindowsOwnershipGuard, WindowsClientJobObserver, CodexClientFactory(home, namespace, launcher),
+                              launcher, approval_transport, scheduler_id, controller, tuple(trusted_issuers), migrate_v1)

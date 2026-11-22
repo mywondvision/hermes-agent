@@ -7,6 +7,7 @@ import { resetBrowseState } from '@/store/composer-input-history'
 import {
   $parkedQueueSessions,
   $queuedPromptsBySession,
+  getQueuedPrompts,
   MAX_AUTO_DRAIN_ATTEMPTS,
   noteQueuedPromptDrainFailure,
   type QueuedPromptEntry,
@@ -136,7 +137,8 @@ export function useBackgroundQueueDrain({
           const listIncomplete =
             $sessionsLoadError.get() || Object.values($sessionProfilesTruncated.get()).some(Boolean)
 
-          if (!sessionKnown && !listIncomplete) {
+          const outstanding = getQueuedPrompts(sessionKey).find(row => row.id === entry.id)
+          if (!sessionKnown && !listIncomplete && !outstanding?.restoredSubmission) {
             removeQueuedPrompt(sessionKey, entry.id)
             notify({
               id: `composer-background-queue-stuck-${sessionKey}`,
@@ -196,6 +198,7 @@ export function useBackgroundQueueDrain({
             ...(resolved.displayText ? { displayText: resolved.displayText } : {}),
             fromQueue: true,
             submission_id: queuedSubmissionId(liveEntry),
+            ...(liveEntry.restoredSubmission && { restoredSubmission: true }),
             sessionId: runtimeSessionId,
             storedSessionId: sessionKey
           })

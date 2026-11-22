@@ -795,6 +795,11 @@ export function visibleUserIndexAtOrdinal(messages: readonly ChatMessage[], targ
 }
 
 export interface SubmitTextOptions {
+  /** Apply the existing local queue policy only after the SSH probe confirms ordinary chat. */
+  ordinaryBusyPolicy?: 'queue' | 'pending'
+  /** The restored composer outbox names an earlier send, even if its prepared payload was lost. */
+  restoredSubmission?: boolean
+  onAdmissionPhase?: (phase: 'preparing' | 'attempted') => void
   /** Original slash invocation: retries must not re-expand a prepared prompt. */
   retryText?: string
   /** Captured by slash dispatch before asynchronous expansion. */

@@ -8,19 +8,17 @@ ticket's single native create, through the lifecycle owner's runner. The probe i
 model as well, but only observed: a model may decline it, and that does not stop the run.
 
 The result is data for the owner: the patch the attempt produced, its SHA-256 and the outcome of
-an owner-side check in a separate copy (apply, then the host's commands, including tests that need
-Git, which cannot run inside the sandbox). Nothing is applied to the repository. Once a ticket has
+an owner-side check in a separate copy under its own MXC profile. Git-dependent tests are deferred
+until the owner's CR-8 decision. Nothing is applied to the repository. Once a ticket has
 a native binding this launcher returns a result instead of raising, so the outcome reaches the
 journal even when the run, capture or check failed.
 """
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, replace
 import hashlib
 import json
 import os
 from pathlib import Path
-import shutil
-import socket
 import subprocess
 import threading
 from types import MappingProxyType
@@ -28,49 +26,18 @@ from types import MappingProxyType
 from hermes_cli.plugin_request_binding import canonical_home
 from hermes_dir_acl import make_user_dir
 from hermes_platform.resolver import locate_command
+from plugins.symphony_pm.contracts import LaunchExpired
 from . import attempt_workspace as ws
+from .codex_exec_check import capture_result, clean_artifacts
+from .codex_exec_probe import PROBE, _loopback, _ProbeWatch, precheck, probe_ok
 from .qualification import _open_denying_writers, environment_digest
-from .types import Refused, binding_from_json, digest, finite, identifier, sha
+from .recapture import LegacyArchive, archive_path, attempt_data, directory_identity, recapture
+from .types import Refused, binding_from_json, finite, identifier, sha
 from .windows_receiver import require_plain_environment
 
 #: The plan's model and effort when both come from the qualified `config.toml`, not from flags.
 CONFIG_SELECTED = 'codex-config'
 ACTIVE = 'active'
-
-PROBE = r'''
-import json, os, socket, sys
-from pathlib import Path
-mode, report, auth, home, outside, port = sys.argv[1:7]
-out = {'mode': mode, 'steps': []}
-def step(name, action):
-    record = {'name': name}
-    try:
-        record.update(action() or {}); record.setdefault('ok', True)
-    except OSError as exc:
-        record.update(ok=False, errno=exc.errno, winerror=getattr(exc, 'winerror', None))
-    except Exception as exc:
-        record.update(ok=False, exception=type(exc).__name__)
-    out['steps'].append(record)
-def opened(path, mode='rb'):
-    with open(path, mode):
-        pass
-def env():
-    names = sorted(os.environ)
-    suspicious = sorted(n for n, v in os.environ.items() if v.startswith(('eyJ', 'sk-')))
-    return {'secret_like_names': [n for n in names if any(w in n.upper() for w in ('KEY', 'TOKEN', 'SECRET', 'AUTH', 'PASS'))],
-            'suspicious_values': suspicious}
-def connect():
-    with socket.create_connection(('127.0.0.1', int(port)), timeout=5):
-        pass
-step('env', env)
-step('read-auth', lambda: opened(auth))
-step('list-codex-home', lambda: {'count': len(os.listdir(home))})
-step('read-outside', lambda: opened(Path(outside)/'canary.txt'))
-step('write-outside', lambda: opened(Path(outside)/'probe-write.txt', 'ab'))
-step('loopback', connect)
-Path(report).write_text(json.dumps(out), encoding='utf-8')
-print('PROBE_DONE', mode)
-'''
 
 PREAMBLE = r'''
 You are working in a copy of the hermes-agent repository at a fixed commit, without .git. Network is disabled for
@@ -80,25 +47,14 @@ STEP 1 (first, if you are willing): run this read-only boundary check of your ow
 {probe}
 Then continue.
 
-STEP 2, the task below. Tests that call git cannot run inside this sandbox; the owner runs them afterwards in a
-separate copy, so do not try to work around that. Keep the existing style (short docstrings that explain why, no
+STEP 2, the task below. The owner defers tests that call git until the CR-8 decision.
+Keep the existing style (short docstrings that explain why, no
 defensive clutter). Finish with a short summary of the change and the final test result.
 
 --- task ---
 {goal}
 --- end of task ---
 '''
-
-_DENIED = ('read-auth', 'list-codex-home', 'read-outside', 'write-outside', 'loopback')
-
-
-def probe_ok(report):
-    """Every outside access refused and no secret-looking variable visible to sandboxed commands."""
-    steps = {s.get('name'): s for s in report.get('steps', ())}
-    env = steps.get('env') or {}
-    return (env.get('ok') is True and not env.get('secret_like_names') and not env.get('suspicious_values')
-            and all(steps.get(name, {}).get('ok') is False for name in _DENIED))
-
 
 #: What the client takes from the owner's environment. A name filter alone let a webhook URL through
 #: in the first native run (`*_WEBHOOK`): a credential need not be named like one, so this is an allow-list.
@@ -131,6 +87,16 @@ def file_sha256(path):
 
 
 @dataclass(frozen=True)
+class ClientJobCoverage:
+    """Owning host's attestation of MXC membership in this client's Job on the measured stand."""
+    host_id: str
+    executable_sha256: str
+    config_sha256: str
+    permission_profile: str
+    evidence_sha256: str
+
+
+@dataclass(frozen=True)
 class CodexExecQualification:
     """The Codex client build, its home and profile, the client environment and the issuers that were qualified.
 
@@ -148,6 +114,7 @@ class CodexExecQualification:
     environment_ref: str
     environment_sha256: str
     issuer_refs: tuple
+    job_coverage: ClientJobCoverage | None = None
 
     def validate(self):
         if (type(self.profile_home) is not str or not Path(self.profile_home).is_absolute()
@@ -185,7 +152,7 @@ class CodexExecQualification:
 
 @dataclass(frozen=True)
 class AttemptSettings:
-    """Host paths and the owner-side check. `checks(paths)` returns (name, argv) pairs run in the check copy.
+    """Host paths and the owner-issued check plan. `checks(paths)` returns CheckCommand objects for MXC.
 
     `command_prefix` sits between the executable and Codex's arguments; only a test's stand-in
     client (an interpreter plus a script) sets it.
@@ -199,6 +166,8 @@ class AttemptSettings:
     exec_timeout: float = 40*60
     precheck_timeout: float = 180
     check_timeout: float = 1200
+    legacy_archive: LegacyArchive | None = None
+    owner_check: object = None
 
     def validate(self):
         if (not all(type(v) is str and Path(v).is_absolute() for v in (
@@ -211,76 +180,6 @@ class AttemptSettings:
     @property
     def active(self):
         return Path(self.attempts_root)/ACTIVE
-
-
-def clean_artifacts(src):
-    """Interpreter, pytest and PowerShell caches are by-products of running things, never part of a patch."""
-    removed = []
-    stray = src/'Microsoft'/'Windows'/'PowerShell'
-    if stray.is_dir():
-        shutil.rmtree(stray)
-        removed.append('Microsoft/Windows/PowerShell')
-        for parent in (src/'Microsoft'/'Windows', src/'Microsoft'):
-            if parent.is_dir() and not any(parent.iterdir()):
-                parent.rmdir()
-    for name in ('__pycache__', '.pytest_cache'):
-        for path in sorted(src.rglob(name), reverse=True):
-            if path.is_dir() and not path.is_symlink():
-                shutil.rmtree(path)
-                removed.append(path.relative_to(src).as_posix())
-    return removed
-
-
-@contextmanager
-def _loopback():
-    """A listening loopback port the probe must fail to reach; the backlog completes a connect without accept."""
-    listener = socket.socket()
-    try:
-        listener.bind(('127.0.0.1', 0))
-        listener.listen(4)
-        yield listener.getsockname()[1]
-    finally:
-        listener.close()
-
-
-class _ProbeWatch:
-    """Observes the in-exec probe report while the model runs; a found access stops the attempt."""
-
-    def __init__(self, report, stop_attempt):
-        self.report, self.stop_attempt = report, stop_attempt
-        self.verdict, self.stop_outcome = None, None
-        self.done = threading.Event()
-        self.thread = threading.Thread(target=self._run, name='symphony-probe-watch', daemon=True)
-
-    def _read(self):
-        try:
-            return json.loads(self.report.read_text(encoding='utf-8'))
-        except (OSError, ValueError):
-            return None
-
-    def _judge(self, running=True):
-        data = self._read()
-        if data is None:
-            return False
-        self.verdict = 'PROBE_OK' if probe_ok(data) else 'PROBE_VIOLATION'
-        if self.verdict == 'PROBE_VIOLATION' and running:
-            try:
-                self.stop_outcome = self.stop_attempt()
-            except Exception as exc:  # health: allow BLE001 -- recorded; the time limit still bounds the run
-                self.stop_outcome = 'STOP_FAILED:'+type(exc).__name__
-        return True
-
-    def _run(self):
-        while not self.done.wait(2):
-            if self._judge():
-                return
-
-    def finish(self):
-        self.done.set()
-        self.thread.join(10)
-        if self.verdict is None:
-            self._judge(running=False)  # the run is over; a late report is evidence, not a stop
-        return self.verdict or 'PROBE_NOT_RUN'
 
 
 class CodexExecLauncher:
@@ -299,10 +198,59 @@ class CodexExecLauncher:
         self.environment, self.sanitize = environment, sanitize
         self.lock, self.commands = threading.RLock(), {}
 
+    def job_coverage_for(self, guard):
+        q = self.qualification
+        evidence = q.job_coverage
+        return bool(type(evidence) is ClientJobCoverage and sha(evidence.evidence_sha256, 64)
+                    and evidence.host_id and evidence.host_id == getattr(guard, 'recovery_host_id', None)
+                    and (evidence.executable_sha256, evidence.config_sha256, evidence.permission_profile) ==
+                        (q.executable_sha256, q.config_sha256, q.permission_profile))
+
     def validate_call(self, ticket, argv, cwd, timeout, stdin_text):
         with self.lock:
             if self.commands.get(ticket.attempt) != (ticket, tuple(argv), str(Path(cwd).resolve()), timeout, stdin_text):
                 raise Refused('QUALIFIED_DRIVER_CALL_REQUIRED')
+
+    def typed_plan(self):
+        from .owner_check_profile import check_plan_fingerprint
+        from .types import digest
+        import tomllib
+        q, s = self.qualification, self.settings
+        config = (Path(q.codex_home)/'config.toml').read_bytes()
+        if hashlib.sha256(config).hexdigest() != q.config_sha256:
+            raise Refused('CODEX_CONFIG_CHANGED')
+        settings = tomllib.loads(config.decode('utf-8'))
+        if 'profile' in settings:
+            profile = settings.get('profiles', {}).get(settings['profile'])
+            if not isinstance(profile, dict):
+                raise Refused('EXACT_EXECUTOR_SELECTION_REQUIRED')
+            settings = dict(settings, **profile)
+        selected = (settings.get('model'), settings.get('model_reasoning_effort'))
+        if not all(isinstance(value, str) and value.strip() for value in selected):
+            raise Refused('EXACT_EXECUTOR_SELECTION_REQUIRED')
+        checks = tuple(s.checks(()))
+        return dict(repository=str(Path(s.repository).resolve()), workspace=str(s.active/'src'),
+                    model=CONFIG_SELECTED, effort=CONFIG_SELECTED, environment_ref=q.environment_ref,
+                    configured_model=selected[0], configured_effort=selected[1],
+                    executor_sha256=q.executable_sha256, config_sha256=q.config_sha256, qualification_sha256=digest(asdict(q)),
+                    checks=[asdict(c) for c in checks], check_policy_sha256=check_plan_fingerprint(s.owner_check, checks),
+                    exec_timeout=s.exec_timeout, precheck_timeout=s.precheck_timeout, check_timeout=s.check_timeout)
+
+    def _typed_settings(self, ticket):
+        s = self.settings
+        if not getattr(ticket.plan, 'typed_details', ''):
+            return s
+        from .owner_check_profile import check_plan_fingerprint
+        reviewed = json.loads(ticket.plan.typed_details)
+        current = json.loads(json.dumps(self.typed_plan()))
+        if any(reviewed.get(k) != v for k, v in current.items()):
+            raise Refused('TYPED_EXECUTOR_CHANGED')
+        def checks(paths):
+            commands = tuple(s.checks(paths))
+            if check_plan_fingerprint(s.owner_check, commands) != reviewed['check_policy_sha256']:
+                raise Refused('TYPED_CHECK_PLAN_CHANGED')
+            return commands
+        return replace(s, checks=checks)
 
     def _bind(self, ticket, runner):
         q, plan = self.qualification, ticket.plan
@@ -328,16 +276,19 @@ class CodexExecLauncher:
             raise Refused('ATTEMPT_ACTIVE_EXISTS') from exc
         try:
             return self._attempt(git, ticket, request, runner, active)
-        finally:
-            if active.exists():
+        except BaseException:
+            # Before a create intent the workspace is ours alone. After that cut the journal
+            # and a proven local stop govern recovery, including failures during capture.
+            _, row = runner.owner.journal.read_launch(runner.token, ticket.project, ticket.job, ticket.revision)
+            if row['state'] in ('LAUNCH_INTENT', 'NOT_STARTED'):
                 self._settle(active, ticket.attempt)
+            raise
 
     def _attempt(self, git, ticket, request, runner, active):
-        q, s = self.qualification, self.settings
-        # A short name keeps the shadow Git directory and the check copy inside path limits.
-        data = (Path(q.profile_home)/'plugin-data'/'symphony_pm'/digest(q.namespace)[:32]/'attempts'
-                / digest(ticket.attempt)[:12])
+        q, s = self.qualification, self._typed_settings(ticket)
+        data = attempt_data(q, ticket)
         make_user_dir(data, mode=0o700, parents=True, exist_ok=False)
+        (data/'workspace-id.json').write_text(json.dumps(directory_identity(active)), encoding='utf-8')
         workspace = ws.Workspace(ticket.attempt, active)
         for directory in (workspace.src, workspace.temp, active/'probe', data/'outside'):
             directory.mkdir()
@@ -353,45 +304,48 @@ class CodexExecLauncher:
                 return [s.probe_python, '-I', '-B', str(active/'probe'/'probe.py'), mode,
                         str(active/(mode+'-report.json')), str(Path(q.codex_home)/'auth.json'), q.codex_home,
                         str(data/'outside'), str(port)]
-            record['precheck'] = self._precheck(runner.owner.native, data, workspace, probe('precheck'))
+            record['precheck'] = precheck(q, s, runner.owner.native, data, workspace, probe('precheck'))
             if record['precheck']['verdict'] != 'PROBE_OK':
                 self._write(data, record)
                 raise Refused('CODEX_PRECHECK_REFUSED')
             (active/'precheck-report.json').unlink()
-            prompt = PREAMBLE.format(probe=subprocess.list2cmdline(probe('inexec')), goal=request.goal)
-            record.update(self._exec(ticket, runner, data, workspace, prompt))
-        if record['stop'] is None:
-            record.update(self._capture(git, capture, workspace, data, ticket.plan.source_sha))
-        record['workspace'] = self._settle(active, ticket.attempt)
+            task = request.goal
+            if getattr(ticket.plan, 'typed_details', ''):
+                task = json.dumps({'goal': task, 'raw_constraints': list(request.raw_constraints)}, ensure_ascii=False)
+            prompt = PREAMBLE.format(probe=subprocess.list2cmdline(probe('inexec')), goal=task)
+            try:
+                record.update(self._exec(ticket, runner, data, workspace, prompt))
+            except LaunchExpired:
+                raise
+            except BaseException:
+                runner.owner.finish_client_job(runner.token, ticket)
+                raise
+            else:
+                stopped, causes = runner.owner.finish_client_job(runner.token, ticket)
+        if 'PM_CANCEL' in causes and record['stop'] is None:
+            record['stop'] = 'PM_CANCEL'
+        if stopped:
+            try:
+                record.update(capture_result(s, git, capture, workspace, data, ticket.plan.source_sha,
+                                             verify=record['stop'] is None and record['exit_code'] == 0))
+            except Exception as exc:  # health: allow BLE001 -- capture failure is an observation after proven stop
+                record['patch'] = {'refused': 'CAPTURE_FAILED:'+type(exc).__name__}
+            record['workspace'] = self._settle(active, ticket.attempt)
+        else:
+            record['workspace'] = {'path': str(active), 'renamed': False}
         self._write(data, record)
         return record
 
-    def _precheck(self, native, data, workspace, command):
-        q, s = self.qualification, self.settings
-        argv = [q.executable, *s.command_prefix, 'sandbox', '-C', str(workspace.src), '-P', q.permission_profile,
-                '--', *command]
-        names = ('precheck.in', 'precheck.out', 'precheck.err')
-        (data/names[0]).write_bytes(b'')
-        streams = [(data/names[0]).open('rb'), (data/names[1]).open('w+b'), (data/names[2]).open('w+b')]
-        try:
-            with q.held_executable():
-                exit_code, timed_out = native.run_unbound(argv, workspace.src, s.precheck_timeout, streams)
-        finally:
-            for stream in streams:
-                stream.close()
-        report = workspace.path/'precheck-report.json'
-        try:
-            data_report = json.loads(report.read_text(encoding='utf-8'))
-        except (OSError, ValueError):
-            data_report = None
-        verdict = 'PROBE_NOT_RUN' if data_report is None else 'PROBE_OK' if probe_ok(data_report) else 'PROBE_VIOLATION'
-        return {'exit_code': exit_code, 'timed_out': timed_out, 'verdict': verdict, 'report': data_report}
-
     def _exec(self, ticket, runner, data, workspace, prompt):
         q, s = self.qualification, self.settings
+        selection = ()
+        if getattr(ticket.plan, 'typed_details', ''):
+            reviewed = json.loads(ticket.plan.typed_details)
+            selection = ('-c', 'model=' + json.dumps(reviewed['configured_model'], ensure_ascii=False),
+                         '-c', 'model_reasoning_effort=' + json.dumps(reviewed['configured_effort'], ensure_ascii=False))
         argv = (q.executable, *s.command_prefix, 'exec', '--skip-git-repo-check', '--ephemeral', '--json',
                 '--strict-config', '-o', str(data/'last-message.txt'), '-C', str(workspace.src),
-                '-c', f'default_permissions="{q.permission_profile}"', '-')
+                '-c', f'default_permissions="{q.permission_profile}"', *selection, '-')
         cwd = str(workspace.src)
         with self.lock:
             if ticket.attempt in self.commands:
@@ -403,6 +357,8 @@ class CodexExecLauncher:
         try:
             with q.held_executable():
                 outcome = runner(list(argv), cwd=cwd, timeout=s.exec_timeout, stdin_text=prompt)
+        except LaunchExpired:
+            raise
         except Refused as exc:
             stop = str(exc)
         except Exception as exc:  # health: allow BLE001 -- a bound run's outcome must still reach the journal
@@ -439,45 +395,39 @@ class CodexExecLauncher:
         binding = binding_from_json(json.loads(row['binding']))
         return owner.cancel_internal(binding, 'EMERGENCY_CLEANUP', detail='PROBE_VIOLATION').state
 
-    def _capture(self, git, capture, workspace, data, source_sha):
-        cleaned = clean_artifacts(workspace.src)
-        try:
-            result = capture.result()
-        except Refused as exc:
-            return {'cleaned': cleaned, 'patch': {'refused': str(exc)}}
-        patch = {'path': str(result.patch), 'sha256': result.sha256, 'paths': list(result.paths)}
-        if not result.paths:
-            return {'cleaned': cleaned, 'patch': patch, 'check': None}
-        return {'cleaned': cleaned, 'patch': patch, 'check': self._check(git, data, result, source_sha)}
-
-    def _check(self, git, data, result, source_sha):
-        """Apply to a fresh copy of the commit and run the host's commands there; the attempt copy is not reused."""
-        s = self.settings
-        copy = data/'check'
-        copy.mkdir()
-        ws.export(git, s.repository, source_sha, copy)
-        environment = ws._clean_environment(GIT_CEILING_DIRECTORIES=str(data))
-        applied = subprocess.run([git, 'apply', '--binary', str(result.patch)], cwd=copy, capture_output=True,
-                                 env=environment, timeout=ws.GIT_TIMEOUT, check=False)
-        outcome = {'apply': applied.returncode, 'commands': {}}
-        if applied.returncode == 0:
-            for name, argv in s.checks(tuple(result.paths)):
-                done = subprocess.run(list(argv), cwd=copy, capture_output=True, timeout=s.check_timeout,
-                                      env=dict(s.check_environment), check=False)
-                log = data/f'check-{name}.log'
-                log.write_bytes(done.stdout+b'\n--- stderr ---\n'+done.stderr)
-                outcome['commands'][name] = done.returncode
-        outcome['ok'] = applied.returncode == 0 and all(code == 0 for code in outcome['commands'].values())
-        return outcome
-
     def _settle(self, active, attempt):
         """Keep the attempt under its own name; while something still holds it, it stays `active`."""
-        target = Path(self.settings.attempts_root)/attempt
+        target = archive_path(self.settings.attempts_root, attempt)
         try:
             active.rename(target)
         except OSError:
             return {'path': str(active), 'renamed': False}
         return {'path': str(target), 'renamed': True}
+
+    def workspace_clear(self):
+        try:
+            self.settings.active.lstat()
+        except FileNotFoundError:
+            return True
+        except OSError:
+            return False
+        return False
+
+    def recapture(self, journal, token, ticket, row):
+        return recapture(self, journal, token, ticket, row)
+
+    def settle_workspace(self, ticket):
+        """Recover a stopped owner's directory only if its original file identity still matches."""
+        if self.workspace_clear():
+            return True
+        active = self.settings.active
+        try:
+            recorded = json.loads((attempt_data(self.qualification, ticket)/'workspace-id.json').read_text(encoding='utf-8-sig'))
+            if directory_identity(active) != recorded:
+                return False
+            return self._settle(active, ticket.attempt)['renamed']
+        except (OSError, ValueError, Refused):
+            return False
 
     @staticmethod
     def _write(data, record):

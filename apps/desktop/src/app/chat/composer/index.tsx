@@ -74,6 +74,8 @@ import { useComposerPlaceholder } from './hooks/use-composer-placeholder'
 import { useComposerPopout } from './hooks/use-composer-popout'
 import { useComposerQueue } from './hooks/use-composer-queue'
 import { useComposerScreenshot } from './hooks/use-composer-screenshot'
+import { SymphonyPlanCard } from './symphony-plan-card'
+import { useSymphonyPlan } from './hooks/use-symphony-plan'
 import { useComposerSubmit } from './hooks/use-composer-submit'
 import { triggerKeyUpHandler, useComposerTrigger } from './hooks/use-composer-trigger'
 import { useComposerUndo } from './hooks/use-composer-undo'
@@ -200,6 +202,7 @@ export function ChatBar({
     [gateway]
   )
 
+  const plan = useSymphonyPlan(sessionId, requestBusyConfig, scope.target === 'main')
   const busyInputMode = useBusyInputMode({
     sessionId: sessionId ?? null,
     storedSessionId: queueSessionKey ?? null,
@@ -427,6 +430,7 @@ export function ChatBar({
   // The submit engine — the orchestration seam where draft + queue meet. Owns
   // the submit decision tree, the send-with-restore primitive, and steer.
   const { queueDraft, steerDraft, submitDraft } = useComposerSubmit({
+    answerPlan: plan.text,
     busyInputMode,
     activeQueueSessionKey,
     activeQueueSessionKeyRef,
@@ -1093,6 +1097,9 @@ export function ChatBar({
     voiceConversationActive,
     voiceStatus
   } = useComposerVoice({
+    onCaptureStart: plan.beginVoice,
+    onCaptureEnd: plan.endVoice,
+    onDecisionFinal: plan.final,
     busy,
     clearDraft,
     disabled,
@@ -1225,7 +1232,7 @@ export function ChatBar({
         onDragOver={handleInputDragOver}
         onDrop={handleInputDrop}
         onFocus={() => markActiveComposer(scope.target)}
-        onInput={handleEditorInput}
+        onInput={event => { plan.edit(); handleEditorInput(event) }}
         onKeyDown={handleEditorKeyDown}
         onKeyUp={handleEditorKeyUp}
         onMouseUp={refreshTrigger}
@@ -1304,6 +1311,7 @@ export function ChatBar({
               5px transparent grab margin — so both strips carry the same inset
               and share one left edge with it. */}
           <div className={cn(composerFloatingStrip, 'px-[5px] pb-1.5 empty:hidden')}>
+            {plan.view && <SymphonyPlanCard view={plan.view} check={plan.check} voiceHeld={plan.voiceHeld} />}
             <ActionBadges sessionId={statusSessionId} />
             <PreparedImageRecovery
               occupied={hasText || attachments.length > 0 || busy || disabled}

@@ -33,12 +33,14 @@ import { ComposerScopeProvider, ComposerSurfaceProvider, MAIN_COMPOSER_SCOPE } f
 import { useComposerSubmit } from './use-composer-submit'
 
 interface SubmitHarnessOptions {
+  answerPlan?: (text: string) => boolean
   attachments?: ComposerAttachment[]
   busy?: boolean
   busyInputMode?: 'interrupt' | 'queue' | 'steer' | null
   inputDisabled?: boolean
   scopeTarget?: ComposerTarget
   sessionKey?: string | null
+  restoredId?: string
   submitOnHide?: boolean
   surfaceId?: string | null
   text?: string
@@ -48,12 +50,14 @@ interface SubmitHarnessOptions {
 let surfaceSequence = 0
 
 function renderSubmitHook({
+  answerPlan,
   attachments = [],
   busy = false,
   busyInputMode = 'interrupt',
   inputDisabled = false,
   scopeTarget = 'main',
   sessionKey = 'stored-session',
+  restoredId,
   submitOnHide = false,
   surfaceId,
   text = '',
@@ -111,6 +115,7 @@ function renderSubmitHook({
   const hook = renderHook(
     () =>
       useComposerSubmit({
+        answerPlan,
         activeQueueSessionKey: sessionKey,
         activeQueueSessionKeyRef: { current: sessionKey },
         attachments,
@@ -131,6 +136,7 @@ function renderSubmitHook({
         onSteerHidden,
         onSubmit,
         queueCurrentDraft,
+        takeDraftRetry: restoredId ? words => ({ id: restoredId, text: words, attachmentIds: [] }) : undefined,
         queueEdit: null,
         queuedPrompts: [],
         sessionId: 'runtime-session',
@@ -164,6 +170,22 @@ function renderSubmitHook({
 }
 
 describe('useComposerSubmit external request routing', () => {
+  it('routes fresh plan text before steer, while recovered submissions retain their original receipt path', () => {
+    const answerPlan = vi.fn(() => true)
+    const fresh = renderSubmitHook({busy:true, text:'подтверждаю', answerPlan})
+    act(() => fresh.hook.result.current.submitDraft())
+    expect(answerPlan).toHaveBeenCalledWith('подтверждаю')
+    expect(fresh.onSubmit).not.toHaveBeenCalled()
+    expect(fresh.onSteer).not.toHaveBeenCalled()
+    fresh.hook.unmount()
+    answerPlan.mockClear()
+    const recovered = renderSubmitHook({text:'подтверждаю', restoredId:'prior-id', answerPlan})
+    act(() => recovered.hook.result.current.submitDraft())
+    expect(answerPlan).not.toHaveBeenCalled()
+    expect(recovered.onSubmit).toHaveBeenCalledWith('подтверждаю', expect.objectContaining({
+      submission_id:'prior-id', restoredSubmission:true
+    }))
+  })
   afterEach(() => {
     cleanup()
     clearQueuedPrompts('stored-session')
@@ -258,6 +280,7 @@ describe('useComposerSubmit external request routing', () => {
     })
 
     expect(onSubmit).toHaveBeenCalledExactlyOnceWith('[setup] links opened', {
+      onAdmissionPhase: expect.any(Function),
       submission_id: expect.any(String),
       attachments: [],
       composerScope: 'stored-session',
@@ -342,6 +365,7 @@ describe('useComposerSubmit external request routing', () => {
 
     await waitFor(() =>
       expect(visibleMain.onSubmit).toHaveBeenCalledWith('ship this branch', {
+        onAdmissionPhase: expect.any(Function),
         submission_id: expect.any(String),
         attachments: [],
         composerScope: 'session-a'
@@ -361,6 +385,7 @@ describe('useComposerSubmit external request routing', () => {
 
     await waitFor(() =>
       expect(tile.onSubmit).toHaveBeenCalledWith('ship project B', {
+        onAdmissionPhase: expect.any(Function),
         submission_id: expect.any(String),
         attachments: [],
         composerScope: 'tile-session'
@@ -377,6 +402,7 @@ describe('useComposerSubmit external request routing', () => {
 
     await waitFor(() =>
       expect(second.onSubmit).toHaveBeenCalledWith('ship exactly one session', {
+        onAdmissionPhase: expect.any(Function),
         submission_id: expect.any(String),
         attachments: [],
         composerScope: 'session-second'
@@ -397,6 +423,7 @@ describe('useComposerSubmit external request routing', () => {
 
     await waitFor(() =>
       expect(visibleB.onSubmit).toHaveBeenCalledWith('ship session B', {
+        onAdmissionPhase: expect.any(Function),
         submission_id: expect.any(String),
         attachments: [],
         composerScope: 'session-b'
@@ -545,6 +572,7 @@ describe('useComposerSubmit busy-turn routing', () => {
 
     await waitFor(() =>
       expect(onSubmit).toHaveBeenCalledWith('/compress preserve context', {
+        onAdmissionPhase: expect.any(Function),
         submission_id: expect.any(String),
         composerScope: 'stored-session'
       })
@@ -596,6 +624,7 @@ describe('useComposerSubmit busy-turn routing', () => {
 
     await waitFor(() =>
       expect(onSubmit).toHaveBeenCalledWith('ordinary question', {
+        onAdmissionPhase: expect.any(Function),
         submission_id: expect.any(String),
         attachments: [],
         composerScope: 'stored-session'
@@ -631,6 +660,7 @@ describe('useComposerSubmit busy-turn routing', () => {
 
     await waitFor(() =>
       expect(onSubmit).toHaveBeenCalledWith('look at @terminal:`zsh:23-58`', {
+        onAdmissionPhase: expect.any(Function),
         submission_id: expect.any(String),
         attachments: [],
         composerScope: 'stored-session'
@@ -776,6 +806,21 @@ describe('useComposerSubmit with a clarify parked on the session', () => {
     await waitFor(() => expect(onSubmit).toHaveBeenCalledWith('/status', expect.anything()))
     expect(respond).toHaveBeenCalledWith({})
     expect(hasOpenServerRequest('req-runtime-session')).toBe(false)
+  })
+
+  it.each([false, true])('reconciles a restored draft before answering a parked clarify (busy=%s)', async busy => {
+    parkClarify('runtime-session')
+    const request = vi.fn()
+    setGateway(request)
+    const { hook, onSubmit, onSteer } = renderSubmitHook({ text: 'previous words', busy, restoredId: 'original-id' })
+    act(() => hook.result.current.submitDraft())
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith('previous words', expect.objectContaining({
+      submission_id: 'original-id', restoredSubmission: true, sessionId: 'runtime-session'
+    })))
+    expect(request).not.toHaveBeenCalled()
+    expect(respond).not.toHaveBeenCalled()
+    expect(onSteer).not.toHaveBeenCalled()
+    expect(hasOpenServerRequest('req-runtime-session')).toBe(true)
   })
 
   it('answers the question with the typed text and does not send it on an idle session', async () => {
@@ -1041,6 +1086,7 @@ describe('useComposerSubmit with a blocking prompt parked on the session', () =>
 
     await waitFor(() =>
       expect(onSubmit).toHaveBeenCalledWith('/status', {
+        onAdmissionPhase: expect.any(Function),
         submission_id: expect.any(String),
         composerScope: 'stored-session'
       })

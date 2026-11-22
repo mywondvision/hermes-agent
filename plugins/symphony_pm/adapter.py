@@ -619,18 +619,22 @@ def _checks_pass(checks: Any, required: set) -> bool:
             and all(status == "pass" for _, status in checks))
 
 
-def _completion(receipt: PmStatusReceipt, ctx: TrustedPmContextV1):
-    if receipt.phase not in DONE_PHASES:
+def _stage_acceptance(phase, required_checks, check_sets):
+    if phase not in DONE_PHASES:
         return "NOT_CLAIMED", ()
-    required = set(ctx.required_checks)
+    required = set(required_checks)
     if not required:
         return "NOT_ACCEPTED", ("REQUIRED_CHECKS_UNDEFINED",)
-    for record in ctx.trusted_completions:
-        if (_trusted(record, TrustedCompletion, receipt, ctx)
-                and record.attempt_ref == receipt.attempt_ref and record.terminal is True
-                and _checks_pass(record.checks, required)):
-            return "ACCEPTED", ()
+    if any(_checks_pass(checks, required) for checks in check_sets):
+        return "ACCEPTED", ()
     return "NOT_ACCEPTED", ("TRUSTED_COMPLETION_EVIDENCE_REQUIRED",)
+
+
+def _completion(receipt: PmStatusReceipt, ctx: TrustedPmContextV1):
+    check_sets = (record.checks for record in ctx.trusted_completions
+                  if _trusted(record, TrustedCompletion, receipt, ctx)
+                  and record.attempt_ref == receipt.attempt_ref and record.terminal is True)
+    return _stage_acceptance(receipt.phase, ctx.required_checks, check_sets)
 
 
 def _observation(receipt: PmStatusReceipt, ctx: TrustedPmContextV1):
@@ -679,13 +683,16 @@ def _verify_status(receipt: Any, intent: JobQuery, ctx: TrustedPmContextV1) -> P
     if issues:
         return _result(intent, "UNVERIFIED", True, issues)
     acceptance, reasons = _completion(receipt, ctx)
-    return _result(intent, "STATUS", acceptance == "NOT_ACCEPTED", reasons, {
-        "observation": "LAST_CONFIRMED_SCHEDULER_OBSERVATION", "phase": receipt.phase,
-        "job_ref": receipt.job_ref, "job_revision": receipt.job_revision,
-        "attempt_ref": receipt.attempt_ref, "observed_at": receipt.observed_at,
-        "age_seconds": ctx.now - receipt.observed_at, "evidence_ref": record.evidence_ref,
-        "stage_acceptance": acceptance, "retention": _retention(receipt),
-        "uncertainty": list(receipt.uncertainty)})
+    view = _status_view(record, ctx.now, acceptance, _retention(receipt), receipt.uncertainty)
+    return _result(intent, "STATUS", acceptance == "NOT_ACCEPTED", reasons, view)
+
+
+def _status_view(record, now, acceptance, retention, uncertainty):
+    return {"observation": "LAST_CONFIRMED_SCHEDULER_OBSERVATION", "phase": record.phase,
+            "job_ref": record.job_ref, "job_revision": record.job_revision,
+            "attempt_ref": record.attempt_ref, "observed_at": record.observed_at,
+            "age_seconds": now - record.observed_at, "evidence_ref": record.evidence_ref,
+            "stage_acceptance": acceptance, "retention": retention, "uncertainty": list(uncertainty)}
 
 
 def _verify_cancel(receipt: Any, intent: CancelIntent, ctx: TrustedPmContextV1) -> PmResult:

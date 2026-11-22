@@ -6,6 +6,8 @@ import type { ChallengeOutcome } from '../electron/challenge-window'
 import type { ScreenshotApi } from '../electron/command-screenshot-types'
 import type { HudModifierApi } from '../electron/hud-modifier-types'
 import type { MachineProfile } from '../electron/machine-profile'
+import type { PlanAddress, PlanOperation } from '../electron/symphony-route'
+import type { OperatorCall, OperatorReply } from '../electron/symphony-operator-types'
 import type { HermesNotification } from '../electron/notification-types'
 import type { KeepAwakeMode } from '../electron/power-save'
 import type { UpdateHoldWire } from '../electron/update-hold-types'
@@ -123,6 +125,17 @@ declare global {
       // reply). Resolves true for the first window to claim a key, false for
       // peers — so N open windows don't all fire the same cue.
       claimAmbientCue: (key: string) => Promise<boolean>
+      voiceWindowGeneration?: () => number | null
+      symphonyPlan?: {
+        request(address: PlanAddress, verb: PlanOperation, data?: object): Promise<{ output: string }>
+        onSignal(callback: (address: PlanAddress, disconnected: boolean) => void): () => void
+      }
+      symphonyOperator?: {
+        request(address: PlanAddress, call: OperatorCall): Promise<OperatorReply>
+        restoreWindow(): Promise<void>
+        copyInstallationKey(): Promise<void>
+        onClear(callback: () => void): () => void
+      }
       // Renderer-drawn min/max/close for WSLg (`custom` true there only), sent
       // over hermes:window-control; Electron/OS chrome owns them elsewhere.
       windowControls: {

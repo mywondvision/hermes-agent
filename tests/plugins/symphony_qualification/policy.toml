@@ -1,0 +1,22 @@
+default_permissions = "symphony-qualify-local-v1"
+approval_policy = "never"
+web_search = "disabled"
+
+[shell_environment_policy]
+inherit = "none"
+
+[features]
+network_proxy = false
+hooks = false
+plugins = false
+enable_mcp_apps = false
+enable_request_compression = false
+
+[permissions.symphony-qualify-local-v1.filesystem]
+":root" = "read"
+"/work" = "write"
+"/tmp" = "write"
+"/etc/symphony/codex" = "deny"
+
+[permissions.symphony-qualify-local-v1.network]
+enabled = false

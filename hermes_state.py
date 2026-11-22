@@ -21,7 +21,7 @@ import threading
 import time
 import uuid
 from collections import deque
-from contextlib import contextmanager, suppress
+from contextlib import contextmanager, nullcontext, suppress
 from pathlib import Path
 from hermes_dir_acl import make_user_dir
 
@@ -1008,7 +1008,7 @@ class SessionDB(
             self._wal_lock_guard = _lockguard.hold(self.db_path)
 
     def _execute_write(
-        self, fn: Callable[[sqlite3.Connection], T], patience_s: Optional[float] = None,
+        self, fn: Callable[[sqlite3.Connection], T], patience_s: Optional[float] = None, *, commit_guard=None,
     ) -> T:
         """Run *fn(conn)* inside BEGIN IMMEDIATE with jittered lock retry; commit
         is handled here (callers must not commit). Returns *fn*'s result.
@@ -1048,7 +1048,8 @@ class SessionDB(
                     try:
                         fn_started = True
                         result = fn(self._conn)
-                        self._conn.commit()
+                        with commit_guard() if commit_guard is not None else nullcontext():
+                            self._conn.commit()
                     except BaseException:
                         try:
                             self._conn.rollback()

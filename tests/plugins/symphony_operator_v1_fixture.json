@@ -1,0 +1,25 @@
+{
+  "payload": {
+    "text": "Сверь\n\"plan\""
+  },
+  "fields": [
+    "hermes.desktop.operator",
+    1,
+    "submit",
+    "test-owner",
+    "test-forward",
+    "test-socket",
+    "test-profile",
+    "test-session",
+    "test-submission",
+    "wFDFY3pE+oYp//PMzOIwDLNipj2Z2V/FQUUmb0MyRFo=",
+    "IBLLkMpg6OXY2vZuInLSIz4EhtVX6MZhQe2JIBd9frc=",
+    0,
+    "test-nonce",
+    "e6c4ff790047b1b9fd117985040bed3c1f355171cf47c91f8b5f4eec9aae3e96",
+    1924992000000
+  ],
+  "message": "WyJoZXJtZXMuZGVza3RvcC5vcGVyYXRvciIsMSwic3VibWl0IiwidGVzdC1vd25lciIsInRlc3QtZm9yd2FyZCIsInRlc3Qtc29ja2V0IiwidGVzdC1wcm9maWxlIiwidGVzdC1zZXNzaW9uIiwidGVzdC1zdWJtaXNzaW9uIiwid0ZERlkzcEUrb1lwLy9QTXpPSXdETE5pcGoyWjJWL0ZRVVVtYjBNeVJGbz0iLCJJQkxMa01wZzZPWFkydlp1SW5MU0l6NEVodFZYNk1aaFFlMkpJQmQ5ZnJjPSIsMCwidGVzdC1ub25jZSIsImU2YzRmZjc5MDA0N2IxYjlmZDExNzk4NTA0MGJlZDNjMWYzNTUxNzFjZjQ3YzkxZjhiNWY0ZWVjOWFhZTNlOTYiLDE5MjQ5OTIwMDAwMDBd",
+  "installation_signature": "JeITeG4yHq3HgcSRCEpY/J81dS76JNK/lmh+JcGNoavVvnZ/znDbvm1V+nCQm5nbx4C7ylB8xBsNGA4syIciBw==",
+  "window_signature": "3s1AbJdTpo6Q5DGop0ySTpDoTGgetojZ8bu1T2CwuuW/HF+SXrvgaBTleI01eYHtNrY2Kr8gm4q9wuCVVnQ9Bw=="
+}

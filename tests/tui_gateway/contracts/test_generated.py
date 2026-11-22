@@ -75,6 +75,8 @@ def emitted_event_names() -> set[str]:
     names.update(_SETUP_READY.findall(_read(REPO / "hermes_cli" / "free_tier_bootstrap.py")))
     names.update(_FREE_TIER_CHALLENGE.findall(_read(REPO / "hermes_cli" / "anon_challenge.py")))
     names.update(_LOCAL_VIEWER_PUBLISH.findall(_read(REPO / "gateway" / "local_viewer_events.py")))
+    from plugins.symphony_pm.desktop_approval import PLAN_EVENT
+    names.add(PLAN_EVENT)
     return names
 
 

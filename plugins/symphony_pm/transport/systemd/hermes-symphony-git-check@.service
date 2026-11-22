@@ -1,0 +1,24 @@
+[Unit]
+Description=Hermes Symphony qualified Git project check %i
+
+[Service]
+Type=exec
+User=hermes-symphony
+Group=hermes-symphony
+UMask=0077
+ExecStart=/opt/hermes-symphony/controller/bin/python3 -I -S /opt/hermes-symphony/controller/hermes-agent/plugins/symphony_pm/transport/linux_check_entry.py /etc/hermes-symphony/git-check.json %i
+Restart=no
+KillMode=control-group
+Delegate=yes
+RuntimeMaxSec=120
+TimeoutStopSec=8
+MemoryMax=512M
+TasksMax=128
+CPUQuota=100%
+PrivateNetwork=yes
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+StandardInput=null
+StandardOutput=null
+StandardError=journal

@@ -1,8 +1,10 @@
 import { useStore } from '@nanostores/react'
 import { QueryClient } from '@tanstack/react-query'
-import { act, cleanup, render, waitFor } from '@testing-library/react'
+import { act, cleanup, render, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 
+import { $connectionsRegistry } from '@/store/connection-registry-state'
+import { useMiddlewareSubmit } from '@/app/chat/composer/hooks/use-middleware-submit'
 import { createSessionRpcDispatcher } from '@/app/contrib/session-rpc-dispatcher'
 import { sessionRoute } from '@/app/routes'
 import { textPart } from '@/lib/chat-messages'
@@ -90,14 +92,15 @@ function Harness() {
   return null
 }
 
-function seed() {
+function seed(localB = false) {
+  $connectionsRegistry.set({ connections: ['A', 'B'].map(id => ({ id: 'connection-' + id, kind: 'remote' })) } as never)
   routedStoredId = 'stored-B'
   busyRef.current = false
   // Same profile name on distinct backends: profile equality is not ownership.
   setSessions(
     ['A', 'B'].map(id => ({
       id: `stored-${id}`,
-      connection_id: `connection-${id}`,
+      connection_id: localB && id === 'B' ? 'local' : `connection-${id}`,
       profile: 'default',
       source: 'desktop',
       message_count: 1
@@ -144,6 +147,7 @@ function deferred<T>() {
 }
 
 afterEach(() => {
+  $connectionsRegistry.set(null)
   cleanup()
   clearAllSessionStates()
   clearSingleFlightSessionResumeState()
@@ -156,6 +160,29 @@ afterEach(() => {
   setMessages([])
   window.localStorage.clear()
   vi.clearAllMocks()
+})
+
+it.each(['local', 'remote'])('routes a restored idle draft before slash dispatch and voice stop (%s)', async owner => {
+  seed(owner === 'local')
+  const end = vi.fn()
+  const hook = renderHook(() => useMiddlewareSubmit(handle.actions.submitText))
+  hook.result.current.voiceStopRef.current = { active: true, end }
+  vi.mocked(requestGatewayForAgent).mockResolvedValue({
+    ref: { session_id: 'rt-B' }, submission_id: 'old-id', admission_id: 'ledger-id', status: 'terminal'
+  })
+  for (const words of ['/new', 'stop']) {
+    await act(async () => {
+      expect(await hook.result.current.onSubmit(words, {
+        restoredSubmission: true, submission_id: 'old-id', storedSessionId: 'stored-B'
+      })).toBe(owner === 'local')
+    })
+  }
+  expect(end).not.toHaveBeenCalled()
+  expect(vi.mocked(requestGatewayForAgent).mock.calls.map(call => call.slice(0, 4))).toEqual(
+    owner === 'local' ? Array(2).fill(['local', 'default', 'prompt.receipt', {
+      session_id: 'rt-B', submission_id: 'old-id'
+    }]) : []
+  )
 })
 
 it.each(['redirectPrompt', 'injectHiddenPrompt'] as const)(

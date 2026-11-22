@@ -6,6 +6,7 @@ import tempfile
 import threading
 import time
 
+from .recovery import WINDOWS_JOB_CONTRACT
 from .types import NativeBinding, ProcessIdentity, Refused, finite, job_object_name
 from .windows_api import WindowsApi
 
@@ -158,6 +159,10 @@ class WindowsReceiver:
 
 
 class WindowsNativeProvider:
+    @property
+    def ownership_contract(self):
+        return WINDOWS_JOB_CONTRACT if isinstance(self.api, WindowsApi) else None
+
     def __init__(self, *, validate_call, environment, protected, command_result, sanitize, private_directory,
                  data_directory):
         # All inputs are host-owned objects bound to the qualified kit attempt. `protected` lists

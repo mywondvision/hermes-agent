@@ -35,6 +35,9 @@ import { useVoiceLiveConversation } from './use-voice-live-conversation'
 import { useVoiceRecorder } from './use-voice-recorder'
 
 interface UseComposerVoiceArgs {
+  onCaptureStart?: (id: string) => void
+  onCaptureEnd?: (id: string) => void
+  onDecisionFinal?: (text: string, id: string) => boolean
   busy: boolean
   clearDraft: () => void
   disabled: boolean
@@ -59,6 +62,9 @@ interface UseComposerVoiceArgs {
  * so it lifts cleanly out of ChatBar.
  */
 export function useComposerVoice({
+  onCaptureStart,
+  onCaptureEnd,
+  onDecisionFinal,
   busy,
   clearDraft,
   disabled,
@@ -71,6 +77,8 @@ export function useComposerVoice({
   sessionId,
   target
 }: UseComposerVoiceArgs) {
+  const decisionFinalRef = useRef(onDecisionFinal)
+  decisionFinalRef.current = onDecisionFinal
   const { t } = useI18n()
   // A tile's composer speaks ITS transcript, not the primary chat's.
   const { $messages } = useComposerScope()
@@ -111,6 +119,9 @@ export function useComposerVoice({
   }, [sessionId])
 
   const { dictate, voiceActivityState, voiceStatus } = useVoiceRecorder({
+    onCaptureStart,
+    onCaptureEnd,
+    onDecisionFinal: (text, id) => decisionFinalRef.current?.(text, id) ?? false,
     focusInput,
     maxRecordingSeconds,
     onTranscript: insertText,
@@ -171,15 +182,16 @@ export function useComposerVoice({
     }
   }
 
-  const submitVoiceTurn = async (text: string) => {
-    if (busyRef.current) {
+  const submitVoiceTurn = async (text: string, utteranceId: string) => {
+    if (utteranceId && decisionFinalRef.current?.(text, utteranceId)) { return }
+    if (busyRef.current || !utteranceId) {
       return
     }
 
     triggerHaptic('submit')
     resetBrowseState(sessionId)
     clearDraft()
-    await onSubmit(text, { voiceTurn: true })
+    await onSubmit(text, { voiceTurn: true, submission_id: utteranceId })
   }
 
   /** A GPT-Live delegation → Hermes turn. The bubble and the persisted row are
@@ -217,6 +229,9 @@ export function useComposerVoice({
   const wakePauseBarrierRef = useRef<Promise<void> | null>(null)
 
   const chainedConversation = useVoiceConversation({
+    onCaptureStart,
+    onCaptureEnd,
+    sessionId,
     busy,
     consumePendingResponse,
     enabled: voiceConversationActive && !liveEngineActive,

@@ -17,6 +17,7 @@ import tempfile
 import threading
 import time
 
+from .recovery import WINDOWS_JOB_CONTRACT
 from .types import NativeBinding, ProcessIdentity, Refused, finite, job_object_name
 from .windows_api import WindowsApi
 from .windows_receiver import WindowsReceiver, require_plain_environment
@@ -90,9 +91,20 @@ class CodexClientReceiver(WindowsReceiver):
             self.close_fail_safe(time.monotonic())
             raise
 
+    def check_binding(self, binding):
+        # The exact retained root was verified in this Job at creation. Once signaled it may
+        # have left the active roster while other members still require the bound cancel.
+        if (self.closed or binding != self.binding or self.api.creation(self.process) != binding.root.creation
+                or (not self.api.wait(self.process) and not self.api.in_job(self.process, self.job))):
+            raise Refused('NATIVE_HANDLE_BINDING')
+
 
 class CodexClientProvider:
     """NativeProvider for the Codex client; the existing worker provider is untouched."""
+
+    @property
+    def ownership_contract(self):
+        return WINDOWS_JOB_CONTRACT if isinstance(self.api, ClientApi) else None
 
     def __init__(self, *, validate_call, environment, sanitize, private_directory, api=None):
         self.validate_call, self.environment = validate_call, dict(environment)

@@ -381,6 +381,10 @@ class GatewayRuntimeAPI:
 
     async def _serve(self, scope, receive, send):
         descriptor = getattr(self.runner, 'session_runtime_descriptor', None)
+        if scope['type'] == 'websocket' and scope.get('path') == '/api/ws':
+            from gateway import session_scoped_ws
+            if session_scoped_ws.PROTOCOL in scope.get('subprotocols', ()):
+                return await session_scoped_ws.serve(scope, receive, send, self.runner, descriptor)
         if scope['type'] not in {'http', 'websocket'} or descriptor is None:
             return await self.app(scope, receive, send)
         draining_socket = (descriptor['state'] in {'ready', 'draining'}

@@ -120,6 +120,7 @@ describe('useVoiceConversation stale reply on next turn', () => {
     micHandle.stop.mockResolvedValueOnce({
       audio: new Blob(['q'], { type: 'audio/webm' }),
       durationMs: 900,
+      utteranceId: 'test-recording',
       heardSpeech: true
     })
 

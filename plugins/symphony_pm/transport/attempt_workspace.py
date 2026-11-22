@@ -11,8 +11,6 @@ Git's own files is a refusal, not a filtered result. The patch is checked to app
 commit through a separate shadow index; the primary repository is only read.
 """
 from dataclasses import dataclass
-import ctypes as C
-from ctypes import wintypes as W
 import hashlib
 import json
 import os
@@ -23,7 +21,6 @@ import subprocess
 import tempfile
 
 from .types import Refused
-from .windows_token import attempt_sid
 
 _LOW_LABEL, _FROZEN_LABEL = 'S:(ML;OICI;NW;;;LW)', 'S:(ML;OICI;NW;;;ME)'
 _MODIFY, _READ = 0x1301BF, 0x1200A9
@@ -60,6 +57,7 @@ class Workspace:
 # --- Windows: access and labels -----------------------------------------------------------------
 
 def user_sid(api):
+    import ctypes as C
     token = api._process_token(api._current_process(), 0x0008)  # TOKEN_QUERY
     try:
         buffer = api._token_information(token, 1)  # TokenUser: SID_AND_ATTRIBUTES first
@@ -71,6 +69,8 @@ def user_sid(api):
 def grant(api, path, sid, *, write=False, inherit=False, access=None):
     """Add one allow entry for `sid` to `path` (modify, read-execute or `access`), keeping a
     protected DACL protected."""
+    import ctypes as C
+    from ctypes import wintypes as W
     dacl, descriptor = C.c_void_p(), C.c_void_p()
     code = api.adv('GetNamedSecurityInfoW', [W.LPCWSTR, C.c_int, W.DWORD, C.c_void_p, C.c_void_p,
         C.POINTER(C.c_void_p), C.c_void_p, C.POINTER(C.c_void_p)], W.DWORD)(
@@ -97,6 +97,8 @@ def create(api, root, attempt):
 
     The directory is named by a short digest of the attempt, so deep trees stay well inside path limits.
     """
+    from ctypes import wintypes as W
+    from .windows_token import attempt_sid
     path = Path(root)/hashlib.sha256(attempt.encode('utf-8')).hexdigest()[:12]
     try:
         path.mkdir()
@@ -117,6 +119,7 @@ def create(api, root, attempt):
 
 def freeze(api, workspace):
     """After capture: relabel the whole workspace medium, so no low process writes it again."""
+    from ctypes import wintypes as W
     api._set_label('SetNamedSecurityInfoW', W.LPCWSTR(str(workspace.path)), 1, _FROZEN_LABEL)
     return api.path_label(workspace.path) == (0x2000, 0x1)
 
@@ -124,7 +127,8 @@ def freeze(api, workspace):
 # --- Git: copy in, patch out --------------------------------------------------------------------
 
 def _clean_environment(**extra):
-    environment = {k: v for k, v in os.environ.items() if not k.upper().startswith('GIT_')}
+    names = ('SYSTEMROOT', 'SYSTEMDRIVE', 'WINDIR', 'TEMP', 'TMP')
+    environment = {k: os.environ[k] for k in names if k in os.environ}
     environment.update(GIT_CONFIG_NOSYSTEM='1', GIT_CONFIG_GLOBAL=os.devnull, GIT_TERMINAL_PROMPT='0', **extra)
     return environment
 
@@ -237,9 +241,28 @@ class Capture:
         self.base = tree
         return self.base
 
-    def result(self, limit=PATCH_LIMIT):
+    def restore_baseline(self, saved_index):
+        """Recover the tree measured before dispatch from the owner's original baseline index."""
+        try:
+            shutil.copyfile(saved_index, self.shadow.directory/'baseline.index')
+        except FileNotFoundError as exc:
+            raise Refused('ATTEMPT_BASELINE_MISSING') from exc
+        self.source_tree = self.shadow.run(self.workspace.src, 'base.index', 'rev-parse',
+                                           self.sha+'^{tree}').decode('ascii').strip()
+        # The immutable source supplies the blobs. Compare the actual indexed names, modes,
+        # stages and object IDs even if an unrelated replacement index references missing blobs.
+        listing = ('ls-files', '--stage', '--full-name', '-z')
+        measured = self.shadow.run(self.workspace.src, 'baseline.index', *listing)
+        expected = self.shadow.run(self.workspace.src, 'base.index', *listing)
+        if measured != expected:
+            raise Refused('ATTEMPT_BASELINE_MISMATCH')
+        self.base = self.source_tree
+
+    def result(self, limit=PATCH_LIMIT, *, observation_seq=None):
         if self.base is None:
             raise Refused('ATTEMPT_BASELINE_MISSING')
+        if observation_seq is not None and (type(observation_seq) is not int or observation_seq < 1):
+            raise Refused('OBSERVATION_SEQUENCE')
         require_plain_tree(self.workspace.src)
         after = self.shadow.tree(self.workspace.src, 'after.index')
         names = self.shadow.run(self.workspace.src, 'after.index', 'diff', '--name-only', '-z', '--no-renames',
@@ -249,13 +272,15 @@ class Capture:
                                 '--no-renames', '--no-ext-diff', '--no-textconv', self.base, after)
         require_patch_policy(patch, paths, limit)
         self.results.mkdir(parents=True, exist_ok=True)
-        target = self.results/(self.workspace.attempt+'.patch')
+        stem = self.workspace.attempt if observation_seq is None else f'capture-{observation_seq}'
+        target = self.results/(stem+'.patch')
         with target.open('xb') as stream:
             stream.write(patch)
-        require_applies(self.shadow, self.sha, target)
+        if paths:
+            require_applies(self.shadow, self.sha, target)
         digest = hashlib.sha256(patch).hexdigest()
         result = Result(target, digest, paths, self.base == self.source_tree)
-        (self.results/(self.workspace.attempt+'.json')).write_text(json.dumps({
+        (self.results/(stem+'.json')).write_text(json.dumps({
             'attempt': self.workspace.attempt, 'source_sha': self.sha, 'sha256': digest, 'paths': list(paths),
             'base_tree': self.base, 'after_tree': after, 'baseline_matches_source': result.baseline_matches_source,
         }, indent=1), encoding='utf-8')

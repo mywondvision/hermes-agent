@@ -48,18 +48,19 @@ export async function openDictationStream(
   ws.binaryType = 'arraybuffer'
 
   let settled = false
-  let failure: Error | null = null
+  let outcome: Error | string = ''
+  let stopping: Promise<string> | undefined
   let pending: { reject: (error: Error) => void; resolve: (text: string) => void } | null = null
 
-  const settle = (outcome: Error | string) => {
+  const settle = (value: Error | string) => {
     if (settled) {
       return
     }
 
     settled = true
+    outcome = value
 
     if (typeof outcome !== 'string') {
-      failure = outcome
       pending?.reject(outcome)
     } else {
       pending?.resolve(outcome)
@@ -76,6 +77,8 @@ export async function openDictationStream(
     } catch {
       return
     }
+
+    if (settled) { return }
 
     if (message.type === 'partial' && typeof message.text === 'string') {
       onPartial?.(message.text)
@@ -118,20 +121,20 @@ export async function openDictationStream(
         ws.send(chunk)
       }
     },
-    stop: () =>
-      new Promise<string>((resolve, reject) => {
-        if (settled) {
-          reject(failure ?? new Error('live transcription already ended'))
+    stop: () => {
+      if (settled) {
+        return typeof outcome === 'string' ? Promise.resolve(outcome) : Promise.reject(outcome)
+      }
 
-          return
-        }
-
+      stopping ??= new Promise<string>((resolve, reject) => {
         pending = { reject, resolve }
         ws.send(JSON.stringify({ eos: true }))
-      }),
+      })
+
+      return stopping
+    },
     cancel: () => {
-      settled = true
-      pending = null
+      settle(new Error('live transcription cancelled'))
       ws.close()
     }
   }

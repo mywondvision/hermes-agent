@@ -3,8 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { type ResolvedOwner, resolveOwnerNow } from '@/hermes'
 import { useI18n } from '@/i18n'
 import { syncSttLease, VOICE_INPUT_LEASE } from '@/lib/stt-lease'
-import { fetchVoiceClientConfigFor } from '@/lib/voice-client-direct'
-import { type DictationStreamSession, openDictationStream } from '@/lib/voice-stream'
+import { recordingStream } from '@/lib/recording-stream'
 import { recordFeatureUse } from '@/store/desktop-metrics'
 import { notify, notifyError } from '@/store/notifications'
 
@@ -14,6 +13,9 @@ import type { VoiceActivityState, VoiceStatus } from '../types'
 import { useMicRecorder } from './use-mic-recorder'
 
 interface VoiceRecorderOptions {
+  onCaptureStart?: (id: string) => void
+  onCaptureEnd?: (id: string) => void
+  onDecisionFinal?: (text: string, id: string) => boolean
   maxRecordingSeconds: number
   onTranscribeAudio?: (audio: Blob, owner?: ResolvedOwner) => Promise<string>
   focusInput: () => void
@@ -30,10 +32,13 @@ interface Dictation {
   owner: ResolvedOwner
   warmup: Promise<void>
   /** Live STT session (stt.streaming): resolves to null when the host has no live wire. */
-  live?: () => Promise<DictationStreamSession | null>
+  live: ReturnType<typeof recordingStream>
 }
 
 export function useVoiceRecorder({
+  onCaptureStart,
+  onCaptureEnd,
+  onDecisionFinal,
   maxRecordingSeconds,
   onTranscribeAudio,
   focusInput,
@@ -79,6 +84,7 @@ export function useVoiceRecorder({
       dictationRef.current = null
 
       if (dictation) {
+        dictation.live.cancel()
         void syncSttLease(VOICE_INPUT_LEASE, false, dictation.owner)
       }
     },
@@ -124,7 +130,7 @@ export function useVoiceRecorder({
 
       if (!transcript) {
         notify({ kind: 'warning', title: voiceCopy.noSpeechDetected, message: voiceCopy.tryRecordingAgain })
-      } else {
+      } else if (!onDecisionFinal?.(transcript, result.utteranceId)) {
         onTranscript(transcript)
       }
     } catch (error) {
@@ -143,7 +149,7 @@ export function useVoiceRecorder({
   // The live session's final text, or null to transcribe the recorded blob instead (no session,
   // socket failure, or an empty result over a take the recorder kept).
   const liveTranscript = async (dictation: Dictation): Promise<null | string> => {
-    const session = await dictation.live?.()
+    const session = await dictation.live.session()
 
     if (!session) {
       return null
@@ -162,7 +168,7 @@ export function useVoiceRecorder({
   const finish = (dictation: Dictation) => {
     dictationRef.current = null
     setPartial('')
-    void dictation.live?.().then(session => session?.cancel())
+    dictation.live.cancel()
     void syncSttLease(VOICE_INPUT_LEASE, false, dictation.owner)
   }
 
@@ -175,8 +181,10 @@ export function useVoiceRecorder({
 
     try {
       const owner = resolveOwnerNow(ownerRef.current)
-      const stream = liveStream(owner)
+      const stream = recordingStream(owner, setPartial)
       await handle.start({
+        onCaptureStart,
+        onCaptureEnd,
         onError: error => notifyError(error, voiceCopy.recordingFailed),
         onPcm: stream.push,
         onPcmRate: stream.open
@@ -186,7 +194,7 @@ export function useVoiceRecorder({
       // speaking instead of inside the transcription timeout (#105955).
       // Fire-and-forget for the MIC UX — but keep the promise: stop() awaits
       // it as the readiness barrier before transcription (see above).
-      dictationRef.current = { live: stream.session, owner, warmup: syncSttLease(VOICE_INPUT_LEASE, true, owner) }
+      dictationRef.current = { live: stream, owner, warmup: syncSttLease(VOICE_INPUT_LEASE, true, owner) }
       startedAtRef.current = Date.now()
       setElapsedSeconds(0)
       setVoiceStatus('recording')
@@ -198,43 +206,6 @@ export function useVoiceRecorder({
       setVoiceStatus('idle')
       notifyError(error, voiceCopy.recordingFailed)
     }
-  }
-
-  // Live dictation plumbing for one take: chunks captured before the socket opens are buffered
-  // (bounded) and flushed, so the first words reach the provider too. `session()` is null when the
-  // host has no live wire, or when the meter never reported a rate (no PCM tap this take).
-  const liveStream = (owner: ResolvedOwner) => {
-    let session: DictationStreamSession | null = null
-    let settled = false
-    let buffered: ArrayBuffer[] = []
-    let opening: Promise<DictationStreamSession | null> | null = null
-
-    const open = (sampleRate: number) => {
-      opening = (async () => {
-        const config = await fetchVoiceClientConfigFor(owner).catch(() => null)
-        const opened = config?.stt.streaming ? await openDictationStream(owner, sampleRate, setPartial) : null
-
-        for (const chunk of opened ? buffered : []) {
-          opened!.pushAudio(chunk)
-        }
-
-        buffered = []
-        settled = true
-        session = opened
-
-        return opened
-      })()
-    }
-
-    const push = (chunk: ArrayBuffer) => {
-      if (session) {
-        session.pushAudio(chunk)
-      } else if (!settled && buffered.length < 64) {
-        buffered.push(chunk)
-      }
-    }
-
-    return { open, push, session: () => opening ?? Promise.resolve(null) }
   }
 
   const dictate = () => {

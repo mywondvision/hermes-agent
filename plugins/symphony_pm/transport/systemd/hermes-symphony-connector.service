@@ -1,0 +1,35 @@
+[Unit]
+Description=Hermes Symphony fixed ChatGPT Responses connector
+
+[Service]
+Type=exec
+User=root
+Group=hermes-symphony
+ExecStart=/opt/hermes-symphony/connector/bin/python3 -I -S /opt/hermes-symphony/connector/bin/responses-connector
+RuntimeDirectory=hermes-symphony-connector
+RuntimeDirectoryMode=0750
+UMask=0077
+Restart=no
+KillMode=control-group
+TimeoutStopSec=5
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictNamespaces=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+InaccessiblePaths=-/etc/hermes-symphony/subscription -/var/lib/hermes-symphony -/var/log/journal -/run/log/journal
+LimitCORE=0
+MemoryMax=384M
+TasksMax=32
+StandardInput=null
+StandardOutput=null
+StandardError=null

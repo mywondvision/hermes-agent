@@ -1,0 +1,22 @@
+{
+  "fields": [
+    "symphony-plan",
+    "1",
+    "test-vector-only",
+    "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "/srv/профиль",
+    "symphony_pm:ingress-linux",
+    "owner",
+    "chat-42",
+    "session-42",
+    "socket-fixture",
+    "owner:2:3",
+    "work",
+    "desktop-1"
+  ],
+  "encoding": "UTF-8 compact JSON string array",
+  "public_key": "A6EHv/POEL4dcN0Y50vAmWfk1jCbpQ1fHdyGZBJVMbg=",
+  "sha256": "7cf5c2da169014519f88fd9cbcbb4c2b71ecf0a0b9910bd2e194a6725e833681",
+  "signature": "GYPD3HmGBX3Wy6dqowLkSmC7waAuZ0oa1D3Pq51nJZ7kna7w1GPXzUzk13M2NjqSKD6aSAWHJWaZ/8zeeOmOAw=="
+}

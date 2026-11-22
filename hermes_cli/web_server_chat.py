@@ -238,7 +238,7 @@ def _ws_auth_reason(ws: WebSocket, *, allow_internal: bool = False,
     from hermes_cli.dashboard_auth.native_http import HEADER, authenticate_native_ws, redeem_audio_ws
     from hermes_cli.web_server import _SESSION_TOKEN, app
     from hermes_cli.browser_credential import generation_of
-    from hermes_cli.web_session_sockets import OWN_TICKET_SOCKETS, track
+    from hermes_cli.web_session_sockets import GATEWAY_SOCKET, OWN_TICKET_SOCKETS, track
     auth_required = bool(getattr(app.state, "auth_required", False))
     # The Webapp's own rules (socket tickets on the loopback gate, the server's credential only where
     # its spawned clients dial) apply on its listener; the standalone dashboard and serve keep main's.
@@ -358,6 +358,11 @@ def _ws_auth_reason(ws: WebSocket, *, allow_internal: bool = False,
         return "no_credential", "none"
     if hmac.compare_digest(token.encode(), _SESSION_TOKEN.encode()):
         track(ws, generation_of(token))
+        if (socket == GATEWAY_SOCKET and getattr(app.state, 'ssh_isolated_clients', None) is not None
+                and getattr(app.state, 'bound_host', None) in {'127.0.0.1', '::1', 'localhost'}
+                and not webapp):
+            ws.scope['hermes.forward_shared_token'] = True
+            ws.scope['hermes.forward_home'] = getattr(app.state, 'ssh_forward_home', None)
         return None, "token"
     return "token_mismatch", "token"
 

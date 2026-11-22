@@ -3,15 +3,17 @@ from dataclasses import asdict
 from types import SimpleNamespace
 
 from hermes_cli.plugin_request_binding import RequestIdentity, canonical_home
+from plugins.symphony_pm import adapter as pm
 from plugins.symphony_pm.transport.lifecycle import ObserverHandshake, ProcessReadback, StopReadback, LifecycleOwner
+from plugins.symphony_pm.transport.recovery import PredecessorProof
 from plugins.symphony_pm.transport.types import (
     ExecutionPlan, NativeBinding, Permit, ProcessIdentity, Refused, ServingIdentity, digest,
 )
-from tests.tools.test_symphony_pm_adapter import ctx, submit_payload
-from tools import symphony_pm_adapter as pm
+from tests.plugins.test_symphony_pm_adapter import ctx, submit_payload
 
 
 class Guard:
+    recovery_host_id = 'fixture-host'
     def __init__(self, scope, incarnation='incarnation-1', predecessor_dead=False):
         self.identity = ServingIdentity(scope.profile_home, scope.namespace, 'fixture-boot',
                                         ProcessIdentity(100, 'fixture-serving-birth'), incarnation)
@@ -24,6 +26,15 @@ class Guard:
     def require_predecessor_dead(self, _previous):
         if not self.predecessor_dead:
             raise Refused('PREDECESSOR_LIVE_OR_UNKNOWN')
+
+    def predecessor_proof(self, previous):
+        if previous['boot_id'] == self.identity.boot_id:
+            self.require_predecessor_dead(previous)
+            kind = 'OWNER_DEAD'
+        else:
+            kind = 'BOOT_CHANGED'
+        return PredecessorProof(digest(previous), self.recovery_host_id, kind, 'fixture-readback',
+                                'fixture-contained-process')
 
     def close(self, _deadline):
         self.owned = False
@@ -87,6 +98,7 @@ class Receiver:
 
 
 class Native:
+    ownership_contract = 'fixture-contained-process'
     def __init__(self):
         self.created = []
         self.timeout = False

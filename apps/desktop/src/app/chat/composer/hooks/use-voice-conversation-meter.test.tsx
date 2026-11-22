@@ -45,7 +45,7 @@ vi.mock('@/i18n', () => ({
 }))
 
 function deadMeterTake(durationMs: number): MicRecording {
-  return { audio: new Blob(['voice'], { type: 'audio/webm' }), durationMs, heardSpeech: false, meterFailed: true }
+  return { audio: new Blob(['voice'], { type: 'audio/webm' }), durationMs, utteranceId: 'test-recording', heardSpeech: false, meterFailed: true }
 }
 
 /** The options the hook handed to the most recent mic start. */
@@ -96,7 +96,7 @@ describe('useVoiceConversation with a failed level meter', () => {
     })
 
     await waitFor(() => expect(onTranscribeAudio).toHaveBeenCalledWith(take.audio, expect.anything()))
-    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith('what time is it'))
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith('what time is it', 'test-recording'))
   })
 
   it('re-arms on a too-short dead-meter take, then stops with an error when the meter dies again', async () => {

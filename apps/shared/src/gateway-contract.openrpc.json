@@ -2095,6 +2095,42 @@
       }
     },
     {
+      "name": "operator.challenge",
+      "summary": "Issue a purpose- and connection-bound challenge for a registered Desktop operator.",
+      "params": [
+        {
+          "name": "params",
+          "schema": {
+            "$ref": "#/components/schemas/OperatorChallengeParams"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/OperatorChallengeResult"
+        }
+      }
+    },
+    {
+      "name": "operator.execute",
+      "summary": "Accept a once-signed Desktop operator request through the verified owner.",
+      "params": [
+        {
+          "name": "params",
+          "schema": {
+            "$ref": "#/components/schemas/OperatorExecuteParams"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/OperatorExecuteResult"
+        }
+      }
+    },
+    {
       "name": "paste.collapse",
       "summary": "Spill a large paste to a file and hand back the inline placeholder.",
       "params": [
@@ -2973,6 +3009,42 @@
         "name": "result",
         "schema": {
           "$ref": "#/components/schemas/TaskIdResult"
+        }
+      }
+    },
+    {
+      "name": "prompt.forward_probe",
+      "summary": "Classify the attached conversation without sending input.",
+      "params": [
+        {
+          "name": "params",
+          "schema": {
+            "$ref": "#/components/schemas/ForwardProbeParams"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/ForwardProbeResult"
+        }
+      }
+    },
+    {
+      "name": "prompt.forward_submit",
+      "summary": "Forward one typed input to its verified durable owner.",
+      "params": [
+        {
+          "name": "params",
+          "schema": {
+            "$ref": "#/components/schemas/ForwardSubmitParams"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/ForwardSubmitResult"
         }
       }
     },
@@ -4681,6 +4753,18 @@
             "title": "Admission Id",
             "type": "string"
           },
+          "submission_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Submission Id"
+          },
           "ref": {
             "$ref": "#/components/schemas/CanonicalSessionRef"
           },
@@ -4916,6 +5000,18 @@
           "admission_id": {
             "title": "Admission Id",
             "type": "string"
+          },
+          "submission_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Submission Id"
           },
           "ref": {
             "$ref": "#/components/schemas/CanonicalSessionRef"
@@ -8908,6 +9004,18 @@
             "title": "Admission Id",
             "type": "string"
           },
+          "submission_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Submission Id"
+          },
           "ref": {
             "$ref": "#/components/schemas/CanonicalSessionRef"
           },
@@ -11886,6 +11994,19 @@
       "CommandDispatchParams": {
         "additionalProperties": false,
         "properties": {
+          "interaction": {
+            "anyOf": [
+              {
+                "const": "displayed-plan",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Interaction"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -18218,6 +18339,151 @@
           "content"
         ],
         "title": "ForeignTurn",
+        "type": "object"
+      },
+      "ForwardProbeParams": {
+        "additionalProperties": false,
+        "properties": {
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ],
+        "title": "ForwardProbeParams",
+        "type": "object"
+      },
+      "ForwardProbeResult": {
+        "additionalProperties": false,
+        "properties": {
+          "version": {
+            "const": 1,
+            "title": "Version",
+            "type": "integer"
+          },
+          "route": {
+            "enum": [
+              "ordinary",
+              "forward",
+              "hold"
+            ],
+            "title": "Route",
+            "type": "string"
+          },
+          "ref": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CanonicalSessionRef"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "generation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Generation"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "shared",
+                  "personal"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Mode"
+          }
+        },
+        "required": [
+          "version",
+          "route"
+        ],
+        "title": "ForwardProbeResult",
+        "type": "object"
+      },
+      "ForwardSubmitParams": {
+        "additionalProperties": false,
+        "properties": {
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          },
+          "ref": {
+            "$ref": "#/components/schemas/CanonicalSessionRef"
+          },
+          "generation": {
+            "title": "Generation",
+            "type": "string"
+          },
+          "submission_id": {
+            "title": "Submission Id",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "ref",
+          "generation",
+          "submission_id",
+          "text"
+        ],
+        "title": "ForwardSubmitParams",
+        "type": "object"
+      },
+      "ForwardSubmitResult": {
+        "additionalProperties": false,
+        "properties": {
+          "ref": {
+            "$ref": "#/components/schemas/CanonicalSessionRef"
+          },
+          "submission_id": {
+            "title": "Submission Id",
+            "type": "string"
+          },
+          "admission_id": {
+            "title": "Admission Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "started",
+              "unknown",
+              "terminal"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ref",
+          "submission_id",
+          "admission_id",
+          "status"
+        ],
+        "title": "ForwardSubmitResult",
         "type": "object"
       },
       "FreeTierAckNoticeResult": {
@@ -25003,6 +25269,409 @@
           "params"
         ],
         "title": "OpenRequestEntry",
+        "type": "object"
+      },
+      "OperatorChallengeParams": {
+        "additionalProperties": false,
+        "properties": {
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          },
+          "action": {
+            "enum": [
+              "submit",
+              "receipt",
+              "status",
+              "stop",
+              "stop_result",
+              "recover",
+              "stop_reconcile",
+              "stop_replace",
+              "apply_info",
+              "apply",
+              "archive",
+              "apply_result"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "submission_id": {
+            "title": "Submission Id",
+            "type": "string"
+          },
+          "installation_key": {
+            "title": "Installation Key",
+            "type": "string"
+          },
+          "window_key": {
+            "title": "Window Key",
+            "type": "string"
+          },
+          "window_generation": {
+            "title": "Window Generation",
+            "type": "integer"
+          },
+          "payload_sha256": {
+            "title": "Payload Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "action",
+          "submission_id",
+          "installation_key",
+          "window_key",
+          "window_generation",
+          "payload_sha256"
+        ],
+        "title": "OperatorChallengeParams",
+        "type": "object"
+      },
+      "OperatorChallengeResult": {
+        "additionalProperties": false,
+        "properties": {
+          "version": {
+            "const": 1,
+            "title": "Version",
+            "type": "integer"
+          },
+          "challenge_id": {
+            "title": "Challenge Id",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "ref": {
+            "$ref": "#/components/schemas/CanonicalSessionRef"
+          },
+          "window_generation": {
+            "title": "Window Generation",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "challenge_id",
+          "message",
+          "ref",
+          "window_generation"
+        ],
+        "title": "OperatorChallengeResult",
+        "type": "object"
+      },
+      "OperatorExecuteParams": {
+        "additionalProperties": false,
+        "properties": {
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          },
+          "challenge_id": {
+            "title": "Challenge Id",
+            "type": "string"
+          },
+          "installation_signature": {
+            "title": "Installation Signature",
+            "type": "string"
+          },
+          "window_signature": {
+            "title": "Window Signature",
+            "type": "string"
+          },
+          "payload": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Payload",
+            "type": "object"
+          }
+        },
+        "required": [
+          "session_id",
+          "challenge_id",
+          "installation_signature",
+          "window_signature",
+          "payload"
+        ],
+        "title": "OperatorExecuteParams",
+        "type": "object"
+      },
+      "OperatorExecuteResult": {
+        "additionalProperties": false,
+        "properties": {
+          "ref": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CanonicalSessionRef"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "submission_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Submission Id"
+          },
+          "admission_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Admission Id"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "queued",
+                  "started",
+                  "unknown",
+                  "terminal"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Status"
+          },
+          "attempt": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Attempt"
+          },
+          "window_generation": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Window Generation"
+          },
+          "attempt_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Attempt Id"
+          },
+          "phase": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Phase"
+          },
+          "observed_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Observed At"
+          },
+          "evidence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Evidence"
+          },
+          "command_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Command Id"
+          },
+          "previous_command_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Previous Command Id"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "State"
+          },
+          "dispatched": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Dispatched"
+          },
+          "local_stopped": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Local Stopped"
+          },
+          "project": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Project"
+          },
+          "job": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Job"
+          },
+          "capture_seq": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Capture Seq"
+          },
+          "check_seq": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Check Seq"
+          },
+          "patch_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Patch Sha256"
+          },
+          "commit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Commit"
+          }
+        },
+        "title": "OperatorExecuteResult",
         "type": "object"
       },
       "OptionalProjectResult": {
@@ -31985,8 +32654,28 @@
             "type": "string"
           },
           "admission_id": {
-            "title": "Admission Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Admission Id"
+          },
+          "submission_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Submission Id"
           },
           "include_result": {
             "anyOf": [
@@ -32002,8 +32691,7 @@
           }
         },
         "required": [
-          "session_id",
-          "admission_id"
+          "session_id"
         ],
         "title": "PromptReceiptParams",
         "type": "object"
@@ -32015,6 +32703,18 @@
           "admission_id": {
             "title": "Admission Id",
             "type": "string"
+          },
+          "submission_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Submission Id"
           },
           "ref": {
             "$ref": "#/components/schemas/CanonicalSessionRef"
@@ -43581,6 +44281,31 @@
         "title": "SudoRequestParams",
         "type": "object"
       },
+      "SymphonyPlanPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          },
+          "plan_digest": {
+            "title": "Plan Digest",
+            "type": "string"
+          },
+          "plan": {
+            "additionalProperties": true,
+            "title": "Plan",
+            "type": "object"
+          }
+        },
+        "required": [
+          "request_id",
+          "plan_digest",
+          "plan"
+        ],
+        "title": "SymphonyPlanPayload",
+        "type": "object"
+      },
       "SystemBatteryParams": {
         "additionalProperties": false,
         "properties": {
@@ -49673,6 +50398,18 @@
           "name": "payload",
           "schema": {
             "$ref": "#/components/schemas/SubagentEventPayload"
+          }
+        }
+      ]
+    },
+    {
+      "name": "symphony.plan",
+      "summary": "A Desktop viewer can present this pending Symphony plan.",
+      "params": [
+        {
+          "name": "payload",
+          "schema": {
+            "$ref": "#/components/schemas/SymphonyPlanPayload"
           }
         }
       ]

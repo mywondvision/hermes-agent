@@ -1,4 +1,4 @@
-"""Cancel-semantics contract tests of ``tools/symphony_pm_adapter.py`` against the ACTUAL frozen S2
+"""Cancel-semantics contract tests of ``plugins/symphony_pm/adapter.py`` against the ACTUAL frozen S2
 PRIMARY source. No stop is performed or proven.
 
 ADD-HERMES-PM-INGRESS-01 case 7 (cancel semantics) joined with case 4 (actual frozen consumer): the
@@ -19,7 +19,8 @@ import io
 
 import pytest
 
-from tests.tools.test_symphony_pm_adapter import (
+from plugins.symphony_pm import adapter as pm
+from tests.plugins.test_symphony_pm_adapter import (
     BASE,
     CHECKPOINT,
     REVISION,
@@ -34,7 +35,6 @@ from tests.tools.test_symphony_pm_adapter import (
     project_primary,
     submit_payload,
 )
-from tools import symphony_pm_adapter as pm
 
 
 @pytest.fixture(scope="module")

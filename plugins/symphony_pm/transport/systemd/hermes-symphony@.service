@@ -1,0 +1,24 @@
+[Unit]
+Description=Hermes Symphony qualified attempt %i
+
+[Service]
+Type=exec
+User=hermes-symphony
+Group=hermes-symphony
+UMask=0077
+ExecStart=/opt/hermes-symphony/controller/bin/python3 -I -S /opt/hermes-symphony/controller/hermes-agent/plugins/symphony_pm/transport/linux_entry.py /var/lib/hermes-symphony/control %i
+Restart=no
+KillMode=control-group
+Delegate=yes
+RuntimeMaxSec=30min
+TimeoutStopSec=8
+MemoryMax=4G
+TasksMax=256
+CPUQuota=100%
+PrivateNetwork=yes
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+StandardInput=null
+StandardOutput=null
+StandardError=journal
